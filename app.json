@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "nook",
+    "scheme": ["nook", "com.nook.app"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.nook.app"

@@ -66,6 +66,7 @@ export default function HomeScreen() {
                       title={item.title ?? item.url}
                       source={item.domain ?? 'Unknown'}
                       tags={item.tags}
+                      thumbnailUrl={item.thumbnail_url}
                       thumbnailColor={placeholderColor(item.id)}
                       savedAt={formatRelativeTime(item.saved_at)}
                       onPress={() => router.push(`/content/${item.id}`)}

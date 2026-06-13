@@ -1,8 +1,11 @@
+import { exchangeCodeAsync } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const iosRedirectUri = 'com.nook.app:/oauthredirect';
 
 const googleClientIds = {
   iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -13,6 +16,9 @@ export function useGoogleAuth() {
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: googleClientIds.iosClientId,
     webClientId: googleClientIds.webClientId,
+    shouldAutoExchangeCode: false,
+  }, {
+    native: iosRedirectUri,
   });
 
   const signInWithGoogle = async () => {
@@ -22,7 +28,21 @@ export function useGoogleAuth() {
       return { error: 'Google sign-in was cancelled' };
     }
 
-    const idToken = result.params.id_token;
+    let idToken: string | undefined = result.params.id_token;
+
+    if (!idToken && result.params.code && request?.codeVerifier && googleClientIds.iosClientId) {
+      const tokenResponse = await exchangeCodeAsync({
+        clientId: googleClientIds.iosClientId,
+        code: result.params.code,
+        redirectUri: iosRedirectUri,
+        extraParams: {
+          code_verifier: request.codeVerifier,
+        },
+      }, Google.discovery);
+
+      idToken = tokenResponse.idToken;
+    }
+
     if (!idToken) {
       return { error: 'No ID token returned from Google' };
     }

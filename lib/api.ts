@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { classifyContent } from './ai';
+import { fetchLinkMetadata, normalizeUrl } from './metadata';
 import type { Category, Content } from '@/types';
 
 // ─── Categories ───
@@ -113,9 +114,19 @@ export async function saveContent(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  const normalizedUrl = normalizeUrl(input.url);
+  const metadata = await fetchLinkMetadata(normalizedUrl);
+  const contentInput = {
+    ...input,
+    url: normalizedUrl,
+    title: input.title ?? metadata.title,
+    thumbnail_url: input.thumbnail_url ?? metadata.thumbnail_url,
+    domain: input.domain ?? metadata.domain,
+  };
+
   const { data, error } = await supabase
     .from('contents')
-    .insert({ user_id: user.id, ...input })
+    .insert({ user_id: user.id, ...contentInput })
     .select()
     .single();
   if (error) throw error;
@@ -128,6 +139,45 @@ export async function saveContent(input: {
   );
 
   return saved;
+}
+
+export async function refreshContentMetadata(
+  content: Content & { categories?: { name: string } | null },
+): Promise<Content & { categories: { name: string } | null }> {
+  const metadata = await fetchLinkMetadata(content.url);
+  const updates: {
+    title?: string;
+    thumbnail_url?: string;
+    domain?: string;
+  } = {};
+
+  if ((!content.title || content.title === content.url) && metadata.title) {
+    updates.title = metadata.title;
+  }
+
+  if (!content.thumbnail_url && metadata.thumbnail_url) {
+    updates.thumbnail_url = metadata.thumbnail_url;
+  }
+
+  if (!content.domain && metadata.domain) {
+    updates.domain = metadata.domain;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return {
+      ...content,
+      categories: content.categories ?? null,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('contents')
+    .update(updates)
+    .eq('id', content.id)
+    .select('*, categories(name)')
+    .single();
+  if (error) throw error;
+  return data as Content & { categories: { name: string } | null };
 }
 
 export async function updateContent(id: string, updates: {

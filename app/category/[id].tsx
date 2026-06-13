@@ -141,6 +141,7 @@ export default function CategoryDetailScreen() {
                 title={a.title ?? a.url}
                 source={a.domain ?? 'Unknown'}
                 tags={a.tags}
+                thumbnailUrl={a.thumbnail_url}
                 thumbnailColor={placeholderColor(a.id)}
                 savedAt={formatRelativeTime(a.saved_at)}
                 onPress={() => router.push(`/content/${a.id}`)}

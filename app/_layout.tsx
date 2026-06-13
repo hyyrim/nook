@@ -39,9 +39,14 @@ function RootNavigator() {
 
     savingRef.current = true;
     const title = shareIntent?.meta?.title ?? undefined;
+    const thumbnail_url =
+      shareIntent?.meta?.['og:image'] ??
+      shareIntent?.meta?.['twitter:image'] ??
+      shareIntent?.meta?.image ??
+      undefined;
     const domain = (() => { try { return new URL(url).hostname; } catch { return undefined; } })();
 
-    saveContent({ url, title, domain })
+    saveContent({ url, title, thumbnail_url, domain })
       .then(() => {
         Alert.alert('Saved!', 'Added to your Nook archive');
       })

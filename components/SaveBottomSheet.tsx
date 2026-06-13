@@ -1,5 +1,5 @@
-import { View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
+import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, ActivityIndicator } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,9 @@ type SaveBottomSheetProps = {
 export function SaveBottomSheet({ visible, onClose }: SaveBottomSheetProps) {
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState(false);
+  const [isMounted, setIsMounted] = useState(visible);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(360)).current;
 
   useEffect(() => {
     if (!visible) {
@@ -20,6 +23,42 @@ export function SaveBottomSheet({ visible, onClose }: SaveBottomSheetProps) {
       setSaved(false);
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.spring(sheetTranslateY, {
+          toValue: 0,
+          damping: 22,
+          stiffness: 230,
+          mass: 0.9,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 360,
+        duration: 190,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) setIsMounted(false);
+    });
+  }, [visible, backdropOpacity, sheetTranslateY]);
 
   const [saving, setSaving] = useState(false);
 
@@ -48,72 +87,91 @@ export function SaveBottomSheet({ visible, onClose }: SaveBottomSheetProps) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={isMounted} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.dim, { opacity: backdropOpacity }]}
+      />
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-          <View style={styles.dragHandle} />
+        <Animated.View
+          style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+          onStartShouldSetResponder={() => true}
+        >
+          <View style={styles.sheet}>
+            <View style={styles.dragHandle} />
 
-          <View style={styles.header}>
-            <Text style={styles.title}>Save to Nook</Text>
-            <Pressable onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={14} color={Colors.secondary} />
-            </Pressable>
+            <View style={styles.header}>
+              <Text style={styles.title}>Save to Nook</Text>
+              <Pressable onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={14} color={Colors.secondary} />
+              </Pressable>
+            </View>
+
+            {saved ? (
+              <View style={styles.successContainer}>
+                <View style={styles.successCircle}>
+                  <Ionicons name="checkmark" size={24} color={Colors.accent} />
+                </View>
+                <Text style={styles.successTitle}>Saved!</Text>
+                <Text style={styles.successSubtitle}>Added to your Nook archive</Text>
+              </View>
+            ) : (
+              <View style={styles.form}>
+                <View>
+                  <Text style={styles.label}>URL</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://example.com/article"
+                    placeholderTextColor={Colors.tertiary}
+                    value={url}
+                    onChangeText={setUrl}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                  />
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [styles.pasteButton, pressed && { opacity: 0.7 }]}
+                  onPress={handlePaste}
+                >
+                  <Ionicons name="clipboard-outline" size={14} color={Colors.secondary} />
+                  <Text style={styles.pasteText}>Paste from Clipboard</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleSave}
+                  style={[styles.saveButton, !url.trim() && styles.saveButtonDisabled]}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
           </View>
-
-          {saved ? (
-            <View style={styles.successContainer}>
-              <View style={styles.successCircle}>
-                <Ionicons name="checkmark" size={24} color={Colors.accent} />
-              </View>
-              <Text style={styles.successTitle}>Saved!</Text>
-              <Text style={styles.successSubtitle}>Added to your Nook archive</Text>
-            </View>
-          ) : (
-            <View style={styles.form}>
-              <View>
-                <Text style={styles.label}>URL</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="https://example.com/article"
-                  placeholderTextColor={Colors.tertiary}
-                  value={url}
-                  onChangeText={setUrl}
-                  autoCapitalize="none"
-                  keyboardType="url"
-                />
-              </View>
-
-              <Pressable
-                style={({ pressed }) => [styles.pasteButton, pressed && { opacity: 0.7 }]}
-                onPress={handlePaste}
-              >
-                <Ionicons name="clipboard-outline" size={14} color={Colors.secondary} />
-                <Text style={styles.pasteText}>Paste from Clipboard</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={handleSave}
-                style={[styles.saveButton, !url.trim() && styles.saveButtonDisabled]}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
-                )}
-              </Pressable>
-            </View>
-          )}
-        </View>
+        </Animated.View>
       </Pressable>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  dim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(0,0,0,0.36)',
+  },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.36)',
     justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    width: '100%',
   },
   sheet: {
     backgroundColor: Colors.surface,

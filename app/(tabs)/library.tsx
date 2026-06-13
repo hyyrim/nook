@@ -113,8 +113,9 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 18,
     paddingHorizontal: 20,
     paddingBottom: 32,
-    gap: 12,
   },
 });

@@ -11,7 +11,7 @@ export function FolderCard({ name, count, onPress }: FolderCardProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [pressed && styles.pressed]}
+      style={({ pressed }) => [styles.cardItem, pressed && styles.pressed]}
     >
       <View style={styles.wrapper}>
         <View style={styles.tab} />
@@ -28,7 +28,11 @@ export function AddCategoryCard({ onPress }: { onPress?: () => void }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.addCard, pressed && { backgroundColor: 'rgba(0,0,0,0.015)' }]}
+      style={({ pressed }) => [
+        styles.cardItem,
+        styles.addCard,
+        pressed && { backgroundColor: 'rgba(0,0,0,0.015)' },
+      ]}
     >
       <Ionicons name="add" size={22} color={Colors.tertiary} />
       <Text style={styles.addText}>Add Category</Text>
@@ -39,6 +43,9 @@ export function AddCategoryCard({ onPress }: { onPress?: () => void }) {
 import { Ionicons } from '@expo/vector-icons';
 
 const styles = StyleSheet.create({
+  cardItem: {
+    width: '47.8%',
+  },
   pressed: {
     transform: [{ scale: 0.96 }],
   },
@@ -47,17 +54,19 @@ const styles = StyleSheet.create({
   },
   tab: {
     position: 'absolute',
-    top: 0,
-    left: 13,
-    width: 44,
-    height: 11,
+    top: 2,
+    left: 0,
+    width: 55,
+    height: 16,
     backgroundColor: '#E5E4E4',
     borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
+    borderTopRightRadius: 12,
   },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderTopRightRadius:12,
+    borderBottomLeftRadius:12,
+    borderBottomRightRadius:12,
     height: 116,
     padding: 13,
     justifyContent: 'space-between',

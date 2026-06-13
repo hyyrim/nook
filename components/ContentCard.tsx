@@ -1,22 +1,27 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Colors } from '@/constants';
 
 type ContentCardProps = {
   title: string;
   source: string;
   tags?: string[];
+  thumbnailUrl?: string | null;
   thumbnailColor?: string;
   savedAt?: string;
   onPress?: () => void;
 };
 
-export function ContentCard({ title, source, tags = [], thumbnailColor = '#DDD7CE', savedAt, onPress }: ContentCardProps) {
+export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, onPress }: ContentCardProps) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
-      <View style={[styles.thumbnail, { backgroundColor: thumbnailColor }]} />
+      {thumbnailUrl ? (
+        <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+      ) : (
+        <View style={[styles.thumbnail, { backgroundColor: thumbnailColor }]} />
+      )}
       <View style={styles.textContainer}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
         <View style={styles.metaRow}>
@@ -56,6 +61,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 8,
+    backgroundColor: Colors.border,
   },
   textContainer: {
     flex: 1,

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { Image, Linking, View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback } from 'react';
@@ -6,16 +6,32 @@ import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
 import { Ionicons } from '@expo/vector-icons';
-import { getContentById, markContentViewed, deleteContent, getRecentContents } from '@/lib/api';
+import { getContentById, markContentViewed, deleteContent, getRecentContents, refreshContentMetadata } from '@/lib/api';
 import { placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
 
-function RelatedCard({ title, source, thumb, onPress }: { title: string; source: string; thumb: string; onPress?: () => void }) {
+function RelatedCard({
+  title,
+  source,
+  thumbnailUrl,
+  thumb,
+  onPress,
+}: {
+  title: string;
+  source: string;
+  thumbnailUrl?: string | null;
+  thumb: string;
+  onPress?: () => void;
+}) {
   return (
     <Pressable onPress={onPress} style={styles.relatedCard}>
-      <View style={[styles.relatedThumb, { backgroundColor: thumb }]} />
+      {thumbnailUrl ? (
+        <Image source={{ uri: thumbnailUrl }} style={styles.relatedThumb} resizeMode="cover" />
+      ) : (
+        <View style={[styles.relatedThumb, { backgroundColor: thumb }]} />
+      )}
       <View style={styles.relatedText}>
         <Text style={styles.relatedTitle} numberOfLines={2}>{title}</Text>
         <Text style={styles.relatedSource}>{source}</Text>
@@ -43,6 +59,14 @@ export default function ContentDetailScreen() {
           ]);
           if (cancelled) return;
           setItem(content);
+
+          if (!content.thumbnail_url || !content.title || content.title === content.url) {
+            refreshContentMetadata(content)
+              .then((updated) => {
+                if (!cancelled) setItem(updated);
+              })
+              .catch((error) => console.warn('Metadata refresh failed:', error));
+          }
 
           // 관련 콘텐츠: 같은 카테고리 우선, 자기 자신 제외, 최대 2개
           const others = recentAll.filter(c => c.id !== id);
@@ -114,7 +138,11 @@ export default function ContentDetailScreen() {
         <View style={styles.body}>
           {/* Header card */}
           <View style={styles.headerCard}>
-            <View style={[styles.heroImage, { backgroundColor: placeholderColor(item.id) }]} />
+            {item.thumbnail_url ? (
+              <Image source={{ uri: item.thumbnail_url }} style={styles.heroImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.heroImage, { backgroundColor: placeholderColor(item.id) }]} />
+            )}
             <View style={styles.headerMeta}>
               <View style={styles.categoryRow}>
                 <Ionicons name="grid-outline" size={10} color={Colors.tertiary} />
@@ -124,7 +152,7 @@ export default function ContentDetailScreen() {
               </View>
               <View style={styles.titleRow}>
                 <Text style={styles.title}>{item.title ?? item.url}</Text>
-                <Pressable onPress={() => {/* TODO: open URL */}}>
+                <Pressable onPress={() => Linking.openURL(item.url)}>
                   <Text style={styles.originalLink}>원문 바로가기 →</Text>
                 </Pressable>
               </View>
@@ -159,6 +187,7 @@ export default function ContentDetailScreen() {
                     key={r.id}
                     title={r.title ?? r.url}
                     source={r.domain ?? 'Unknown'}
+                    thumbnailUrl={r.thumbnail_url}
                     thumb={placeholderColor(r.id)}
                     onPress={() => router.push(`/content/${r.id}`)}
                   />
