@@ -149,6 +149,8 @@ export async function saveContent(input: {
     thumbnail_url: input.thumbnail_url ?? metadata.thumbnail_url,
     domain: input.domain ?? metadata.domain,
   };
+  // description은 DB에 저장하지 않지만 AI 분류 시 사용
+  const metaDescription = metadata.description;
 
   const { data, error } = await supabase
     .from('contents')
@@ -160,7 +162,7 @@ export async function saveContent(input: {
   const saved = data as Content;
 
   // 비동기 AI 분류 (저장 UX와 분리, 실패해도 저장은 유지)
-  classifyAndUpdate(saved).catch(err =>
+  classifyAndUpdate(saved, metaDescription).catch(err =>
     console.warn('AI classification failed:', err),
   );
 
@@ -274,18 +276,24 @@ export async function getRediscoverContents(limit = 5) {
 
 // ─── AI Classification (비동기) ───
 
-async function classifyAndUpdate(content: Content) {
+async function classifyAndUpdate(content: Content, description?: string) {
   const result = await classifyContent({
     url: content.url,
     title: content.title,
     domain: content.domain,
+    description,
   });
   if (!result) return;
 
-  const updates: { tags?: string[]; category_id?: string | null } = {};
+  const updates: { tags?: string[]; category_id?: string | null; title?: string } = {};
 
   if (result.tags.length > 0) {
     updates.tags = result.tags;
+  }
+
+  // AI가 제안한 제목이 있고, 기존 제목이 제네릭이면 업데이트
+  if (result.suggested_title) {
+    updates.title = result.suggested_title;
   }
 
   if (result.category !== null) {

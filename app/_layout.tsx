@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, Alert, StyleSheet } from 'react-native';
@@ -6,6 +6,7 @@ import { useShareIntent } from 'expo-share-intent';
 import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
+import { Toast } from '@/components/Toast';
 import { Colors } from '@/constants';
 
 function RootNavigator() {
@@ -14,6 +15,9 @@ function RootNavigator() {
   const router = useRouter();
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const savingRef = useRef(false);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+    visible: false, message: '', type: 'success',
+  });
 
   // Auth 라우팅 가드
   useEffect(() => {
@@ -39,24 +43,18 @@ function RootNavigator() {
     }
 
     savingRef.current = true;
-    const title = shareIntent?.meta?.title ?? undefined;
-    const thumbnail_url =
-      shareIntent?.meta?.['og:image'] ??
-      shareIntent?.meta?.['twitter:image'] ??
-      shareIntent?.meta?.image ??
-      undefined;
-    const domain = (() => { try { return new URL(url).hostname; } catch { return undefined; } })();
 
-    saveContent({ url, title, thumbnail_url, domain })
+    // share intent meta는 불완전할 수 있으므로, fetchLinkMetadata에 위임
+    saveContent({ url })
       .then(() => {
         emit('content-saved');
-        Alert.alert('Saved!', 'Added to your Nook archive');
+        setToast({ visible: true, message: 'Saved to Nook!', type: 'success' });
       })
       .catch((e: any) => {
         const msg = e.message?.includes('contents_user_url_unique')
-          ? 'This URL is already saved.'
-          : e.message;
-        Alert.alert('Save Failed', msg);
+          ? 'Already saved'
+          : 'Save failed';
+        setToast({ visible: true, message: msg, type: 'error' });
       })
       .finally(() => {
         savingRef.current = false;
@@ -73,8 +71,14 @@ function RootNavigator() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={() => setToast(prev => ({ ...prev, visible: false }))}
+      />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -98,7 +102,7 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right' }}
         />
       </Stack>
-    </>
+    </View>
   );
 }
 

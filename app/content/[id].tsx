@@ -7,7 +7,7 @@ import { Colors } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRecentContents, refreshContentMetadata } from '@/lib/api';
-import { placeholderColor } from '@/lib/utils';
+import { formatSource, placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -147,7 +147,7 @@ export default function ContentDetailScreen() {
               <View style={styles.categoryRow}>
                 <Ionicons name="grid-outline" size={10} color={Colors.tertiary} />
                 <Text style={styles.categoryText}>
-                  {item.categories?.name ?? '미분류'} · {item.domain ?? 'Unknown'}
+                  {item.categories?.name ?? '미분류'} · {formatSource(item.domain)}
                 </Text>
               </View>
               <View style={styles.titleRow}>
@@ -186,7 +186,7 @@ export default function ContentDetailScreen() {
                   <RelatedCard
                     key={r.id}
                     title={r.title ?? r.url}
-                    source={r.domain ?? 'Unknown'}
+                    source={formatSource(r.domain)}
                     thumbnailUrl={r.thumbnail_url}
                     thumb={placeholderColor(r.id)}
                     onPress={() => router.push(`/content/${r.id}`)}

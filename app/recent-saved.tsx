@@ -7,7 +7,7 @@ import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
-import { formatRelativeTime, placeholderColor } from '@/lib/utils';
+import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -53,7 +53,7 @@ export default function RecentSavedScreen() {
               <ContentCard
                 key={item.id}
                 title={item.title ?? item.url}
-                source={item.domain ?? 'Unknown'}
+                source={formatSource(item.domain)}
                 tags={item.tags}
                 thumbnailUrl={item.thumbnail_url}
                 thumbnailColor={placeholderColor(item.id)}

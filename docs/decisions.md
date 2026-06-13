@@ -81,3 +81,55 @@
 - savingRef로 중복 저장 방지
 
 **제약**: Expo Go 불가, Development Build 필요
+
+---
+
+## 006. Instagram 메타데이터 추출 전략 (2026-06-13)
+
+**결정**: Instagram URL은 oEmbed API(`api.instagram.com/oembed`)로 캡션과 썸네일을 가져옴
+
+**배경**: Instagram은 로그인 없이 HTML을 fetch하면 og:title이 "[계정] Instagram 사진 및 동영상"으로 고정. og:description에도 캡션이 포함되지 않아 실제 본문 내용을 제목으로 사용할 수 없었음.
+
+**대안 검토**:
+- HTML og:description 파싱 → 로그인 없으면 캡션 미제공
+- 브라우저 User-Agent 변경 → Instagram이 여전히 제한
+- Graph API → access_token 필요, 인프라 복잡도 증가
+
+**결과**: 공개 oEmbed 엔드포인트로 캡션(title) + 썸네일(thumbnail_url) 추출. 100자 초과 시 말줄임 처리. oEmbed 실패 시 기존 HTML 파싱 폴백.
+
+---
+
+## 007. 실시간 데이터 갱신 — 이벤트 시스템 (2026-06-13)
+
+**결정**: 모듈 레벨 이벤트 시스템(`lib/events.ts`)으로 저장 후 Home/Library 즉시 새로고침
+
+**배경**: `useFocusEffect`만으로는 같은 탭에서 Bottom Sheet로 저장 시 데이터가 갱신되지 않음. 탭 전환 없이도 새로고침이 필요.
+
+**대안 검토**:
+- React Context로 공유 상태 → Tab Layout과 자식 화면 간 props 전달 어려움
+- DeviceEventEmitter → React Native 내장이나 deprecated 방향
+- 전역 상태 (Zustand 등) → MVP에서 과도한 의존성
+
+**결과**: 12줄의 경량 이벤트 시스템. `emit('content-saved')` 호출 시 Home/Library가 구독하여 `loadData` 재실행. SaveBottomSheet + Share Intent 양쪽에서 emit.
+
+---
+
+## 008. Instagram 제목 개선 — 다단계 캡션 추출 + AI 제목 생성 (2026-06-13)
+
+**결정**: Instagram 콘텐츠의 제네릭 제목 문제를 3단계 폴백으로 해결
+
+**배경**: oEmbed API만으로는 릴스 등 일부 형식에서 캡션을 못 가져옴. "계정명 · Instagram 사진 및 동영상/릴스" 같은 제네릭 제목이 그대로 노출되어 무슨 콘텐츠인지 알 수 없었음.
+
+**구현 (3단계 폴백)**:
+1. **oEmbed 캡션** → 성공 시 제목으로 사용
+2. **HTML 파싱 강화** → `og:description`에서 "on Instagram: 캡션" 패턴 추출 + 임베디드 JSON(`"caption":{"text":"..."}`, `"edge_media_to_caption"`)에서 캡션 추출. Unicode 이스케이프(`\uXXXX`) → `JSON.parse`로 디코딩
+3. **AI 제목 생성** → description이 있을 때만 AI가 `suggested_title` 반환. description 없으면 추측하지 않음 (계정 프로필 기반 추측 방지)
+4. **제네릭 접미사 제거** → 위 모두 실패 시 "· Instagram 사진 및 동영상/릴스" 접미사만 제거하여 계정명 깔끔하게 표시
+
+**제네릭 제목 감지 패턴**: `Instagram 사진 및 동영상`, `Instagram 릴스`, `Instagram Reels`, `on Instagram` 등
+
+**핵심 결정 — AI 제목 생성 제한**:
+- description 없이 계정명만으로 제목을 추측하면 내용과 불일치 발생 (예: 인테리어 계정의 월급관리 릴스 → "인테리어 아이디어"로 잘못 생성)
+- AI는 실제 콘텐츠 description이 있을 때만 제목 생성, 없으면 null 반환
+
+**변경 파일**: `lib/metadata.ts` (캡션 추출, Unicode 디코딩), `lib/ai.ts` (suggested_title + 제네릭 감지), `lib/api.ts` (description 전달 + 제목 업데이트)

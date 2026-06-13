@@ -11,7 +11,7 @@ import { SearchBar } from '@/components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { on } from '@/lib/events';
-import { formatRelativeTime, placeholderColor, rediscoverColors } from '@/lib/utils';
+import { formatRelativeTime, formatSource, placeholderColor, rediscoverColors } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -69,7 +69,7 @@ export default function HomeScreen() {
                     <ContentCard
                       key={item.id}
                       title={item.title ?? item.url}
-                      source={item.domain ?? 'Unknown'}
+                      source={formatSource(item.domain)}
                       tags={item.tags}
                       thumbnailUrl={item.thumbnail_url}
                       thumbnailColor={placeholderColor(item.id)}
@@ -111,8 +111,9 @@ export default function HomeScreen() {
                         <RediscoverCard
                           key={item.id}
                           title={item.title ?? item.url}
-                          source={item.domain ?? 'Unknown'}
+                          source={formatSource(item.domain)}
                           hint={item.categories?.name ? `From ${item.categories.name}` : 'Uncategorized'}
+                          thumbnailUrl={item.thumbnail_url}
                           gradientDark={colors.dark}
                           gradientMid={colors.mid}
                           onPress={() => router.push(`/content/${item.id}`)}

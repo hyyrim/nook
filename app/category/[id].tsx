@@ -16,7 +16,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '@/lib/api';
-import { formatRelativeTime, placeholderColor } from '@/lib/utils';
+import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
 import type { Category, Content } from '@/types';
 
 export default function CategoryDetailScreen() {
@@ -139,7 +139,7 @@ export default function CategoryDetailScreen() {
               <ContentCard
                 key={a.id}
                 title={a.title ?? a.url}
-                source={a.domain ?? 'Unknown'}
+                source={formatSource(a.domain)}
                 tags={a.tags}
                 thumbnailUrl={a.thumbnail_url}
                 thumbnailColor={placeholderColor(a.id)}

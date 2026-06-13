@@ -1,22 +1,26 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Colors } from '@/constants';
 
 type RediscoverCardProps = {
   title: string;
   source: string;
   hint: string;
+  thumbnailUrl?: string | null;
   gradientDark?: string;
   gradientMid?: string;
   onPress?: () => void;
 };
 
-export function RediscoverCard({ title, source, hint, gradientDark = '#1E1C2A', gradientMid = '#2E2B40', onPress }: RediscoverCardProps) {
+export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark = '#1E1C2A', gradientMid = '#2E2B40', onPress }: RediscoverCardProps) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
-      <View style={[styles.thumbnail, { backgroundColor: gradientDark }]}>
+      <View style={[styles.thumbnail, !thumbnailUrl && { backgroundColor: gradientDark }]}>
+        {thumbnailUrl && (
+          <Image source={{ uri: thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        )}
         <View style={styles.sourcePill}>
           <Text style={styles.sourceText}>{source}</Text>
         </View>

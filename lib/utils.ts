@@ -42,6 +42,41 @@ const DARK_COLORS = [
   { dark: '#221A22', mid: '#382E38' },
 ];
 
+const DOMAIN_LABELS: Record<string, string> = {
+  'instagram.com': 'Instagram',
+  'www.instagram.com': 'Instagram',
+  'youtube.com': 'YouTube',
+  'www.youtube.com': 'YouTube',
+  'youtu.be': 'YouTube',
+  'm.youtube.com': 'YouTube',
+  'twitter.com': 'X',
+  'www.twitter.com': 'X',
+  'x.com': 'X',
+  'www.x.com': 'X',
+  'github.com': 'GitHub',
+  'www.github.com': 'GitHub',
+  'medium.com': 'Medium',
+  'www.medium.com': 'Medium',
+  'linkedin.com': 'LinkedIn',
+  'www.linkedin.com': 'LinkedIn',
+  'tiktok.com': 'TikTok',
+  'www.tiktok.com': 'TikTok',
+  'threads.net': 'Threads',
+  'www.threads.net': 'Threads',
+  'velog.io': 'Velog',
+  'brunch.co.kr': 'Brunch',
+  'naver.com': 'Naver',
+  'blog.naver.com': 'Naver Blog',
+  'm.blog.naver.com': 'Naver Blog',
+  'news.naver.com': 'Naver News',
+  'n.news.naver.com': 'Naver News',
+};
+
+export function formatSource(domain?: string): string {
+  if (!domain) return 'Unknown';
+  return DOMAIN_LABELS[domain.toLowerCase()] ?? domain.replace(/^www\./, '');
+}
+
 export function rediscoverColors(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
