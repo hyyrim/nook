@@ -31,6 +31,32 @@ export async function getCategoryWithCount(categoryId: string) {
   return { category: category as Category, count: count ?? 0 };
 }
 
+export async function getCategoriesWithCounts() {
+  const { data: categories, error: catError } = await supabase
+    .from('categories')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (catError) throw catError;
+
+  const { data: counts, error: countError } = await supabase
+    .from('contents')
+    .select('category_id')
+    .not('category_id', 'is', null);
+  if (countError) throw countError;
+
+  const countMap: Record<string, number> = {};
+  for (const row of counts ?? []) {
+    if (row.category_id) {
+      countMap[row.category_id] = (countMap[row.category_id] ?? 0) + 1;
+    }
+  }
+
+  return (categories as Category[]).map(cat => ({
+    ...cat,
+    count: countMap[cat.id] ?? 0,
+  }));
+}
+
 export async function createCategory(name: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

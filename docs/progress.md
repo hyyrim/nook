@@ -22,12 +22,22 @@
 | Phase 4: AI 분류 (lib/ai.ts + prompts/) | ✅ |
 | Phase 4: Share Extension (expo-share-intent) | ✅ |
 
+## 완료 (2차)
+
+| 항목 | 상태 |
+|------|------|
+| AI 모델 ID 수정 (claude-haiku-4-5-20251001) | ✅ |
+| 저장 후 홈/라이브러리 실시간 새로고침 (이벤트 시스템) | ✅ |
+| Library 카테고리별 콘텐츠 수(n saved) 표시 | ✅ |
+| 인스타그램 등 HTML 엔티티 제목 깨짐 수정 | ✅ |
+| react-native-worklets 추가 + expo run 전환 | ✅ |
+
 ## 미완료
 
 | 항목 | 비고 |
 |------|------|
-| Library grid 2열 레이아웃 기기 확인 | 시뮬레이터 필요 |
-| 기기/시뮬레이터 통합 테스트 | expo prebuild → run:ios |
+| Library grid 2열 레이아웃 다양한 기기 확인 | width 47.8% 하드코딩 검증 필요 |
+| 전체 플로우 통합 테스트 | 시뮬레이터 테스트 진행 중 |
 
 ## 기술 메모
 

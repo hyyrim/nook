@@ -4,13 +4,15 @@ import * as Clipboard from 'expo-clipboard';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { saveContent } from '@/lib/api';
+import { emit } from '@/lib/events';
 
 type SaveBottomSheetProps = {
   visible: boolean;
   onClose: () => void;
+  onSaved?: () => void;
 };
 
-export function SaveBottomSheet({ visible, onClose }: SaveBottomSheetProps) {
+export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetProps) {
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
@@ -70,6 +72,8 @@ export function SaveBottomSheet({ visible, onClose }: SaveBottomSheetProps) {
       const domain = (() => { try { return new URL(trimmed).hostname; } catch { return undefined; } })();
       await saveContent({ url: trimmed, domain });
       setSaved(true);
+      onSaved?.();
+      emit('content-saved');
       setTimeout(() => onClose(), 1600);
     } catch (e: any) {
       const msg = e.message?.includes('contents_user_url_unique')

@@ -5,6 +5,7 @@ import { View, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useShareIntent } from 'expo-share-intent';
 import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { saveContent } from '@/lib/api';
+import { emit } from '@/lib/events';
 import { Colors } from '@/constants';
 
 function RootNavigator() {
@@ -48,6 +49,7 @@ function RootNavigator() {
 
     saveContent({ url, title, thumbnail_url, domain })
       .then(() => {
+        emit('content-saved');
         Alert.alert('Saved!', 'Added to your Nook archive');
       })
       .catch((e: any) => {

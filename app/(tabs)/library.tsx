@@ -1,12 +1,13 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { FolderCard, AddCategoryCard } from '@/components/FolderCard';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
-import { getCategories, getUncategorizedContents, createCategory } from '@/lib/api';
+import { getCategoriesWithCounts, getUncategorizedContents, createCategory } from '@/lib/api';
+import { on } from '@/lib/events';
 import type { Category } from '@/types';
 
 export default function LibraryScreen() {
@@ -19,13 +20,11 @@ export default function LibraryScreen() {
   const loadData = useCallback(async () => {
     try {
       const [cats, uncategorized] = await Promise.all([
-        getCategories(),
+        getCategoriesWithCounts(),
         getUncategorizedContents(),
       ]);
 
-      // TODO: 카테고리별 count를 효율적으로 가져오기 (현재는 개별 쿼리 대신 단순 표시)
-      const catsWithCount = cats.map(cat => ({ ...cat, count: 0 }));
-      setCategories(catsWithCount);
+      setCategories(cats);
       setUncategorizedCount(uncategorized.length);
     } catch (e) {
       console.error('Library load error:', e);
@@ -39,6 +38,10 @@ export default function LibraryScreen() {
       loadData();
     }, [loadData])
   );
+
+  useEffect(() => {
+    return on('content-saved', loadData);
+  }, [loadData]);
 
   const handleAddCategory = async (name: string) => {
     try {

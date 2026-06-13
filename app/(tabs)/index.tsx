@@ -10,6 +10,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { SearchBar } from '@/components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
+import { on } from '@/lib/events';
 import { formatRelativeTime, placeholderColor, rediscoverColors } from '@/lib/utils';
 import type { Content } from '@/types';
 
@@ -41,6 +42,10 @@ export default function HomeScreen() {
       loadData();
     }, [loadData])
   );
+
+  useEffect(() => {
+    return on('content-saved', loadData);
+  }, [loadData]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

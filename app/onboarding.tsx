@@ -33,10 +33,7 @@ export default function OnboardingScreen() {
         {/* Logo & Slogan */}
         <View style={styles.brandSection}>
           <Text style={styles.logo}>Nook</Text>
-          <Text style={styles.slogan}>
-            every{' '}
-            <Text style={styles.sloganAccent}>nook and cranny</Text>
-          </Text>
+          <Text style={styles.sloganAccent}>every nook and cranny!</Text>
         </View>
 
         {/* Bottom section */}
