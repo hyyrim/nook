@@ -6,12 +6,33 @@ import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
+import { ContentTitleSheet } from '@/components/ContentTitleSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRecentContents, refreshContentMetadata, updateContent } from '@/lib/api';
+import { useAuth } from '@/lib/AuthProvider';
 import { formatSource, placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
+const DESCRIPTION_COLLAPSED_LINES = 6;
+
+function formatDescription(value: string) {
+  return value
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function shouldRefreshDescription(content: ContentWithCategory) {
+  return Boolean(
+    !content.description ||
+    (content.description.length > 120 && !content.description.includes('\n')),
+  );
+}
 
 function RelatedCard({
   title,
@@ -44,14 +65,23 @@ function RelatedCard({
 export default function ContentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { session, isLoading: isAuthLoading } = useAuth();
   const [showSheet, setShowSheet] = useState(false);
   const [showMoveSheet, setShowMoveSheet] = useState(false);
+  const [showTitleSheet, setShowTitleSheet] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<ContentWithCategory | null>(null);
   const [related, setRelated] = useState<ContentWithCategory[]>([]);
 
   useFocusEffect(
     useCallback(() => {
+      if (isAuthLoading) return;
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+
       let cancelled = false;
       (async () => {
         try {
@@ -61,8 +91,9 @@ export default function ContentDetailScreen() {
           ]);
           if (cancelled) return;
           setItem(content);
+          setDescriptionExpanded(false);
 
-          if (!content.thumbnail_url || !content.title || content.title === content.url) {
+          if (!content.thumbnail_url || !content.title || content.title === content.url || shouldRefreshDescription(content)) {
             refreshContentMetadata(content)
               .then((updated) => {
                 if (!cancelled) setItem(updated);
@@ -87,7 +118,7 @@ export default function ContentDetailScreen() {
         }
       })();
       return () => { cancelled = true; };
-    }, [id])
+    }, [id, session, isAuthLoading])
   );
 
   const handleMoveCategory = async (categoryId: string | null) => {
@@ -96,6 +127,16 @@ export default function ContentDetailScreen() {
       await updateContent(id, { category_id: categoryId });
       const updated = await getContentById(id);
       setItem(updated);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const handleUpdateTitle = async (title: string) => {
+    if (!item) return;
+    try {
+      const updated = await updateContent(id, { title });
+      setItem(prev => prev ? { ...prev, title: updated.title } : prev);
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
@@ -134,6 +175,9 @@ export default function ContentDetailScreen() {
     );
   }
 
+  const description = item.description ? formatDescription(item.description) : '';
+  const isLongDescription = description.length > 220 || description.split('\n').length > DESCRIPTION_COLLAPSED_LINES;
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -158,17 +202,17 @@ export default function ContentDetailScreen() {
             )}
             <View style={styles.headerMeta}>
               <View style={styles.categoryRow}>
-                <Ionicons name="grid-outline" size={10} color={Colors.tertiary} />
-                <Text style={styles.categoryText}>
-                  {item.categories?.name ?? '미분류'} · {formatSource(item.domain)}
-                </Text>
-              </View>
-              <View style={styles.titleRow}>
-                <Text style={styles.title}>{item.title ?? item.url}</Text>
-                <Pressable onPress={() => Linking.openURL(item.url)}>
+                <View style={styles.categoryMeta}>
+                  <Ionicons name="grid-outline" size={10} color={Colors.tertiary} />
+                  <Text style={styles.categoryText} numberOfLines={1}>
+                    {item.categories?.name ?? '미분류'} · {formatSource(item.domain)}
+                  </Text>
+                </View>
+                <Pressable onPress={() => Linking.openURL(item.url)} style={styles.originalLinkButton}>
                   <Text style={styles.originalLink}>원문 바로가기 →</Text>
                 </Pressable>
               </View>
+              <Text style={styles.title}>{item.title ?? item.url}</Text>
             </View>
           </View>
 
@@ -184,16 +228,29 @@ export default function ContentDetailScreen() {
           )}
 
           {/* 내용 section */}
-          {item.description ? (
+          {description ? (
             <View style={styles.sectionCard}>
               <Text style={styles.sectionLabel}>내용</Text>
-              <Text style={styles.sectionBody}>{item.description}</Text>
+              <Text
+                style={styles.sectionBody}
+                numberOfLines={descriptionExpanded ? undefined : DESCRIPTION_COLLAPSED_LINES}
+              >
+                {description}
+              </Text>
+              {isLongDescription && (
+                <Pressable
+                  onPress={() => setDescriptionExpanded(prev => !prev)}
+                  style={styles.moreButton}
+                >
+                  <Text style={styles.moreText}>{descriptionExpanded ? '접기' : '더보기'}</Text>
+                </Pressable>
+              )}
             </View>
           ) : null}
 
           {/* 관련 콘텐츠 */}
           {related.length > 0 && (
-            <View>
+            <View style={styles.relatedSection}>
               <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
               <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
               <View style={styles.relatedList}>
@@ -217,9 +274,16 @@ export default function ContentDetailScreen() {
         visible={showSheet}
         onClose={() => setShowSheet(false)}
         actions={[
-          { label: '카테고리 변경', onPress: () => setTimeout(() => setShowMoveSheet(true), 300) },
+          { label: '제목 수정', onPress: () => setShowTitleSheet(true) },
+          { label: '카테고리 변경', onPress: () => setShowMoveSheet(true) },
           { label: '삭제', danger: true, onPress: handleDelete },
         ]}
+      />
+      <ContentTitleSheet
+        visible={showTitleSheet}
+        initialValue={item?.title ?? ''}
+        onClose={() => setShowTitleSheet(false)}
+        onSubmit={handleUpdateTitle}
       />
       <MoveCategorySheet
         visible={showMoveSheet}
@@ -287,19 +351,27 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    gap: 10,
     marginBottom: 8,
   },
+  categoryMeta: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   categoryText: {
+    flex: 1,
     fontSize: 11.5,
     fontWeight: '500',
     color: Colors.tertiary,
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
+  originalLinkButton: {
+    flexShrink: 0,
+    paddingLeft: 6,
+    paddingVertical: 2,
   },
   title: {
     fontSize: 18,
@@ -307,13 +379,11 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     lineHeight: 24,
     letterSpacing: -0.3,
-    flex: 1,
   },
   originalLink: {
     fontSize: 11.5,
     fontWeight: '600',
     color: Colors.accent,
-    paddingTop: 3,
   },
   tagsScroll: {
     flexDirection: 'row',
@@ -361,6 +431,20 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: Colors.primary,
     lineHeight: 21.5,
+  },
+  moreButton: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+  moreText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  relatedSection: {
+    marginTop: 8,
   },
   relatedSectionTitle: {
     fontSize: 15,

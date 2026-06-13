@@ -1,0 +1,191 @@
+import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { Colors } from '@/constants';
+import { Ionicons } from '@expo/vector-icons';
+
+type ContentTitleSheetProps = {
+  visible: boolean;
+  initialValue?: string;
+  onClose: () => void;
+  onSubmit: (title: string) => void;
+};
+
+export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmit }: ContentTitleSheetProps) {
+  const [value, setValue] = useState(initialValue);
+  const [isMounted, setIsMounted] = useState(visible);
+  const inputRef = useRef<TextInput>(null);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(320)).current;
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue, visible]);
+
+  useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 220);
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (visible) {
+      backdropOpacity.setValue(0);
+      sheetTranslateY.setValue(320);
+      setIsMounted(true);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 160, useNativeDriver: true }),
+        Animated.spring(sheetTranslateY, { toValue: 0, damping: 24, stiffness: 260, mass: 0.8, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 130, useNativeDriver: true }),
+      Animated.timing(sheetTranslateY, { toValue: 320, duration: 160, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) setIsMounted(false);
+    });
+  }, [visible, backdropOpacity, sheetTranslateY]);
+
+  const trimmed = value.trim();
+
+  const handleSubmit = () => {
+    if (!trimmed) return;
+    onSubmit(trimmed);
+    onClose();
+  };
+
+  return (
+    <Modal visible={isMounted} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View pointerEvents="none" style={[styles.dim, { opacity: backdropOpacity }]} />
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Animated.View
+          style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+          onStartShouldSetResponder={() => true}
+        >
+          <View style={styles.sheet}>
+            <View style={styles.dragHandle} />
+
+            <View style={styles.header}>
+              <Text style={styles.title}>제목 수정</Text>
+              <Pressable onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={14} color={Colors.secondary} />
+              </Pressable>
+            </View>
+
+            <View style={styles.form}>
+              <View>
+                <Text style={styles.label}>콘텐츠 제목</Text>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.input}
+                  placeholder="저장할 제목을 입력하세요"
+                  placeholderTextColor={Colors.tertiary}
+                  value={value}
+                  onChangeText={setValue}
+                  multiline
+                />
+              </View>
+
+              <Pressable
+                onPress={handleSubmit}
+                style={[styles.ctaButton, !trimmed && styles.ctaDisabled]}
+              >
+                <Text style={styles.ctaText}>저장</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  dim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(0,0,0,0.36)',
+  },
+  backdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    width: '100%',
+  },
+  sheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 44,
+    paddingTop: 12,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 100,
+    backgroundColor: '#DCDCDC',
+    alignSelf: 'center',
+    marginBottom: 18,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: -0.3,
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  form: {
+    gap: 10,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.secondary,
+    marginBottom: 7,
+  },
+  input: {
+    minHeight: 76,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: Colors.primary,
+    lineHeight: 20,
+    textAlignVertical: 'top',
+  },
+  ctaButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  ctaDisabled: {
+    backgroundColor: '#C8C8C8',
+  },
+  ctaText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});

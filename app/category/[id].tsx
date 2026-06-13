@@ -16,12 +16,14 @@ import {
   updateCategory,
   deleteCategory,
 } from '@/lib/api';
+import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
 import type { Category, Content } from '@/types';
 
 export default function CategoryDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { session, isLoading: isAuthLoading } = useAuth();
   const [query, setQuery] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
@@ -34,6 +36,12 @@ export default function CategoryDetailScreen() {
   const isUncategorized = id === 'uncategorized';
 
   const loadData = useCallback(async () => {
+    if (isAuthLoading) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isUncategorized) {
         const items = await getUncategorizedContents();
@@ -53,7 +61,7 @@ export default function CategoryDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, isUncategorized]);
+  }, [id, isUncategorized, session, isAuthLoading]);
 
   useFocusEffect(
     useCallback(() => {

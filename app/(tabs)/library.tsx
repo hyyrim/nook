@@ -8,16 +8,24 @@ import { FolderCard, AddCategoryCard } from '@/components/FolderCard';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
 import { getCategoriesWithCounts, getUncategorizedContents, createCategory } from '@/lib/api';
 import { on } from '@/lib/events';
+import { useAuth } from '@/lib/AuthProvider';
 import type { Category } from '@/types';
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const { session, isLoading: isAuthLoading } = useAuth();
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [categories, setCategories] = useState<(Category & { count: number })[]>([]);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
+    if (isAuthLoading) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const [cats, uncategorized] = await Promise.all([
         getCategoriesWithCounts(),
@@ -31,7 +39,7 @@ export default function LibraryScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session, isAuthLoading]);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,8 +48,9 @@ export default function LibraryScreen() {
   );
 
   useEffect(() => {
+    if (!session) return;
     return on('content-saved', loadData);
-  }, [loadData]);
+  }, [session, loadData]);
 
   const handleAddCategory = async (name: string) => {
     try {

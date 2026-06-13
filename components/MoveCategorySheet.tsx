@@ -33,17 +33,17 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
     if (visible) {
       // 초기값 리셋 후 애니메이션 시작
       backdropOpacity.setValue(0);
-      sheetTranslateY.setValue(360);
+      sheetTranslateY.setValue(300);
       setIsMounted(true);
       Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-        Animated.spring(sheetTranslateY, { toValue: 0, damping: 22, stiffness: 230, mass: 0.9, useNativeDriver: true }),
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
+        Animated.spring(sheetTranslateY, { toValue: 0, damping: 24, stiffness: 270, mass: 0.8, useNativeDriver: true }),
       ]).start();
       return;
     }
     Animated.parallel([
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(sheetTranslateY, { toValue: 360, duration: 190, useNativeDriver: true }),
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 130, useNativeDriver: true }),
+      Animated.timing(sheetTranslateY, { toValue: 300, duration: 160, useNativeDriver: true }),
     ]).start(({ finished }) => { if (finished) setIsMounted(false); });
   }, [visible]);
 

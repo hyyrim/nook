@@ -47,11 +47,24 @@
 | Content Detail 카테고리 변경 실시간 반영 | ✅ |
 | Library grid 2열 레이아웃 기기 검증 | ✅ |
 
+## 완료 (4차 — Phase 1 마감 전 시뮬레이션 반영)
+
+| 항목 | 상태 |
+|------|------|
+| Home Rediscover 빈 상태 보완 | ✅ |
+| Content Detail 원문 바로가기 위치 조정 | ✅ |
+| Content Detail description 줄바꿈 보존 | ✅ |
+| 긴 description More/접기 처리 | ✅ |
+| Content Detail 제목 수정 Bottom Sheet 추가 | ✅ |
+| 카테고리 변경 Bottom Sheet 딜레이 제거 및 애니메이션 조정 | ✅ |
+| 인증 세션 확인 전 데이터 로드 방지 | ✅ |
+
 ## 미완료
 
 | 항목 | 비고 |
 |------|------|
-| 전체 플로우 통합 테스트 | 시뮬레이터 테스트 진행 중 |
+| Library 상세 다중 편집 | Phase 2: 체크박스 선택 후 카테고리 변경/삭제 |
+| 실제 기기/Development Build 전체 플로우 재확인 | Phase 2 시작 전 smoke test 권장 |
 
 ## 기술 메모
 

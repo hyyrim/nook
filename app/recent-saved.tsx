@@ -7,6 +7,7 @@ import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
+import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
@@ -14,11 +15,18 @@ type ContentWithCategory = Content & { categories: { name: string } | null };
 
 export default function RecentSavedScreen() {
   const router = useRouter();
+  const { session, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
+      if (isAuthLoading) return;
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+
       (async () => {
         try {
           const data = await getRecentContents(50);
@@ -29,7 +37,7 @@ export default function RecentSavedScreen() {
           setLoading(false);
         }
       })();
-    }, [])
+    }, [session, isAuthLoading])
   );
 
   return (

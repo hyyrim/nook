@@ -9,6 +9,12 @@ async function requireUserId() {
   return user.id;
 }
 
+function shouldPreferDescriptionUpdate(current: string | null, next?: string) {
+  if (!next) return false;
+  if (!current) return true;
+  return next.includes('\n') && !current.includes('\n') && next.length >= current.length;
+}
+
 // ─── Categories ───
 
 export async function getCategories() {
@@ -218,7 +224,7 @@ export async function refreshContentMetadata(
     updates.title = metadata.title;
   }
 
-  if (!content.description && metadata.description) {
+  if (shouldPreferDescriptionUpdate(content.description, metadata.description)) {
     updates.description = metadata.description;
   }
 

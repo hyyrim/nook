@@ -6,3 +6,4 @@ export { FolderCard, AddCategoryCard } from './FolderCard';
 export { ActionSheet } from './ActionSheet';
 export { SaveBottomSheet } from './SaveBottomSheet';
 export { CategoryBottomSheet } from './CategoryBottomSheet';
+export { ContentTitleSheet } from './ContentTitleSheet';

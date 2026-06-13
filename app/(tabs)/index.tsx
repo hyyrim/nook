@@ -11,6 +11,7 @@ import { SearchBar } from '@/components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { on } from '@/lib/events';
+import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, placeholderColor, rediscoverColors } from '@/lib/utils';
 import type { Content } from '@/types';
 
@@ -18,11 +19,18 @@ type ContentWithCategory = Content & { categories: { name: string } | null };
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { session, isLoading: isAuthLoading } = useAuth();
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
+    if (isAuthLoading) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const [recent, rediscover] = await Promise.all([
         getRecentContents(3),
@@ -35,7 +43,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session, isAuthLoading]);
 
   useFocusEffect(
     useCallback(() => {
@@ -44,8 +52,9 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
+    if (!session) return;
     return on('content-saved', loadData);
-  }, [loadData]);
+  }, [session, loadData]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -92,7 +101,7 @@ export default function HomeScreen() {
               </View>
 
               {/* Rediscover */}
-              {rediscoverItems.length > 0 && (
+              {rediscoverItems.length > 0 ? (
                 <View style={styles.section}>
                   <SectionHeader
                     icon="sparkles"
@@ -122,7 +131,19 @@ export default function HomeScreen() {
                     })}
                   </ScrollView>
                 </View>
-              )}
+              ) : recentItems.length > 0 ? (
+                <View style={styles.rediscoverPlaceholder}>
+                  <View style={styles.placeholderIcon}>
+                    <Ionicons name="sparkles" size={16} color={Colors.accent} />
+                  </View>
+                  <View style={styles.placeholderCopy}>
+                    <Text style={styles.placeholderTitle}>Rediscover is warming up</Text>
+                    <Text style={styles.placeholderText}>
+                      Saved items you have not opened yet will appear here.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
             </>
           )}
         </View>
@@ -182,5 +203,44 @@ const styles = StyleSheet.create({
   rediscoverScroll: {
     gap: 11,
     paddingRight: 20,
+  },
+  rediscoverPlaceholder: {
+    minHeight: 118,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.07)',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  placeholderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFF2F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  placeholderTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: -0.2,
+  },
+  placeholderText: {
+    fontSize: 12,
+    color: Colors.secondary,
+    lineHeight: 17,
   },
 });

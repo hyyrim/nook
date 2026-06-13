@@ -31,3 +31,19 @@ New decisions should be recorded here going forward.
 - Added `CLASSIFY_PROMPT_VERSION = 'v1'`.
 - Updated `prompts/classify/v1.txt` to match the runtime prompt contract.
 - Preserved the rule that AI must not create categories or generate summaries.
+
+---
+
+## 013. Phase 1 simulation fixes and Phase 2 boundary (2026-06-13)
+
+**Decision**: Apply small UI/UX fixes from the Notion simulation test before Phase 2, but keep Library bulk edit as Phase 2 scope.
+
+**Context**: The simulation test surfaced polish issues in Home and Content Detail. These affected perceived quality but did not require new major screens or backend changes. Library bulk edit needs a broader selection/editing model, so it should not be squeezed into Phase 1.
+
+**Result**:
+- Added a Home placeholder for the state where Recent Saved exists but Rediscover has no items.
+- Improved Content Detail source/original-link placement, description spacing, multiline display, and long-text expansion.
+- Added a focused title edit bottom sheet from Content Detail.
+- Tuned category-change sheet timing and removed the extra delay between action sheet and bottom sheet.
+- Added auth-session guards so protected screens do not fetch user data before the session is ready.
+- Deferred Library bulk edit to Phase 2.

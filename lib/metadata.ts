@@ -153,7 +153,7 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
 
   return {
     title: cleanText(title),
-    description: cleanText(caption || description),
+    description: cleanMultilineText(caption || description),
     thumbnail_url: thumbnail ? absolutizeUrl(thumbnail, baseUrl) : undefined,
   };
 }
@@ -232,6 +232,18 @@ function absolutizeUrl(value: string, baseUrl: string) {
 
 function cleanText(value?: string) {
   const cleaned = value?.replace(/\s+/g, ' ').trim();
+  return cleaned || undefined;
+}
+
+function cleanMultilineText(value?: string) {
+  const cleaned = value
+    ?.replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   return cleaned || undefined;
 }
 
