@@ -1,0 +1,361 @@
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { Colors } from '@/constants';
+import { ActionSheet } from '@/components/ActionSheet';
+import { Ionicons } from '@expo/vector-icons';
+import { getContentById, markContentViewed, deleteContent, getRecentContents } from '@/lib/api';
+import { placeholderColor } from '@/lib/utils';
+import type { Content } from '@/types';
+
+type ContentWithCategory = Content & { categories: { name: string } | null };
+
+function RelatedCard({ title, source, thumb, onPress }: { title: string; source: string; thumb: string; onPress?: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.relatedCard}>
+      <View style={[styles.relatedThumb, { backgroundColor: thumb }]} />
+      <View style={styles.relatedText}>
+        <Text style={styles.relatedTitle} numberOfLines={2}>{title}</Text>
+        <Text style={styles.relatedSource}>{source}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+export default function ContentDetailScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [showSheet, setShowSheet] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [item, setItem] = useState<ContentWithCategory | null>(null);
+  const [related, setRelated] = useState<ContentWithCategory[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const [content, recentAll] = await Promise.all([
+            getContentById(id),
+            getRecentContents(10),
+          ]);
+          if (cancelled) return;
+          setItem(content);
+
+          // 관련 콘텐츠: 같은 카테고리 우선, 자기 자신 제외, 최대 2개
+          const others = recentAll.filter(c => c.id !== id);
+          const sameCat = content.category_id
+            ? others.filter(c => c.category_id === content.category_id)
+            : [];
+          const pool = sameCat.length >= 2 ? sameCat.slice(0, 2) : [...sameCat, ...others.filter(c => !sameCat.includes(c))].slice(0, 2);
+          setRelated(pool);
+
+          // viewed_at 업데이트
+          markContentViewed(id).catch(() => {});
+        } catch (e) {
+          console.error('Content load error:', e);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [id])
+  );
+
+  const handleDelete = () => {
+    Alert.alert('콘텐츠 삭제', '이 콘텐츠를 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제', style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteContent(id);
+            router.back();
+          } catch (e: any) {
+            Alert.alert('Error', e.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="small" color={Colors.tertiary} />
+      </View>
+    );
+  }
+
+  if (!item) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={{ color: Colors.tertiary }}>Content not found</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.nav}>
+            <Pressable onPress={() => router.back()} style={styles.navButton}>
+              <Ionicons name="chevron-back" size={18} color={Colors.primary} />
+            </Pressable>
+            <Pressable onPress={() => setShowSheet(true)} style={styles.navButton}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={Colors.primary} />
+            </Pressable>
+          </View>
+        </SafeAreaView>
+
+        <View style={styles.body}>
+          {/* Header card */}
+          <View style={styles.headerCard}>
+            <View style={[styles.heroImage, { backgroundColor: placeholderColor(item.id) }]} />
+            <View style={styles.headerMeta}>
+              <View style={styles.categoryRow}>
+                <Ionicons name="grid-outline" size={10} color={Colors.tertiary} />
+                <Text style={styles.categoryText}>
+                  {item.categories?.name ?? '미분류'} · {item.domain ?? 'Unknown'}
+                </Text>
+              </View>
+              <View style={styles.titleRow}>
+                <Text style={styles.title}>{item.title ?? item.url}</Text>
+                <Pressable onPress={() => {/* TODO: open URL */}}>
+                  <Text style={styles.originalLink}>원문 바로가기 →</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          {/* Tags */}
+          {item.tags.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsScroll}>
+              {item.tags.map(tag => (
+                <View key={tag} style={styles.tagPill}>
+                  <Text style={styles.tagPillText}>#{tag}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* 제목 section */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionLabel}>제목</Text>
+            <Text style={styles.sectionTitle}>{item.title ?? item.url}</Text>
+          </View>
+
+          {/* 관련 콘텐츠 */}
+          {related.length > 0 && (
+            <View>
+              <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
+              <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
+              <View style={styles.relatedList}>
+                {related.map(r => (
+                  <RelatedCard
+                    key={r.id}
+                    title={r.title ?? r.url}
+                    source={r.domain ?? 'Unknown'}
+                    thumb={placeholderColor(r.id)}
+                    onPress={() => router.push(`/content/${r.id}`)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <ActionSheet
+        visible={showSheet}
+        onClose={() => setShowSheet(false)}
+        actions={[
+          { label: '삭제', danger: true, onPress: handleDelete },
+        ]}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  nav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  navButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.09)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  body: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    gap: 10,
+  },
+  headerCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.055,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  heroImage: {
+    height: 200,
+    width: '100%',
+  },
+  headerMeta: {
+    padding: 14,
+    paddingBottom: 16,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  categoryText: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    color: Colors.tertiary,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.primary,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    flex: 1,
+  },
+  originalLink: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: Colors.accent,
+    paddingTop: 3,
+  },
+  tagsScroll: {
+    flexDirection: 'row',
+    paddingVertical: 2,
+  },
+  tagPill: {
+    backgroundColor: Colors.surface,
+    borderRadius: 100,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    marginRight: 7,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  tagPillText: {
+    fontSize: 12.5,
+    fontWeight: '500',
+    color: Colors.primary,
+  },
+  sectionCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.055,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.tertiary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 9,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+    lineHeight: 21.5,
+  },
+  relatedSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: -0.2,
+    marginBottom: 3,
+  },
+  relatedSubtitle: {
+    fontSize: 12,
+    color: Colors.secondary,
+    marginBottom: 10,
+  },
+  relatedList: {
+    gap: 9,
+  },
+  relatedCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 11,
+    padding: 11,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.055,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  relatedThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+  },
+  relatedText: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  relatedTitle: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: Colors.primary,
+    lineHeight: 17,
+  },
+  relatedSource: {
+    fontSize: 11,
+    color: Colors.secondary,
+  },
+});
