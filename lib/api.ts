@@ -3,21 +3,33 @@ import { classifyContent } from './ai';
 import { fetchLinkMetadata, normalizeUrl } from './metadata';
 import type { Category, Content } from '@/types';
 
+async function requireUserId() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  return user.id;
+}
+
 // ─── Categories ───
 
 export async function getCategories() {
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('categories')
     .select('*')
+    .eq('user_id', userId)
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data as Category[];
 }
 
 export async function getCategoryWithCount(categoryId: string) {
+  const userId = await requireUserId();
+
   const { data: category, error: catError } = await supabase
     .from('categories')
     .select('*')
+    .eq('user_id', userId)
     .eq('id', categoryId)
     .single();
   if (catError) throw catError;
@@ -25,6 +37,7 @@ export async function getCategoryWithCount(categoryId: string) {
   const { count, error: countError } = await supabase
     .from('contents')
     .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
     .eq('category_id', categoryId);
   if (countError) throw countError;
 
@@ -32,15 +45,19 @@ export async function getCategoryWithCount(categoryId: string) {
 }
 
 export async function getCategoriesWithCounts() {
+  const userId = await requireUserId();
+
   const { data: categories, error: catError } = await supabase
     .from('categories')
     .select('*')
+    .eq('user_id', userId)
     .order('created_at', { ascending: true });
   if (catError) throw catError;
 
   const { data: counts, error: countError } = await supabase
     .from('contents')
     .select('category_id')
+    .eq('user_id', userId)
     .not('category_id', 'is', null);
   if (countError) throw countError;
 
@@ -58,12 +75,11 @@ export async function getCategoriesWithCounts() {
 }
 
 export async function createCategory(name: string) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from('categories')
-    .insert({ user_id: user.id, name })
+    .insert({ user_id: userId, name })
     .select()
     .single();
   if (error) throw error;
@@ -71,9 +87,12 @@ export async function createCategory(name: string) {
 }
 
 export async function updateCategory(id: string, name: string) {
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('categories')
     .update({ name })
+    .eq('user_id', userId)
     .eq('id', id)
     .select()
     .single();
@@ -82,9 +101,12 @@ export async function updateCategory(id: string, name: string) {
 }
 
 export async function deleteCategory(id: string) {
+  const userId = await requireUserId();
+
   const { error } = await supabase
     .from('categories')
     .delete()
+    .eq('user_id', userId)
     .eq('id', id);
   if (error) throw error;
 }
@@ -92,9 +114,12 @@ export async function deleteCategory(id: string) {
 // ─── Contents ───
 
 export async function getRecentContents(limit = 10) {
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
+    .eq('user_id', userId)
     .order('saved_at', { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -102,9 +127,12 @@ export async function getRecentContents(limit = 10) {
 }
 
 export async function getContentsByCategory(categoryId: string) {
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('contents')
     .select('*')
+    .eq('user_id', userId)
     .eq('category_id', categoryId)
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -112,9 +140,12 @@ export async function getContentsByCategory(categoryId: string) {
 }
 
 export async function getUncategorizedContents() {
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('contents')
     .select('*')
+    .eq('user_id', userId)
     .is('category_id', null)
     .order('saved_at', { ascending: false });
   if (error) throw error;
@@ -122,9 +153,12 @@ export async function getUncategorizedContents() {
 }
 
 export async function getContentById(id: string) {
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
+    .eq('user_id', userId)
     .eq('id', id)
     .single();
   if (error) throw error;
@@ -137,8 +171,7 @@ export async function saveContent(input: {
   thumbnail_url?: string;
   domain?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const userId = await requireUserId();
 
   const normalizedUrl = normalizeUrl(input.url);
   const metadata = await fetchLinkMetadata(normalizedUrl);
@@ -154,7 +187,7 @@ export async function saveContent(input: {
 
   const { data, error } = await supabase
     .from('contents')
-    .insert({ user_id: user.id, ...contentInput })
+    .insert({ user_id: userId, ...contentInput })
     .select()
     .single();
   if (error) throw error;
@@ -172,6 +205,7 @@ export async function saveContent(input: {
 export async function refreshContentMetadata(
   content: Content & { categories?: { name: string } | null },
 ): Promise<Content & { categories: { name: string } | null }> {
+  const userId = await requireUserId();
   const metadata = await fetchLinkMetadata(content.url);
   const updates: {
     title?: string;
@@ -206,6 +240,7 @@ export async function refreshContentMetadata(
   const { data, error } = await supabase
     .from('contents')
     .update(updates)
+    .eq('user_id', userId)
     .eq('id', content.id)
     .select('*, categories(name)')
     .single();
@@ -218,9 +253,23 @@ export async function updateContent(id: string, updates: {
   tags?: string[];
   title?: string;
 }) {
+  const userId = await requireUserId();
+
+  if (updates.category_id) {
+    const { data: category, error: categoryError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('id', updates.category_id)
+      .maybeSingle();
+    if (categoryError) throw categoryError;
+    if (!category) throw new Error('Category not found');
+  }
+
   const { data, error } = await supabase
     .from('contents')
     .update(updates)
+    .eq('user_id', userId)
     .eq('id', id)
     .select()
     .single();
@@ -229,17 +278,23 @@ export async function updateContent(id: string, updates: {
 }
 
 export async function deleteContent(id: string) {
+  const userId = await requireUserId();
+
   const { error } = await supabase
     .from('contents')
     .delete()
+    .eq('user_id', userId)
     .eq('id', id);
   if (error) throw error;
 }
 
 export async function markContentViewed(id: string) {
+  const userId = await requireUserId();
+
   const { error } = await supabase
     .from('contents')
     .update({ viewed_at: new Date().toISOString() })
+    .eq('user_id', userId)
     .eq('id', id);
   if (error) throw error;
 }
@@ -247,10 +302,13 @@ export async function markContentViewed(id: string) {
 // ─── Rediscover (저장 빈도 높은 카테고리의 안 본 콘텐츠 우선) ───
 
 export async function getRediscoverContents(limit = 5) {
+  const userId = await requireUserId();
+
   // 1. 카테고리별 콘텐츠 수 집계 (많은 순)
   const { data: catCounts, error: countError } = await supabase
     .from('contents')
     .select('category_id')
+    .eq('user_id', userId)
     .not('category_id', 'is', null);
   if (countError) throw countError;
 
@@ -263,6 +321,7 @@ export async function getRediscoverContents(limit = 5) {
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
+    .eq('user_id', userId)
     .is('viewed_at', null);
   if (error) throw error;
 
@@ -282,6 +341,7 @@ export async function getRediscoverContents(limit = 5) {
 // ─── AI Classification (비동기) ───
 
 async function classifyAndUpdate(content: Content, description?: string) {
+  const userId = content.user_id;
   const result = await classifyContent({
     url: content.url,
     title: content.title,
@@ -306,6 +366,7 @@ async function classifyAndUpdate(content: Content, description?: string) {
     const { data: cat } = await supabase
       .from('categories')
       .select('id')
+      .eq('user_id', userId)
       .eq('name', result.category)
       .single();
     if (cat) {
@@ -317,6 +378,7 @@ async function classifyAndUpdate(content: Content, description?: string) {
     await supabase
       .from('contents')
       .update(updates)
+      .eq('user_id', userId)
       .eq('id', content.id);
   }
 }
@@ -324,10 +386,9 @@ async function classifyAndUpdate(content: Content, description?: string) {
 // ─── Onboarding ───
 
 export async function createInitialCategories(names: string[]) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const userId = await requireUserId();
 
-  const rows = names.map(name => ({ user_id: user.id, name }));
+  const rows = names.map(name => ({ user_id: userId, name }));
   const { data, error } = await supabase
     .from('categories')
     .insert(rows)

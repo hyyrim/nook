@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+export const CLASSIFY_PROMPT_VERSION = 'v1';
 
 type ClassifyResult = {
   tags: string[];
@@ -20,10 +21,14 @@ export async function classifyContent(content: {
     return null;
   }
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   // 유저의 카테고리 목록 가져오기
   const { data: categories, error: catError } = await supabase
     .from('categories')
-    .select('name');
+    .select('name')
+    .eq('user_id', user.id);
   if (catError) throw catError;
 
   const categoryNames = (categories ?? []).map(c => c.name);
@@ -71,21 +76,13 @@ function buildPrompt(input: {
   categories: string[];
   needsTitle: boolean;
 }): string {
-  const hasDescription = input.description.trim().length > 0;
-  const titleInstruction = input.needsTitle
-    ? `
-3. The current title is generic (just a username + platform name). ${hasDescription ? 'Use the Description to generate a concise, descriptive title (Korean preferred, under 40 chars).' : 'There is no description available, so set suggested_title to null — do NOT guess or infer from the username/account name.'}`
-    : '';
-
-  const responseFormat = input.needsTitle
-    ? '{"tags": ["tag1", "tag2"], "category": "CategoryName or null", "suggested_title": "제목 or null"}'
-    : '{"tags": ["tag1", "tag2"], "category": "CategoryName or null"}';
-
+  // Keep this prompt contract in sync with prompts/classify/v1.txt.
   return `You are a content classifier for a personal archive app.
 
 Given a URL and its metadata, you must:
 1. Generate 1-5 relevant tags (short keywords in the content's language)
-2. Classify the content into one of the user's categories, or null if none match${titleInstruction}
+2. Classify the content into one of the user's categories, or null if none match
+3. If needs_title is true, generate suggested_title only when Description contains actual content. If Description is empty, set suggested_title to null.
 
 User's categories:
 ${input.categories.join(', ')}
@@ -94,16 +91,21 @@ Content to classify:
 - URL: ${input.url}
 - Title: ${input.title}
 - Description: ${input.description}
+- Needs title: ${input.needsTitle ? 'true' : 'false'}
 
 Rules:
 - Tags should be concise (1-2 words each), relevant to the content topic
 - For category, pick the BEST matching category from the user's list above
 - If no category is a good fit, return null
-- Do NOT create new categories${input.needsTitle ? '\n- suggested_title: ONLY generate if you have actual content description. Do NOT infer from username, account bio, or profile name. If no description is available, return null.' : ''}
+- Do NOT create new categories
+- Do NOT generate a summary
+- suggested_title is optional and only for replacing generic platform titles
+- If Needs title is false, return suggested_title as null
+- Do NOT infer suggested_title from username, account bio, or profile name
 - Respond ONLY with valid JSON, no explanation
 
 Response format:
-${responseFormat}`;
+{"tags": ["tag1", "tag2"], "category": "CategoryName or null", "suggested_title": "Title or null"}`;
 }
 
 // 제네릭 제목 패턴 (Instagram 등 본문 캡션이 title에 안 들어오는 사이트)
