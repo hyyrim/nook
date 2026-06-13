@@ -12,6 +12,7 @@ export type Content = {
   category_id: string | null;
   url: string;
   title: string;
+  description: string | null;
   thumbnail_url: string | null;
   domain: string;
   tags: string[];

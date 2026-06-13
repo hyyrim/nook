@@ -133,3 +133,31 @@
 - AI는 실제 콘텐츠 description이 있을 때만 제목 생성, 없으면 null 반환
 
 **변경 파일**: `lib/metadata.ts` (캡션 추출, Unicode 디코딩), `lib/ai.ts` (suggested_title + 제네릭 감지), `lib/api.ts` (description 전달 + 제목 업데이트)
+
+---
+
+## 009. Content Detail 카테고리 변경 기능 (2026-06-13)
+
+**결정**: Content Detail `…` 메뉴에 "카테고리 변경" 추가, MoveCategorySheet로 카테고리 선택
+
+**배경**: CLAUDE.md 핵심 원칙 — "사용자가 미분류 콘텐츠를 Content Detail에서 적절한 카테고리로 이동"
+
+**구현**:
+- `…` ActionSheet에 "카테고리 변경" 항목 추가
+- MoveCategorySheet: 전체 카테고리 목록 + 미분류 옵션, 현재 카테고리 체크 표시
+- SaveBottomSheet와 동일 spring 애니메이션 (ActionSheet 닫힘 후 300ms 딜레이로 전환)
+- 변경 후 `getContentById`로 재조회하여 카테고리명 실시간 반영
+
+---
+
+## 010. description 저장 및 Content Detail 내용 섹션 (2026-06-13)
+
+**결정**: `contents` 테이블에 `description` 컬럼 추가, Content Detail에서 "내용" 섹션으로 표시
+
+**배경**: Content Detail에서 제목이 두 번 표시되는 문제. 상단 헤더의 제목은 유지하고, 하단 섹션은 콘텐츠의 og:description을 "내용"으로 표시해야 함.
+
+**구현**:
+- DB: `ALTER TABLE contents ADD COLUMN description text`
+- `fetchLinkMetadata`에서 description 반환 → `saveContent`에서 DB 저장
+- `refreshContentMetadata`에서도 description 보충
+- Content Detail: description 있을 때만 "내용" 섹션 표시

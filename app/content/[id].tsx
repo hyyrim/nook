@@ -5,8 +5,9 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
+import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import { Ionicons } from '@expo/vector-icons';
-import { getContentById, markContentViewed, deleteContent, getRecentContents, refreshContentMetadata } from '@/lib/api';
+import { getContentById, markContentViewed, deleteContent, getRecentContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { formatSource, placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
@@ -44,6 +45,7 @@ export default function ContentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [showSheet, setShowSheet] = useState(false);
+  const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<ContentWithCategory | null>(null);
   const [related, setRelated] = useState<ContentWithCategory[]>([]);
@@ -87,6 +89,17 @@ export default function ContentDetailScreen() {
       return () => { cancelled = true; };
     }, [id])
   );
+
+  const handleMoveCategory = async (categoryId: string | null) => {
+    if (!item) return;
+    try {
+      await updateContent(id, { category_id: categoryId });
+      const updated = await getContentById(id);
+      setItem(updated);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
 
   const handleDelete = () => {
     Alert.alert('콘텐츠 삭제', '이 콘텐츠를 삭제하시겠습니까?', [
@@ -170,11 +183,13 @@ export default function ContentDetailScreen() {
             </ScrollView>
           )}
 
-          {/* 제목 section */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>제목</Text>
-            <Text style={styles.sectionTitle}>{item.title ?? item.url}</Text>
-          </View>
+          {/* 내용 section */}
+          {item.description ? (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionLabel}>내용</Text>
+              <Text style={styles.sectionBody}>{item.description}</Text>
+            </View>
+          ) : null}
 
           {/* 관련 콘텐츠 */}
           {related.length > 0 && (
@@ -202,8 +217,15 @@ export default function ContentDetailScreen() {
         visible={showSheet}
         onClose={() => setShowSheet(false)}
         actions={[
+          { label: '카테고리 변경', onPress: () => setTimeout(() => setShowMoveSheet(true), 300) },
           { label: '삭제', danger: true, onPress: handleDelete },
         ]}
+      />
+      <MoveCategorySheet
+        visible={showMoveSheet}
+        currentCategoryId={item?.category_id}
+        onClose={() => setShowMoveSheet(false)}
+        onSelect={handleMoveCategory}
       />
     </View>
   );
@@ -334,9 +356,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 9,
   },
-  sectionTitle: {
+  sectionBody: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
     color: Colors.primary,
     lineHeight: 21.5,
   },

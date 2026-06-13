@@ -146,10 +146,10 @@ export async function saveContent(input: {
     ...input,
     url: normalizedUrl,
     title: input.title ?? metadata.title,
+    description: metadata.description ?? null,
     thumbnail_url: input.thumbnail_url ?? metadata.thumbnail_url,
     domain: input.domain ?? metadata.domain,
   };
-  // description은 DB에 저장하지 않지만 AI 분류 시 사용
   const metaDescription = metadata.description;
 
   const { data, error } = await supabase
@@ -175,12 +175,17 @@ export async function refreshContentMetadata(
   const metadata = await fetchLinkMetadata(content.url);
   const updates: {
     title?: string;
+    description?: string;
     thumbnail_url?: string;
     domain?: string;
   } = {};
 
   if ((!content.title || content.title === content.url) && metadata.title) {
     updates.title = metadata.title;
+  }
+
+  if (!content.description && metadata.description) {
+    updates.description = metadata.description;
   }
 
   if (!content.thumbnail_url && metadata.thumbnail_url) {

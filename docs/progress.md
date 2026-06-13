@@ -32,11 +32,25 @@
 | 인스타그램 등 HTML 엔티티 제목 깨짐 수정 | ✅ |
 | react-native-worklets 추가 + expo run 전환 | ✅ |
 
+## 완료 (3차)
+
+| 항목 | 상태 |
+|------|------|
+| Instagram 제목 개선 (다단계 캡션 추출 + AI 제목 생성) | ✅ |
+| Unicode 이스케이프 디코딩 (\\uXXXX) | ✅ |
+| 출처 친화적 표시 (formatSource: Instagram, YouTube 등) | ✅ |
+| Share Extension Unmatched Route 수정 (+not-found.tsx) | ✅ |
+| Share intent 저장 Alert → Toast 알림 교체 | ✅ |
+| Share intent 썸네일 추출 개선 (fetchLinkMetadata 직접 사용) | ✅ |
+| Rediscover 카드 썸네일 표시 | ✅ |
+| Content Detail 카테고리 변경 기능 (MoveCategorySheet) | ✅ |
+| Content Detail 카테고리 변경 실시간 반영 | ✅ |
+| Library grid 2열 레이아웃 기기 검증 | ✅ |
+
 ## 미완료
 
 | 항목 | 비고 |
 |------|------|
-| Library grid 2열 레이아웃 다양한 기기 확인 | width 47.8% 하드코딩 검증 필요 |
 | 전체 플로우 통합 테스트 | 시뮬레이터 테스트 진행 중 |
 
 ## 기술 메모
