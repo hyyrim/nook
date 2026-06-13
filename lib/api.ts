@@ -12,6 +12,16 @@ async function requireUserId() {
 function shouldPreferDescriptionUpdate(current: string | null, next?: string) {
   if (!next) return false;
   if (!current) return true;
+
+  const currentLooksTruncated =
+    current.endsWith('...') ||
+    current.endsWith('…') ||
+    /\.\.\.\s*$/.test(current);
+
+  if (currentLooksTruncated && next.length > current.length) {
+    return true;
+  }
+
   return next.includes('\n') && !current.includes('\n') && next.length >= current.length;
 }
 

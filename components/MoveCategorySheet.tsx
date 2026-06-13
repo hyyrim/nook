@@ -1,4 +1,4 @@
-import { Animated, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator } from 'react-native';
+import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,15 +35,27 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
       backdropOpacity.setValue(0);
       sheetTranslateY.setValue(300);
       setIsMounted(true);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
-        Animated.spring(sheetTranslateY, { toValue: 0, damping: 24, stiffness: 270, mass: 0.8, useNativeDriver: true }),
-      ]).start();
+      requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: 280,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
       return;
     }
     Animated.parallel([
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 130, useNativeDriver: true }),
-      Animated.timing(sheetTranslateY, { toValue: 300, duration: 160, useNativeDriver: true }),
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 300,
+        duration: 190,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start(({ finished }) => { if (finished) setIsMounted(false); });
   }, [visible]);
 

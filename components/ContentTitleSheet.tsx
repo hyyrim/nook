@@ -1,4 +1,4 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal } from 'react-native';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
   const [isMounted, setIsMounted] = useState(visible);
   const inputRef = useRef<TextInput>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(320)).current;
+  const sheetTranslateY = useRef(new Animated.Value(280)).current;
 
   useEffect(() => {
     setValue(initialValue);
@@ -23,7 +23,7 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
 
   useEffect(() => {
     if (visible) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 220);
+      const timer = setTimeout(() => inputRef.current?.focus(), 360);
       return () => clearTimeout(timer);
     }
   }, [visible]);
@@ -31,18 +31,30 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
   useEffect(() => {
     if (visible) {
       backdropOpacity.setValue(0);
-      sheetTranslateY.setValue(320);
+      sheetTranslateY.setValue(280);
       setIsMounted(true);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 160, useNativeDriver: true }),
-        Animated.spring(sheetTranslateY, { toValue: 0, damping: 24, stiffness: 260, mass: 0.8, useNativeDriver: true }),
-      ]).start();
+      requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: 280,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
       return;
     }
 
     Animated.parallel([
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 130, useNativeDriver: true }),
-      Animated.timing(sheetTranslateY, { toValue: 320, duration: 160, useNativeDriver: true }),
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 280,
+        duration: 190,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start(({ finished }) => {
       if (finished) setIsMounted(false);
     });

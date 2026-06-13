@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
+import { useRef } from 'react';
 import { Colors } from '@/constants';
 
 type ActionSheetAction = {
@@ -11,18 +12,43 @@ type ActionSheetProps = {
   visible: boolean;
   actions: ActionSheetAction[];
   onClose: () => void;
+  handoffDelay?: number;
 };
 
-export function ActionSheet({ visible, actions, onClose }: ActionSheetProps) {
+export function ActionSheet({ visible, actions, onClose, handoffDelay = 0 }: ActionSheetProps) {
+  const pendingActionRef = useRef<(() => void) | null>(null);
+
+  const runPendingAction = () => {
+    const pendingAction = pendingActionRef.current;
+    pendingActionRef.current = null;
+    if (pendingAction) pendingAction();
+  };
+
+  const handleActionPress = (action: ActionSheetAction) => {
+    pendingActionRef.current = action.onPress;
+    onClose();
+    if (handoffDelay > 0) {
+      setTimeout(runPendingAction, handoffDelay);
+      return;
+    }
+    runPendingAction();
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onDismiss={runPendingAction}
+      onRequestClose={onClose}
+    >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={styles.sheetContainer}>
           <View style={styles.actionsCard}>
             {actions.map((action, i) => (
               <Pressable
                 key={action.label}
-                onPress={() => { onClose(); action.onPress(); }}
+                onPress={() => handleActionPress(action)}
                 style={({ pressed }) => [
                   styles.actionButton,
                   pressed && styles.actionPressed,

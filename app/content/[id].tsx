@@ -251,8 +251,10 @@ export default function ContentDetailScreen() {
           {/* 관련 콘텐츠 */}
           {related.length > 0 && (
             <View style={styles.relatedSection}>
-              <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
-              <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
+              <View style={styles.relatedHeader}>
+                <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
+                <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
+              </View>
               <View style={styles.relatedList}>
                 {related.map(r => (
                   <RelatedCard
@@ -273,6 +275,7 @@ export default function ContentDetailScreen() {
       <ActionSheet
         visible={showSheet}
         onClose={() => setShowSheet(false)}
+        handoffDelay={320}
         actions={[
           { label: '제목 수정', onPress: () => setShowTitleSheet(true) },
           { label: '카테고리 변경', onPress: () => setShowMoveSheet(true) },
@@ -446,6 +449,10 @@ const styles = StyleSheet.create({
   relatedSection: {
     marginTop: 8,
   },
+  relatedHeader: {
+    paddingHorizontal: 2,
+    marginBottom: 10,
+  },
   relatedSectionTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -456,7 +463,6 @@ const styles = StyleSheet.create({
   relatedSubtitle: {
     fontSize: 12,
     color: Colors.secondary,
-    marginBottom: 10,
   },
   relatedList: {
     gap: 9,

@@ -9,6 +9,7 @@ const META_TIMEOUT_MS = 8000;
 
 const INSTAGRAM_HOST_RE = /^(www\.)?instagram\.com$/i;
 const INSTAGRAM_POST_RE = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv)\//i;
+const YOUTUBE_HOST_RE = /^(www\.)?(youtube\.com|youtu\.be)$/i;
 
 const BROWSER_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
@@ -34,6 +35,14 @@ async function fetchInstagramOEmbed(url: string): Promise<{ title?: string; thum
 function isInstagramUrl(url: string) {
   try {
     return INSTAGRAM_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isYouTubeUrl(url: string) {
+  try {
+    return YOUTUBE_HOST_RE.test(new URL(url).hostname);
   } catch {
     return false;
   }
@@ -135,6 +144,10 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
     caption = extractInstagramCaption(description, html);
   }
 
+  const fullDescription = isYouTubeUrl(baseUrl)
+    ? extractYouTubeDescription(html)
+    : undefined;
+
   // 제네릭 제목이면 캡션 또는 description에서 의미 있는 제목 추출
   let title = rawTitle;
   if ((!title || isGenericTitle(title)) && (caption || description)) {
@@ -153,9 +166,25 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
 
   return {
     title: cleanText(title),
-    description: cleanMultilineText(caption || description),
+    description: cleanMultilineText(caption || fullDescription || description),
     thumbnail_url: thumbnail ? absolutizeUrl(thumbnail, baseUrl) : undefined,
   };
+}
+
+function extractYouTubeDescription(html: string): string | undefined {
+  const shortDescriptionMatch = html.match(/"shortDescription"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (shortDescriptionMatch?.[1]) {
+    const decoded = decodeJsonString(shortDescriptionMatch[1]);
+    if (decoded) return decoded;
+  }
+
+  const descriptionTextMatch = html.match(/"description"\s*:\s*\{\s*"simpleText"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (descriptionTextMatch?.[1]) {
+    const decoded = decodeJsonString(descriptionTextMatch[1]);
+    if (decoded) return decoded;
+  }
+
+  return undefined;
 }
 
 /**
