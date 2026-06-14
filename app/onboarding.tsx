@@ -1,13 +1,11 @@
 import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useGoogleAuth } from '@/lib/auth';
 
 export default function OnboardingScreen() {
-  const router = useRouter();
   const { signInWithGoogle, isReady } = useGoogleAuth();
   const [loading, setLoading] = useState(false);
 
@@ -18,10 +16,8 @@ export default function OnboardingScreen() {
 
     if (result.error) {
       Alert.alert('Sign In Failed', result.error);
-      return;
     }
-
-    router.replace('/choose-interests');
+    // 로그인 성공 시 session 변경 → _layout의 라우팅 가드가 카테고리 확인 후 분기
   };
 
   return (

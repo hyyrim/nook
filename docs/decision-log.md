@@ -1,49 +1,40 @@
 # Decision Log
 
-This file is the canonical decision log required by AGENTS.md.
+## 2026-06-15
 
-Historical decisions from earlier Phase 1 work are currently preserved in `docs/decisions.md`.
-New decisions should be recorded here going forward.
+### Decision
 
----
+Auth/onboarding 라우팅 가드를 카테고리 존재 여부 기반으로 3단 분기하도록 변경
 
-## 011. Explicit Supabase user scoping in client queries (2026-06-13)
+### Why
 
-**Decision**: Every app-level Supabase query in `lib/api.ts` and `lib/ai.ts` now explicitly scopes reads and writes to the authenticated `user_id`, in addition to database RLS.
+- 기존 라우팅 가드는 session 유무만 확인하여, 기존 유저 재로그인 시 choose-interests를 다시 거치는 문제 발생
+- onboarding.tsx에서 직접 navigate하는 것과 _layout.tsx 가드가 race condition 유발
+- createInitialCategories에 중복 방지가 없어 온보딩 재진입 시 카테고리 중복 생성 가능
+- getSession 실패 시 isLoading이 해제되지 않아 무한 로딩 가능
 
-**Context**: Nook is a multi-user archive. RLS protects the database, but the project rule also requires client query code to never omit `user_id` filtering.
+### Impact
 
-**Result**:
-- Added a shared `requireUserId()` helper in `lib/api.ts`.
-- Added `.eq('user_id', userId)` to category and content reads, updates, and deletes.
-- Validated category moves against the current user's category records.
-- Scoped AI classification category lookup to the current user's categories.
-
----
-
-## 012. Classification prompt v1 contract sync (2026-06-13)
-
-**Decision**: Keep `lib/ai.ts` prompt construction synchronized with `prompts/classify/v1.txt`.
-
-**Context**: The runtime prompt had evolved to support optional `suggested_title` for generic platform titles, but the versioned prompt file still documented only `tags` and `category`.
-
-**Result**:
-- Added `CLASSIFY_PROMPT_VERSION = 'v1'`.
-- Updated `prompts/classify/v1.txt` to match the runtime prompt contract.
-- Preserved the rule that AI must not create categories or generate summaries.
+- 라우팅 가드: no session → onboarding, session + 카테고리 없음 → choose-interests, session + 카테고리 있음 → tabs
+- onboarding.tsx에서 직접 navigate 제거, 라우팅 가드에 위임
+- createInitialCategories에 기존 카테고리 존재 시 skip 로직 추가
+- AuthProvider에 getSession 에러 핸들링 추가
 
 ---
 
-## 013. Phase 1 simulation fixes and Phase 2 boundary (2026-06-13)
+### Decision
 
-**Decision**: Apply small UI/UX fixes from the Notion simulation test before Phase 2, but keep Library bulk edit as Phase 2 scope.
+Freeze scope to the originally defined MVP before expanding to Report, Forgotten Content, or other phase-2 ideas.
 
-**Context**: The simulation test surfaced polish issues in Home and Content Detail. These affected perceived quality but did not require new major screens or backend changes. Library bulk edit needs a broader selection/editing model, so it should not be squeezed into Phase 1.
+### Why
 
-**Result**:
-- Added a Home placeholder for the state where Recent Saved exists but Rediscover has no items.
-- Improved Content Detail source/original-link placement, description spacing, multiline display, and long-text expansion.
-- Added a focused title edit bottom sheet from Content Detail.
-- Tuned category-change sheet timing and removed the extra delay between action sheet and bottom sheet.
-- Added auth-session guards so protected screens do not fetch user data before the session is ready.
-- Deferred Library bulk edit to Phase 2.
+- The repo already includes meaningful implementation work for Google auth, Supabase session persistence, onboarding screens, and data access
+- However, the original MVP still needs reliable end-to-end behavior, especially around onboarding gating, real data flow, and save flow verification
+- Expanding scope now would increase coordination cost between implementation and review
+
+### Impact
+
+- Do not spend time re-adding auth or Supabase foundations that already exist
+- Prioritize onboarding route gating, flow verification, and Library/save flow stability
+- Keep Report and Forgotten Content out of the active implementation scope for now
+- iOS distribution preparation remains important, especially Apple Developer enrollment and bundle identity decisions

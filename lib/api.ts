@@ -404,6 +404,13 @@ async function classifyAndUpdate(content: Content, description?: string) {
 export async function createInitialCategories(names: string[]) {
   const userId = await requireUserId();
 
+  // 이미 카테고리가 있으면 중복 생성 방지
+  const { count } = await supabase
+    .from('categories')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if (count && count > 0) return [];
+
   const rows = names.map(name => ({ user_id: userId, name }));
   const { data, error } = await supabase
     .from('categories')

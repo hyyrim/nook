@@ -1,43 +1,17 @@
 # AI Usage Log
 
-This file records AI-assisted development work for Nook.
+## 2026-06-15
+
+- Problem: Auth/onboarding 라우팅에서 카테고리 존재 여부를 확인하지 않아, 기존 유저 재로그인 시 온보딩 재진입, race condition, 카테고리 중복 생성, 무한 로딩 등의 이슈 존재
+- AI tool used: Claude Code
+- Prompt summary: MVP 백로그 검토 후 auth/onboarding 흐름 점검 요청. 4개 이슈 발견 및 수정.
+- Result: 라우팅 가드에 카테고리 3단 분기 추가, onboarding에서 직접 navigate 제거, createInitialCategories 중복 방지, getSession 에러 핸들링 추가
+- Lesson learned: 라우팅 가드는 session뿐 아니라 유저 상태(카테고리 유무)까지 확인해야 올바른 분기가 가능하다. 직접 navigate와 가드가 공존하면 race condition이 발생할 수 있으므로, 가드에 위임하는 패턴이 안정적이다.
 
 ---
 
-## 2026-06-13. Phase 1 stabilization review and scoped fixes
-
-**Problem**: Review the current project state and address the highest-priority stabilization gaps without changing the Claude Design visual direction.
-
-**AI tool used**: Codex
-
-**Prompt summary**: The user asked Codex to review existing changes, identify remaining work, then proceed one item at a time. The review prioritized TypeScript health, Expo Router structure, Supabase query safety, prompt versioning, and documentation requirements.
-
-**Result**:
-- Verified `npx tsc --noEmit` passes.
-- Added explicit `user_id` scoping to Supabase category/content queries.
-- Scoped AI classification category reads to the authenticated user.
-- Synchronized the runtime classification prompt with `prompts/classify/v1.txt`.
-- Added required documentation files: `docs/decision-log.md` and `docs/ai-usage-log.md`.
-- Confirmed the Report tab is an intentional Phase 2 `Coming soon` placeholder.
-
-**Lesson learned**: RLS is necessary but not enough for this project standard. Keeping client queries explicitly scoped makes multi-user data assumptions easier to audit during AI-assisted development.
-
----
-
-## 2026-06-13. Simulation test UI fixes before Phase 2
-
-**Problem**: Apply the Notion "시뮬레이션 테스트" findings before moving to Phase 2, while leaving Library bulk edit for Phase 2.
-
-**AI tool used**: Codex
-
-**Prompt summary**: The user asked Codex to read the Notion simulation test notes and fix items 1-6. Item 7, Library detail bulk edit, should remain Phase 2.
-
-**Result**:
-- Added a Home placeholder state when Recent Saved exists but Rediscover has no items.
-- Moved the Content Detail original-link action into the category/source row.
-- Preserved multiline descriptions from metadata and added a detail-screen formatter.
-- Added collapsed long descriptions with a More/close toggle.
-- Added a title edit bottom sheet from Content Detail.
-- Removed the category-change sheet delay and tuned its animation timing.
-
-**Lesson learned**: Simulation notes are most useful when they capture exact visual discomfort. Small spacing, placement, and transition fixes can remove a lot of perceived roughness without expanding MVP scope.
+- Problem: The project needed a clear, shared implementation priority after scope drift around Report, Forgotten Content, and social login.
+- AI tool used: Codex
+- Prompt summary: Reorganize the current work into the original MVP scope, separate immediate work from deferred work, capture iOS distribution preparation items, then update the written notes after discovering that Google auth and Supabase integration were already implemented in the repo.
+- Result: Updated the repo documentation so it no longer describes auth, Supabase, and onboarding as missing foundations. The backlog now reflects that the remaining work is mostly flow hardening, route gating, and MVP completion.
+- Lesson learned: In a multi-agent workflow, documentation should be updated only after verifying the current repository state. Otherwise, backlog notes can quickly become stale and mislead implementation work.

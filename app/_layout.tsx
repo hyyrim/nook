@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useShareIntent } from 'expo-share-intent';
 import { AuthProvider, useAuth } from '@/lib/AuthProvider';
-import { saveContent } from '@/lib/api';
+import { saveContent, getCategories } from '@/lib/api';
 import { emit } from '@/lib/events';
 import { Toast } from '@/components/Toast';
 import { Colors } from '@/constants';
@@ -28,7 +28,21 @@ function RootNavigator() {
     if (!session && !inAuthFlow) {
       router.replace('/onboarding');
     } else if (session && inAuthFlow) {
-      router.replace('/(tabs)');
+      // 카테고리 존재 여부 확인 후 분기
+      getCategories()
+        .then((categories) => {
+          if (categories.length > 0) {
+            router.replace('/(tabs)');
+          } else if (segments[0] !== 'choose-interests') {
+            router.replace('/choose-interests');
+          }
+        })
+        .catch(() => {
+          // 카테고리 조회 실패 시 choose-interests로 이동
+          if (segments[0] !== 'choose-interests') {
+            router.replace('/choose-interests');
+          }
+        });
     }
   }, [session, isLoading, segments]);
 
