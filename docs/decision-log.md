@@ -4,6 +4,42 @@
 
 ### Decision
 
+iOS 배포 준비: Apple 로그인 구현, EAS Build 설정, 앱 에셋 교체
+
+### Why
+
+- App Store 정책상 소셜 로그인(Google) 제공 시 Apple 로그인 필수
+- Apple Developer 승인 대기 중 코드/설정을 미리 준비하여 승인 후 바로 빌드 가능하도록
+- 기본 Expo 플레이스홀더 에셋을 Nook 브랜드 에셋으로 교체
+
+### Impact
+
+- lib/auth.ts에 signInWithApple 추가 (expo-apple-authentication + expo-crypto)
+- onboarding 화면에 Apple 로그인 버튼 추가 (Apple 상단, Google 하단)
+- eas.json 생성 (development/preview/production 프로필)
+- 앱 아이콘, 스플래시, 홈 로고 교체
+
+---
+
+### Decision
+
+태그 수정 기능을 MVP에서 제외, 추후 구현으로 이동
+
+### Why
+
+- Smoke testing 결과 태그 수정 외 모든 핵심 플로우(auth, onboarding, 저장, 카테고리 CRUD, 카테고리 이동) 정상 동작 확인
+- 태그는 AI가 자동 생성하며, 수정 없이도 MVP 사용에 지장 없음
+- MVP 범위를 줄여 iOS 배포 준비에 집중
+
+### Impact
+
+- Content Detail에서 태그는 읽기 전용으로 표시
+- 태그 수정 UI는 추후 구현 시 추가
+
+---
+
+### Decision
+
 Auth/onboarding 라우팅 가드를 카테고리 존재 여부 기반으로 3단 분기하도록 변경
 
 ### Why

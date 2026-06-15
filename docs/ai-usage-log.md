@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+- Problem: iOS 배포를 위한 Apple 로그인, 빌드 설정, 브랜드 에셋 적용 필요
+- AI tool used: Claude Code + Codex
+- Prompt summary: Apple 로그인 구현, EAS Build 설정, 앱 아이콘/스플래시/홈 로고 교체 요청
+- Result: signInWithApple 함수 구현 (expo-apple-authentication + nonce 기반 Supabase 연동), onboarding에 Apple 버튼 추가, eas.json 생성, 에셋 교체 완료. 홈 로고 적용은 Codex에서 진행.
+- Lesson learned: 네이티브 Apple 로그인은 Supabase signInWithIdToken + nonce로 처리하며, Secret Key는 웹 OAuth에만 필요하다. Apple Developer 승인 대기 중에도 코드/설정을 미리 준비할 수 있다.
+
+---
+
 - Problem: Auth/onboarding 라우팅에서 카테고리 존재 여부를 확인하지 않아, 기존 유저 재로그인 시 온보딩 재진입, race condition, 카테고리 중복 생성, 무한 로딩 등의 이슈 존재
 - AI tool used: Claude Code
 - Prompt summary: MVP 백로그 검토 후 auth/onboarding 흐름 점검 요청. 4개 이슈 발견 및 수정.

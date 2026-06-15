@@ -3,21 +3,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
-import { useGoogleAuth } from '@/lib/auth';
+import { useGoogleAuth, signInWithApple } from '@/lib/auth';
 
 export default function OnboardingScreen() {
   const { signInWithGoogle, isReady } = useGoogleAuth();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<'google' | 'apple' | null>(null);
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    setLoading('google');
     const result = await signInWithGoogle();
-    setLoading(false);
+    setLoading(null);
 
     if (result.error) {
       Alert.alert('Sign In Failed', result.error);
     }
-    // 로그인 성공 시 session 변경 → _layout의 라우팅 가드가 카테고리 확인 후 분기
+  };
+
+  const handleAppleSignIn = async () => {
+    setLoading('apple');
+    const result = await signInWithApple();
+    setLoading(null);
+
+    if (result.error) {
+      Alert.alert('Sign In Failed', result.error);
+    }
   };
 
   return (
@@ -35,13 +44,32 @@ export default function OnboardingScreen() {
         {/* Bottom section */}
         <View style={styles.bottomSection}>
           <Pressable
+            onPress={handleAppleSignIn}
+            disabled={loading !== null}
+            style={({ pressed }) => [
+              styles.appleButton,
+              pressed && styles.appleButtonPressed,
+            ]}
+          >
+            {loading === 'apple' ? (
+              <ActivityIndicator size="small" color={Colors.surface} />
+            ) : (
+              <>
+                <Ionicons name="logo-apple" size={20} color={Colors.surface} />
+                <Text style={styles.appleButtonText}>Continue with Apple</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable
             onPress={handleGoogleSignIn}
+            disabled={loading !== null}
             style={({ pressed }) => [
               styles.googleButton,
               pressed && styles.googleButtonPressed,
             ]}
           >
-            {loading ? (
+            {loading === 'google' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
               <>
@@ -100,6 +128,23 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: 20,
     gap: 16,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 15,
+  },
+  appleButtonPressed: {
+    opacity: 0.85,
+  },
+  appleButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.surface,
   },
   googleButton: {
     flexDirection: 'row',

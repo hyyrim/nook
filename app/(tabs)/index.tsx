@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
@@ -61,7 +61,11 @@ export default function HomeScreen() {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.appTitle}>Nook</Text>
+          <Image
+            source={require('@/assets/logo.png')}
+            style={styles.appLogo}
+            resizeMode="cover"
+          />
           <SearchBar />
         </View>
 
@@ -165,13 +169,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 0,
   },
-  appTitle: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.8,
-    lineHeight: 36,
-    marginBottom: 14,
+  appLogo: {
+    height: 52,
+    width: 138,
+    marginBottom: 10,
   },
   content: {
     paddingHorizontal: 20,

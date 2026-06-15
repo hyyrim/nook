@@ -36,7 +36,7 @@ Already implemented and working in the repo:
 - Home — real Supabase queries (최근 저장 + Rediscover)
 - Library — full CRUD with Supabase (카테고리 추가/수정/삭제, 미분류 가상 폴더)
 - Category Detail — real data, 검색, 수정/삭제
-- Content Detail — real data, 카테고리 이동, 태그 수정, 관련 콘텐츠, 메타데이터 새로고침
+- Content Detail — real data, 카테고리 이동, 관련 콘텐츠, 메타데이터 새로고침
 - Save Bottom Sheet — URL 직접 입력 + 클립보드 붙여넣기
 - Save via Share Intent — 자동 캡처 및 저장
 - Metadata fetching (Instagram oEmbed, YouTube 등 플랫폼별 처리)
@@ -81,7 +81,7 @@ Priority is:
 - Test save flow from app (Bottom Sheet)
 - Test save flow from Share Extension / Development Build
 - Test category CRUD (추가/수정/삭제)
-- Test content detail (카테고리 이동, 태그 수정)
+- Test content detail (카테고리 이동)
 
 ## Already Done
 
@@ -101,6 +101,7 @@ The following items from the original backlog have been verified as implemented:
 - Push notifications
 - Social features
 - Advanced AI classification behavior
+- Tag editing in Content Detail
 
 ## iOS Distribution Preparation
 
