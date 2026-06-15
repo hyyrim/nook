@@ -130,7 +130,7 @@ export default function CategoryDetailScreen() {
           <Text style={styles.title}>{catName}</Text>
           <Text style={styles.subtitle}>{count}개 저장됨</Text>
           <SearchBar
-            placeholder={`${catName}에서 검색...`}
+            placeholder="이 폴더에서 찾기"
             value={query}
             onChangeText={setQuery}
             editable
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     letterSpacing: -0.8,
     lineHeight: 36,
-    marginBottom: 2,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 13,

@@ -116,7 +116,6 @@ export default function HomeScreen() {
                     icon="sparkles"
                     label="다시 볼 콘텐츠"
                     dot
-                    subtitle="관심 카테고리 · 미열람"
                   />
                   <ScrollView
                     horizontal
@@ -130,7 +129,7 @@ export default function HomeScreen() {
                           key={item.id}
                           title={item.title ?? item.url}
                           source={formatSource(item.domain)}
-                          hint={item.categories?.name ? `${item.categories.name} 카테고리` : '미분류'}
+                          hint={item.categories?.name ?? '미분류'}
                           thumbnailUrl={item.thumbnail_url}
                           gradientDark={colors.dark}
                           gradientMid={colors.mid}

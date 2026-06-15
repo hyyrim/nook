@@ -38,11 +38,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: Colors.accent,
-    marginLeft: 1,
+    marginLeft: 0,
     marginTop: 1,
   },
   subtitle: {

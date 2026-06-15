@@ -2,6 +2,54 @@
 
 ## 2026-06-15
 
+- Problem: Home의 `다시 볼 콘텐츠` 섹션에서 서브타이틀이 정보량 대비 화면을 바쁘게 만들고, Rediscover 카드의 `음악 카테고리` 표기가 설명문처럼 보여 카테고리 정보의 위계가 약했다.
+- AI tool used: Codex
+- Prompt summary: 다시 볼 콘텐츠 서브타이틀 제거, red dot 유지 여부 판단, 카드 하단 카테고리 표기 방식 검토 및 반영 요청.
+- Result: `다시 볼 콘텐츠`의 서브타이틀을 제거하고 red dot은 6px로 작게 유지했다. Rediscover 카드 하단은 `음악 카테고리` 대신 폴더 아이콘과 카테고리명만 표시하도록 바꿨다.
+- Lesson learned: Rediscover 섹션은 Accent Red dot으로 충분히 신호를 줄 수 있고, 카드 내부 카테고리는 텍스트 설명보다 아이콘+짧은 명칭이 더 가볍고 일관적이다.
+
+---
+
+- Problem: 검색창 placeholder가 `음악에서 검색...`, `아카이브 검색...`처럼 기능적이지만 Nook의 브랜드 톤과는 조금 딱딱하게 느껴졌다.
+- AI tool used: Codex
+- Prompt summary: 검색창 placeholder를 Nook에 어울리는 톤으로 바꾸고 싶다는 요청.
+- Result: 공통 SearchBar 기본 문구와 전체 검색 placeholder를 `저장한 콘텐츠 찾기`로 바꾸고, Category Detail은 `이 폴더에서 찾기`로 조정했다. 빈 검색 안내는 `제목, 출처, 태그로 찾아보세요`로 정리하고 위치를 화면 중앙보다 살짝 위로 내렸다.
+- Lesson learned: Nook의 검색 카피는 브랜드 감성보다 사용자가 무엇을 찾는지 즉시 알 수 있는 짧은 문구가 더 자연스럽다.
+
+---
+
+- Problem: Category Detail에서 카테고리 이름과 `n개 저장됨` 텍스트가 너무 붙어 보여 헤더 정보 위계가 답답했다.
+- AI tool used: Codex
+- Prompt summary: 카테고리 상세 화면의 카테고리 이름과 저장 개수 텍스트 사이 간격 조정 요청.
+- Result: `app/category/[id].tsx`에서 제목 하단 여백을 2px에서 8px로 늘려 제목과 카운트 사이를 분리했다.
+- Lesson learned: 큰 제목과 보조 메타 정보 사이에는 최소한의 breathing room이 있어야 화면 위계가 자연스럽게 읽힌다.
+
+---
+
+- Problem: 하단 탭의 가운데 `+` 버튼이 일반 탭 아이템과 같은 높이에 가까워 보여 주요 저장 액션으로서 강조가 약했다.
+- AI tool used: Codex
+- Prompt summary: 하단 탭의 라운드 `+` 버튼을 탭바보다 더 위로 나오게 만들어 비슷한 앱들처럼 강조해달라는 요청.
+- Result: `app/(tabs)/_layout.tsx`의 FAB 크기를 56px로 키우고, 탭바 위로 18px 띄웠다. 그림자는 과하게 퍼지지 않도록 최종적으로 더 절제된 값으로 조정했다.
+- Lesson learned: 저장처럼 핵심 액션은 탭바 안에 묻히기보다 살짝 떠 있는 FAB 형태로 분리하면 시각적 우선순위가 명확해진다.
+
+---
+
+- Problem: Content Detail의 `관련 콘텐츠` 제목과 설명, 카드 목록이 다닥다닥 붙어 보여 섹션 구분감이 부족했다.
+- AI tool used: Codex
+- Prompt summary: 관련 콘텐츠 영역의 공백을 점검하고, 기본 간격은 균일하게 유지하되 내용 카드와 관련 콘텐츠 사이만 살짝 더 벌어지도록 조정 요청.
+- Result: `app/content/[id].tsx`에서 제목-설명 간격, 설명 줄높이, 카드 간격을 정리하고, 내용 카드와 관련 콘텐츠 사이의 여백은 최종적으로 더 분리감 있게 유지했다.
+- Lesson learned: 하단 추천 영역은 기본 리듬과 분리감을 함께 봐야 하며, 실제 화면에서 답답하면 카드와 다음 섹션 사이를 더 명확히 벌리는 편이 자연스럽다.
+
+---
+
+- Problem: 최근 저장 콘텐츠의 저장 시점이 `1d ago`처럼 영어로 표시되어 한국어 UI 톤과 맞지 않았다.
+- AI tool used: Codex
+- Prompt summary: content 저장 시점 표시를 영어에서 한글로 바꾸는 소소한 UI 수정 요청.
+- Result: 공통 상대시간 포맷터를 수정해 `방금 전`, `1분 전`, `1시간 전`, `1일 전`, `1주 전`, `1개월 전` 형식으로 표시되게 했다.
+- Lesson learned: 여러 화면에서 쓰는 표시 문구는 화면별로 고치기보다 공통 유틸에서 한 번에 맞추는 편이 일관성과 유지보수에 좋다.
+
+---
+
 - Problem: Profile의 계정 삭제 UX를 Claude Code와 추가 논의하기 위한 맥락 문서가 필요했다.
 - AI tool used: Codex
 - Prompt summary: 기존 앱들은 계정 삭제를 어떤 방식으로 배치하는지 확인한 뒤, Claude Code와 논의할 수 있는 md 파일 작성 요청.

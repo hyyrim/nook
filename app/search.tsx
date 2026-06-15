@@ -68,7 +68,7 @@ export default function SearchScreen() {
             <TextInput
               ref={inputRef}
               style={styles.searchInput}
-              placeholder="아카이브 검색..."
+              placeholder="저장한 콘텐츠 찾기"
               placeholderTextColor={Colors.tertiary}
               value={query}
               onChangeText={setQuery}
@@ -84,12 +84,17 @@ export default function SearchScreen() {
         </View>
       </SafeAreaView>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.list}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.list, query.trim().length === 0 && !loading && styles.emptySearchList]}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : query.trim().length === 0 ? (
-            <Text style={styles.hintText}>제목, 출처, 태그로 검색해보세요</Text>
+            <Text style={styles.hintText}>제목, 출처, 태그로 찾아보세요</Text>
           ) : filtered.length > 0 ? (
             filtered.map(item => (
               <ContentCard
@@ -147,9 +152,16 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   list: {
     padding: 16,
     paddingBottom: 36,
+  },
+  emptySearchList: {
+    flex: 1,
+    paddingTop: 118,
   },
   hintText: {
     fontSize: 13,

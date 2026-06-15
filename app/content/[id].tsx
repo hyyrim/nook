@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
   relatedSection: {
-    marginTop: 8,
+    marginTop: 24,
   },
   relatedHeader: {
     paddingHorizontal: 2,
@@ -458,14 +458,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: -0.2,
-    marginBottom: 3,
+    marginBottom: 4,
   },
   relatedSubtitle: {
     fontSize: 12,
     color: Colors.secondary,
+    lineHeight: 17,
   },
   relatedList: {
-    gap: 9,
+    gap: 10,
   },
   relatedCard: {
     backgroundColor: Colors.surface,

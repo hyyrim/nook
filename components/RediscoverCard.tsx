@@ -1,5 +1,6 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Colors } from '@/constants';
+import { Ionicons } from '@expo/vector-icons';
 
 type RediscoverCardProps = {
   title: string;
@@ -27,7 +28,10 @@ export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark
       </View>
       <View style={styles.textContent}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        <Text style={styles.hint}>{hint}</Text>
+        <View style={styles.hintRow}>
+          <Ionicons name="folder-outline" size={11} color={Colors.tertiary} />
+          <Text style={styles.hint}>{hint}</Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -82,6 +86,10 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: Colors.tertiary,
     lineHeight: 14,
-    fontStyle: 'italic',
+  },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });
