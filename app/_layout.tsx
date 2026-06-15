@@ -112,6 +112,10 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="account-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="onboarding"
           options={{ animation: 'none' }}
         />

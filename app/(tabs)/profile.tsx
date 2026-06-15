@@ -1,10 +1,10 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
-import { deleteAccount } from '@/lib/api';
 
 function SettingRow({ icon, label, danger, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress?: () => void }) {
   return (
@@ -30,6 +30,7 @@ function Divider() {
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { session } = useAuth();
   const user = session?.user;
   const email = user?.email ?? '';
@@ -46,26 +47,6 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      '계정 삭제',
-      '모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제', style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAccount();
-              await supabase.auth.signOut();
-            } catch (e: any) {
-              Alert.alert('오류', e.message || '계정 삭제에 실패했습니다.');
-            }
-          },
-        },
-      ],
-    );
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -100,9 +81,9 @@ export default function ProfileScreen() {
           <View>
             <SectionLabel text="계정" />
             <View style={styles.settingsCard}>
-              <SettingRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
+              <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
               <Divider />
-              <SettingRow icon="trash-outline" label="계정 삭제" danger onPress={handleDeleteAccount} />
+              <SettingRow icon="settings-outline" label="계정 설정" onPress={() => router.push('/account-settings')} />
             </View>
           </View>
         </View>
