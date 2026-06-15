@@ -68,7 +68,7 @@ export default function SearchScreen() {
             <TextInput
               ref={inputRef}
               style={styles.searchInput}
-              placeholder="Search your archive..."
+              placeholder="아카이브 검색..."
               placeholderTextColor={Colors.tertiary}
               value={query}
               onChangeText={setQuery}
@@ -89,7 +89,7 @@ export default function SearchScreen() {
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : query.trim().length === 0 ? (
-            <Text style={styles.hintText}>Search by title, source, or tag</Text>
+            <Text style={styles.hintText}>제목, 출처, 태그로 검색해보세요</Text>
           ) : filtered.length > 0 ? (
             filtered.map(item => (
               <ContentCard
@@ -104,7 +104,7 @@ export default function SearchScreen() {
               />
             ))
           ) : (
-            <Text style={styles.emptyText}>No results for "{query}"</Text>
+            <Text style={styles.emptyText}>"{query}"에 대한 결과가 없어요</Text>
           )}
         </View>
       </ScrollView>

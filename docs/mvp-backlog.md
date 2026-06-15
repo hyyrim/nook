@@ -34,7 +34,7 @@ Already implemented and working in the repo:
 - Share Intent integration (expo-share-intent)
 - AI classification (Claude Haiku 비동기 분류)
 - Home — real Supabase queries (최근 저장 + Rediscover)
-- Library — full CRUD with Supabase (카테고리 추가/수정/삭제, 미분류 가상 폴더)
+- 폴더 — full CRUD with Supabase (카테고리 추가/수정/삭제, 미분류 가상 폴더)
 - Category Detail — real data, 검색, 수정/삭제
 - Content Detail — real data, 카테고리 이동, 관련 콘텐츠, 메타데이터 새로고침
 - Save Bottom Sheet — URL 직접 입력 + 클립보드 붙여넣기
@@ -87,8 +87,8 @@ Priority is:
 
 The following items from the original backlog have been verified as implemented:
 
-- ~~Replace remaining mock-only behavior~~ — Home, Library, Category Detail, Content Detail 모두 실제 Supabase 쿼리 사용
-- ~~Library real data flow~~ — 카테고리 CRUD, 미분류 가상 폴더, 카운트 및 네비게이션 동작
+- ~~Replace remaining mock-only behavior~~ — Home, 폴더, Category Detail, Content Detail 모두 실제 Supabase 쿼리 사용
+- ~~폴더 real data flow~~ — 카테고리 CRUD, 미분류 가상 폴더, 카운트 및 네비게이션 동작
 - ~~Save flow reliability~~ — Bottom Sheet + Share Intent 모두 실제 저장 경로, AI 비동기 분류, 중복 방지 동작
 - ~~Share Extension integration~~ — expo-share-intent로 구현 완료
 

@@ -9,7 +9,7 @@ type SearchBarProps = {
   editable?: boolean;
 };
 
-export function SearchBar({ placeholder = 'Search your archive...', value, onChangeText, editable = false }: SearchBarProps) {
+export function SearchBar({ placeholder = '아카이브 검색...', value, onChangeText, editable = false }: SearchBarProps) {
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={15} color={Colors.tertiary} />

@@ -17,7 +17,7 @@ export function FolderCard({ name, count, onPress }: FolderCardProps) {
         <View style={styles.tab} />
         <View style={styles.card}>
           <Text style={styles.name}>{name}</Text>
-          <Text style={styles.count}>{count} saved</Text>
+          <Text style={styles.count}>{count}개 저장됨</Text>
         </View>
       </View>
     </Pressable>
@@ -35,7 +35,7 @@ export function AddCategoryCard({ onPress }: { onPress?: () => void }) {
       ]}
     >
       <Ionicons name="add" size={22} color={Colors.tertiary} />
-      <Text style={styles.addText}>Add Category</Text>
+      <Text style={styles.addText}>카테고리 추가</Text>
     </Pressable>
   );
 }

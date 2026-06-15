@@ -45,9 +45,9 @@ export default function ChooseInterestsScreen() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Choose Your Interests</Text>
+          <Text style={styles.title}>관심사를 선택하세요</Text>
           <Text style={styles.subtitle}>
-            Pick {MIN_SELECT}–{MAX_SELECT} categories to personalize your experience
+            {MIN_SELECT}~{MAX_SELECT}개의 카테고리를 골라주세요
           </Text>
         </View>
 
@@ -72,7 +72,7 @@ export default function ChooseInterestsScreen() {
         {/* Bottom */}
         <View style={styles.bottom}>
           <Text style={styles.counter}>
-            {selected.length} / {MAX_SELECT} selected
+            {selected.length} / {MAX_SELECT}개 선택됨
           </Text>
           <Pressable
             onPress={handleGetStarted}
@@ -87,7 +87,7 @@ export default function ChooseInterestsScreen() {
               <ActivityIndicator size="small" color={Colors.surface} />
             ) : (
               <Text style={[styles.ctaText, !canProceed && styles.ctaTextDisabled]}>
-                Get Started
+                시작하기
               </Text>
             )}
           </Pressable>

@@ -53,7 +53,7 @@ export default function OnboardingScreen() {
             ) : (
               <>
                 <Ionicons name="logo-apple" size={20} color={Colors.surface} />
-                <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                <Text style={styles.appleButtonText}>Apple로 계속하기</Text>
               </>
             )}
           </Pressable>
@@ -71,16 +71,17 @@ export default function OnboardingScreen() {
             ) : (
               <>
                 <Ionicons name="logo-google" size={18} color={Colors.primary} />
-                <Text style={styles.googleButtonText}>Continue with Google</Text>
+                <Text style={styles.googleButtonText}>Google로 계속하기</Text>
               </>
             )}
           </Pressable>
 
           <Text style={styles.caption}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')}>Terms of Service</Text>
-            {' '}and{' '}
-            <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')}>Privacy Policy</Text>
+            계속하면{' '}
+            <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')}>서비스 이용약관</Text>
+            {' '}및{' '}
+            <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')}>개인정보 처리방침</Text>
+            에 동의하게 됩니다.
           </Text>
         </View>
       </View>

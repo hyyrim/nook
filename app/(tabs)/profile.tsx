@@ -71,7 +71,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.title}>프로필</Text>
         </View>
 
         <View style={styles.content}>
@@ -88,21 +88,21 @@ export default function ProfileScreen() {
 
           {/* Information section */}
           <View>
-            <SectionLabel text="Information" />
+            <SectionLabel text="정보" />
             <View style={styles.settingsCard}>
-              <SettingRow icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')} />
+              <SettingRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')} />
               <Divider />
-              <SettingRow icon="document-text-outline" label="Terms of Service" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')} />
+              <SettingRow icon="document-text-outline" label="서비스 이용약관" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')} />
             </View>
           </View>
 
           {/* Account section */}
           <View>
-            <SectionLabel text="Account" />
+            <SectionLabel text="계정" />
             <View style={styles.settingsCard}>
-              <SettingRow icon="log-out-outline" label="Log Out" danger onPress={handleLogout} />
+              <SettingRow icon="log-out-outline" label="로그아웃" danger onPress={handleLogout} />
               <Divider />
-              <SettingRow icon="trash-outline" label="Delete Account" danger onPress={handleDeleteAccount} />
+              <SettingRow icon="trash-outline" label="계정 삭제" danger onPress={handleDeleteAccount} />
             </View>
           </View>
         </View>

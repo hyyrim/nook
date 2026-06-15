@@ -31,7 +31,7 @@ Nook은 흩어진 콘텐츠를 빠르게 저장하고, AI가 자동으로 분류
 → 비동기 AI 분류 (Haiku 단일 호출 → 태그 + 카테고리)
    · 카테고리는 해당 유저의 카테고리 중 분류
    · 매칭 없으면 미분류 (category_id = NULL)
-→ Library 자동 분류
+→ 폴더 자동 분류
 → Home Rediscover 섹션에서 재발견
 ```
 
@@ -43,7 +43,7 @@ Nook은 흩어진 콘텐츠를 빠르게 저장하고, AI가 자동으로 분류
 - Onboarding        관심 카테고리 선택 → 초기 카테고리 생성
 - Home              최근 저장 + Rediscover 섹션
 - Recent Saved      전체 콘텐츠 최근 저장순 리스트
-- Library           카테고리별 폴더 그리드 (미분류 폴더 포함)
+- 폴더              카테고리별 폴더 그리드 (미분류 폴더 포함)
 - Category Detail   카테고리 내 콘텐츠 리스트
 - Content Detail    콘텐츠 상세 + 태그(수정) + 카테고리 이동 + 관련 콘텐츠
 - 저장 Bottom Sheet  URL 직접 입력 저장
@@ -86,7 +86,7 @@ contents
 
 - `contents`: unique(user_id, url) — 사용자별 중복 URL 방지
 - 모든 테이블 RLS 활성화 — user_id = auth.uid() 인 행만 접근 가능
-- `category_id`: nullable. NULL = 미분류. Library에서 `category_id IS NULL` 뷰로 "미분류" 폴더 노출
+- `category_id`: nullable. NULL = 미분류. 폴더 탭에서 `category_id IS NULL` 뷰로 "미분류" 폴더 노출
 - `viewed_at`: Content Detail 진입 시점에 업데이트 (원문 클릭 기준 아님)
 - `tags`: 별도 테이블 없이 text[] 배열 저장 (MVP에서 태그 필터링 미지원)
 
@@ -121,7 +121,7 @@ contents
 
 **카테고리 / 태그 수정**
 
-- 카테고리: AI 분류 후 사용자가 Content Detail에서 이동 / Library에서 관리 가능
+- 카테고리: AI 분류 후 사용자가 Content Detail에서 이동 / 폴더 탭에서 관리 가능
 - 태그: AI 자동 생성 후 사용자가 Content Detail에서 수정 가능
 
 **코드 품질**
@@ -133,7 +133,7 @@ contents
 
 **카테고리 관리 플로우**
 
-- 추가: Library → "Add Category" 탭 → Bottom Sheet (빈 인풋) → 추가
+- 추가: 폴더 → "카테고리 추가" 탭 → Bottom Sheet (빈 인풋) → 추가
 - 수정: Category Detail 우상단 … → Bottom Sheet (기존 이름 채워진 인풋) → 수정
 - 삭제: Category Detail 우상단 … → 확인 Alert → 삭제
 - 추가/수정 Bottom Sheet는 동일 컴포넌트 재사용 (mode prop으로 분기)
@@ -167,7 +167,7 @@ nook/
 ├── app/                  # Expo Router 화면
 │   ├── (tabs)/
 │   │   ├── index.tsx     # Home
-│   │   ├── library.tsx   # Library
+│   │   ├── library.tsx   # 폴더
 │   │   ├── report.tsx    # Report (2차)
 │   │   └── profile.tsx   # Profile
 │   ├── onboarding.tsx    # 온보딩 (관심 카테고리 선택)

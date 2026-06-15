@@ -47,7 +47,7 @@ export default function RecentSavedScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={18} color={Colors.primary} />
           </Pressable>
-          <Text style={styles.navTitle}>Recent Saved</Text>
+          <Text style={styles.navTitle}>최근 저장</Text>
           <View style={styles.navSpacer} />
         </View>
       </SafeAreaView>
@@ -70,7 +70,7 @@ export default function RecentSavedScreen() {
               />
             ))
           ) : (
-            <Text style={styles.emptyText}>No saved content yet</Text>
+            <Text style={styles.emptyText}>아직 저장된 콘텐츠가 없어요</Text>
           )}
         </View>
       </ScrollView>

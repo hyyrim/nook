@@ -6,10 +6,10 @@ export default function ReportScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Report</Text>
+        <Text style={styles.title}>리포트</Text>
       </View>
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>Coming soon</Text>
+        <Text style={styles.emptyText}>준비 중이에요</Text>
       </View>
     </SafeAreaView>
   );

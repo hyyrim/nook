@@ -36,7 +36,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
+            title: '홈',
             tabBarIcon: ({ focused }) => (
               <TabBarIcon name={focused ? 'home' : 'home-outline'} focused={focused} />
             ),
@@ -45,9 +45,9 @@ export default function TabLayout() {
         <Tabs.Screen
           name="library"
           options={{
-            title: 'Library',
+            title: '폴더',
             tabBarIcon: ({ focused }) => (
-              <TabBarIcon name={focused ? 'library' : 'library-outline'} focused={focused} />
+              <TabBarIcon name={focused ? 'folder' : 'folder-outline'} focused={focused} />
             ),
           }}
         />
@@ -62,7 +62,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="report"
           options={{
-            title: 'Report',
+            title: '리포트',
             tabBarIcon: ({ focused }) => (
               <TabBarIcon name={focused ? 'document-text' : 'document-text-outline'} focused={focused} />
             ),
@@ -71,7 +71,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profile',
+            title: '프로필',
             tabBarIcon: ({ focused }) => (
               <TabBarIcon name={focused ? 'person' : 'person-outline'} focused={focused} />
             ),

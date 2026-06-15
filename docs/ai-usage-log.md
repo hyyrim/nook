@@ -2,6 +2,22 @@
 
 ## 2026-06-15
 
+- Problem: 로그인부터 시작하는 현재 진입 흐름이 초기 사용자에게 장벽으로 느껴질 수 있어, 로그인 전 서비스 탐색을 허용할지 검토가 필요했다.
+- AI tool used: Codex
+- Prompt summary: Nook에서 `로그인 후 메인 진입`과 `메인 먼저 노출 후 로그인 유도` 중 어떤 흐름이 더 적절한지 논의. 이어서 로그인 화면 하단에 `건너뛰기` 또는 `먼저 둘러보기` 버튼을 두고, 저장 등 개인 데이터 액션 시 로그인 안내를 띄우는 방향이 자연스러운지 검토.
+- Result: 로그인 전 완전한 기능 사용이 아니라, 낮은 위계의 `먼저 둘러보기` 버튼으로 MVP 화면을 살펴볼 수 있게 하고 링크 저장, 카테고리 관리, 개인 폴더 액션 등에서 `로그인이 필요해요` 안내를 띄우는 방향을 추천했다. 문구는 `건너뛰기`보다 `먼저 둘러보기`가 더 적절하다고 판단했다.
+- Lesson learned: 개인 데이터 기반 앱도 첫 화면에서 바로 로그인을 요구하기보다, 서비스 가치를 먼저 보여주고 데이터 저장이 필요한 순간 로그인 요청을 하면 장벽을 낮출 수 있다. 단, MVP 안정화 단계에서는 새 주요 화면을 늘리기보다 기존 라우팅과 UI를 최소 변경하는 방식이 좋다.
+
+---
+
+- Problem: 앱 화면에 한글/영어 안내 문구가 혼용되어 있어 1차 한국 사용자 배포 기준의 카피라이팅 방향 결정이 필요했다.
+- AI tool used: Codex
+- Prompt summary: MVP 단계에서 한국어 문구로 통일하고, 나중에 언어 변경 기능을 넣는 방향이 적절한지 검토. 토스식 `~해요` 톤이 Nook에 맞는지도 논의.
+- Result: 1차 배포에서는 한국어 중심 문구로 통일하고, 짧고 친근한 `~해요` 톤을 기본 방향으로 삼기로 결정. 언어 전환 기능은 MVP 이후 Phase 2로 미루기로 했다.
+- Lesson learned: MVP에서는 다국어 인프라보다 사용자 대상에 맞는 문구 일관성이 우선이다. 단, 반복 문구는 나중에 i18n으로 분리하기 쉽게 관리하는 편이 좋다.
+
+---
+
 - Problem: iOS 배포를 위한 Apple 로그인, 빌드 설정, 브랜드 에셋 적용 필요
 - AI tool used: Claude Code + Codex
 - Prompt summary: Apple 로그인 구현, EAS Build 설정, 앱 아이콘/스플래시/홈 로고 교체 요청
@@ -23,3 +39,11 @@
 - Prompt summary: Reorganize the current work into the original MVP scope, separate immediate work from deferred work, capture iOS distribution preparation items, then update the written notes after discovering that Google auth and Supabase integration were already implemented in the repo.
 - Result: Updated the repo documentation so it no longer describes auth, Supabase, and onboarding as missing foundations. The backlog now reflects that the remaining work is mostly flow hardening, route gating, and MVP completion.
 - Lesson learned: In a multi-agent workflow, documentation should be updated only after verifying the current repository state. Otherwise, backlog notes can quickly become stale and mislead implementation work.
+
+---
+
+- Problem: A follow-up review was needed to verify whether the app was truly "MVP complete except for Apple Developer approval tasks."
+- AI tool used: Codex
+- Prompt summary: Review the current repository state and validate the claim that only App ID capability setup, real-device Apple login/share-intent tests, and EAS/TestFlight/App Store steps remained.
+- Result: The review concluded that the project should not be described that narrowly unless the remaining app-level checks are explicitly confirmed complete. The repository needs to be judged by real flow verification and App Store readiness, not only by the presence of implemented screens or integrations.
+- Lesson learned: "Most major features exist" is not the same thing as "only distribution tasks remain." Final-stage claims should be made only after checking route behavior, policy-sensitive account flows, and real submission readiness requirements.

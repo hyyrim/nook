@@ -62,12 +62,12 @@ function RootNavigator() {
     saveContent({ url })
       .then(() => {
         emit('content-saved');
-        setToast({ visible: true, message: 'Saved to Nook!', type: 'success' });
+        setToast({ visible: true, message: 'Nook에 저장했어요!', type: 'success' });
       })
       .catch((e: any) => {
         const msg = e.message?.includes('contents_user_url_unique')
-          ? 'Already saved'
-          : 'Save failed';
+          ? '이미 저장된 링크예요'
+          : '저장에 실패했어요';
         setToast({ visible: true, message: msg, type: 'error' });
       })
       .finally(() => {

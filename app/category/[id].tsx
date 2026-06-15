@@ -117,7 +117,7 @@ export default function CategoryDetailScreen() {
         <View style={styles.nav}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={18} color={Colors.primary} />
-            <Text style={styles.backLabel}>Library</Text>
+            <Text style={styles.backLabel}>폴더</Text>
           </Pressable>
           {!isUncategorized && (
             <Pressable onPress={() => setShowActionSheet(true)} style={styles.moreButton}>
@@ -128,9 +128,9 @@ export default function CategoryDetailScreen() {
 
         <View style={styles.headerSection}>
           <Text style={styles.title}>{catName}</Text>
-          <Text style={styles.subtitle}>{count} saved items</Text>
+          <Text style={styles.subtitle}>{count}개 저장됨</Text>
           <SearchBar
-            placeholder={`Search in ${catName}...`}
+            placeholder={`${catName}에서 검색...`}
             value={query}
             onChangeText={setQuery}
             editable
@@ -158,13 +158,13 @@ export default function CategoryDetailScreen() {
           ) : articles.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="document-text-outline" size={36} color={Colors.tertiary} />
-              <Text style={styles.emptyTitle}>No articles yet</Text>
-              <Text style={styles.emptySubtitle}>Start saving to this category</Text>
+              <Text style={styles.emptyTitle}>아직 저장된 콘텐츠가 없어요</Text>
+              <Text style={styles.emptySubtitle}>이 카테고리에 콘텐츠를 저장해보세요</Text>
             </View>
           ) : (
             <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No results</Text>
-              <Text style={styles.emptySubtitle}>Try a different search term</Text>
+              <Text style={styles.emptyTitle}>검색 결과가 없어요</Text>
+              <Text style={styles.emptySubtitle}>다른 검색어를 입력해보세요</Text>
             </View>
           )}
         </View>

@@ -77,7 +77,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
       setTimeout(() => onClose(), 1600);
     } catch (e: any) {
       const msg = e.message?.includes('contents_user_url_unique')
-        ? 'This URL is already saved.'
+        ? '이미 저장된 링크예요.'
         : e.message;
       Alert.alert('Save Failed', msg);
     } finally {
@@ -105,7 +105,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
             <View style={styles.dragHandle} />
 
             <View style={styles.header}>
-              <Text style={styles.title}>Save to Nook</Text>
+              <Text style={styles.title}>Nook에 저장</Text>
               <Pressable onPress={onClose} style={styles.closeButton}>
                 <Ionicons name="close" size={14} color={Colors.secondary} />
               </Pressable>
@@ -116,8 +116,8 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
                 <View style={styles.successCircle}>
                   <Ionicons name="checkmark" size={24} color={Colors.accent} />
                 </View>
-                <Text style={styles.successTitle}>Saved!</Text>
-                <Text style={styles.successSubtitle}>Added to your Nook archive</Text>
+                <Text style={styles.successTitle}>저장 완료!</Text>
+                <Text style={styles.successSubtitle}>Nook 아카이브에 추가했어요</Text>
               </View>
             ) : (
               <View style={styles.form}>
@@ -139,7 +139,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
                   onPress={handlePaste}
                 >
                   <Ionicons name="clipboard-outline" size={14} color={Colors.secondary} />
-                  <Text style={styles.pasteText}>Paste from Clipboard</Text>
+                  <Text style={styles.pasteText}>클립보드에서 붙여넣기</Text>
                 </Pressable>
 
                 <Pressable
@@ -149,7 +149,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
                   {saving ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
+                    <Text style={styles.saveButtonText}>저장</Text>
                   )}
                 </Pressable>
               </View>

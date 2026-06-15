@@ -170,7 +170,7 @@ export default function ContentDetailScreen() {
   if (!item) {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={{ color: Colors.tertiary }}>Content not found</Text>
+        <Text style={{ color: Colors.tertiary }}>콘텐츠를 찾을 수 없어요</Text>
       </View>
     );
   }

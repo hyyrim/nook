@@ -78,7 +78,7 @@ export default function HomeScreen() {
             <>
               {/* Recent Saved */}
               <View style={styles.section}>
-                <SectionHeader icon="time-outline" label="Recent Saved" />
+                <SectionHeader icon="time-outline" label="최근 저장" />
                 {recentItems.length > 0 ? (
                   recentItems.map((item) => (
                     <ContentCard
@@ -93,14 +93,14 @@ export default function HomeScreen() {
                     />
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>Save your first content to get started</Text>
+                  <Text style={styles.emptyText}>첫 콘텐츠를 저장해보세요</Text>
                 )}
                 {recentItems.length > 0 && (
                   <Pressable
                     onPress={() => router.push('/recent-saved')}
                     style={styles.seeAllRow}
                   >
-                    <Text style={styles.seeAllText}>See All</Text>
+                    <Text style={styles.seeAllText}>전체 보기</Text>
                     <Ionicons name="chevron-forward" size={12} color={Colors.secondary} />
                   </Pressable>
                 )}
@@ -127,7 +127,7 @@ export default function HomeScreen() {
                           key={item.id}
                           title={item.title ?? item.url}
                           source={formatSource(item.domain)}
-                          hint={item.categories?.name ? `From ${item.categories.name}` : 'Uncategorized'}
+                          hint={item.categories?.name ? `${item.categories.name} 카테고리` : '미분류'}
                           thumbnailUrl={item.thumbnail_url}
                           gradientDark={colors.dark}
                           gradientMid={colors.mid}
@@ -143,9 +143,9 @@ export default function HomeScreen() {
                     <Ionicons name="sparkles" size={16} color={Colors.accent} />
                   </View>
                   <View style={styles.placeholderCopy}>
-                    <Text style={styles.placeholderTitle}>Rediscover is warming up</Text>
+                    <Text style={styles.placeholderTitle}>Rediscover 준비 중이에요</Text>
                     <Text style={styles.placeholderText}>
-                      Saved items you have not opened yet will appear here.
+                      아직 열어보지 않은 저장 콘텐츠가 여기에 나타나요.
                     </Text>
                   </View>
                 </View>

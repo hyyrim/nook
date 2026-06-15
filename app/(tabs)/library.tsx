@@ -65,7 +65,7 @@ export default function LibraryScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Library</Text>
+          <Text style={styles.title}>폴더</Text>
         </View>
 
         {loading ? (
