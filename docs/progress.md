@@ -71,7 +71,8 @@
 | onboarding에 Apple 로그인 버튼 추가 | ✅ |
 | EAS Build 설정 (eas.json) | ✅ |
 | 앱 아이콘, 스플래시, 홈 로고 브랜드 에셋 교체 | ✅ |
-| 온보딩 화면 로고 이미지 적용 | ✅ |
+| 온보딩 화면 아이콘+슬로건 레이아웃 적용 | ✅ |
+| 홈 화면 검색 기능 구현 (전체 콘텐츠 title/domain/tags 검색) | ✅ |
 | Supabase Apple provider 설정 | ✅ |
 | Smoke testing (신규/기존 유저, 로그아웃, 저장, 카테고리 CRUD) | ✅ |
 | MVP 백로그 현행화 | ✅ |

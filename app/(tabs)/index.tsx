@@ -66,7 +66,9 @@ export default function HomeScreen() {
             style={styles.appLogo}
             resizeMode="cover"
           />
-          <SearchBar />
+          <Pressable onPress={() => router.push('/search')}>
+            <SearchBar />
+          </Pressable>
         </View>
 
         <View style={styles.content}>
