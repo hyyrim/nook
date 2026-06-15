@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Colors } from '@/constants';
@@ -32,12 +32,9 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Top spacer */}
-        <View style={styles.topSpacer} />
-
-        {/* Logo & Slogan */}
+        {/* Brand section — 소셜 로그인 버튼 위 영역의 정중앙 */}
         <View style={styles.brandSection}>
-          <Text style={styles.logo}>Nook</Text>
+          <Image source={require('@/assets/icon.png')} style={styles.appIcon} resizeMode="contain" />
           <Text style={styles.sloganAccent}>every nook and cranny!</Text>
         </View>
 
@@ -100,31 +97,23 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
   },
-  topSpacer: {
-    flex: 1,
-  },
   brandSection: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
-  logo: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -1.5,
-  },
-  slogan: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: Colors.secondary,
-    letterSpacing: 0.3,
+  appIcon: {
+    height: 230,
+    width: 230,
+    borderRadius: 46,
   },
   sloganAccent: {
+    fontSize: 17,
     color: Colors.accent,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   bottomSection: {
-    flex: 1,
     justifyContent: 'flex-end',
     paddingBottom: 20,
     gap: 16,

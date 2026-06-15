@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-13
+최종 업데이트: 2026-06-15
 
 ---
 
@@ -59,12 +59,40 @@
 | 카테고리 변경 Bottom Sheet 딜레이 제거 및 애니메이션 조정 | ✅ |
 | 인증 세션 확인 전 데이터 로드 방지 | ✅ |
 
-## 미완료
+## 완료 (5차 — Auth hardening + iOS 배포 준비)
+
+| 항목 | 상태 |
+|------|------|
+| 라우팅 가드 카테고리 기반 3단 분기 (session + 카테고리 유무) | ✅ |
+| onboarding에서 직접 navigate 제거, 가드에 위임 | ✅ |
+| createInitialCategories 중복 생성 방지 | ✅ |
+| AuthProvider getSession 에러 핸들링 | ✅ |
+| Apple 로그인 구현 (expo-apple-authentication + Supabase) | ✅ |
+| onboarding에 Apple 로그인 버튼 추가 | ✅ |
+| EAS Build 설정 (eas.json) | ✅ |
+| 앱 아이콘, 스플래시, 홈 로고 브랜드 에셋 교체 | ✅ |
+| 온보딩 화면 로고 이미지 적용 | ✅ |
+| Supabase Apple provider 설정 | ✅ |
+| Smoke testing (신규/기존 유저, 로그아웃, 저장, 카테고리 CRUD) | ✅ |
+| MVP 백로그 현행화 | ✅ |
+| 태그 수정 기능 MVP에서 제외 → 추후 구현 | ✅ |
+
+## 미완료 (Apple Developer 승인 후)
 
 | 항목 | 비고 |
 |------|------|
-| Library 상세 다중 편집 | Phase 2: 체크박스 선택 후 카테고리 변경/삭제 |
-| 실제 기기/Development Build 전체 플로우 재확인 | Phase 2 시작 전 smoke test 권장 |
+| App ID에 Sign In with Apple capability 활성화 | Apple Developer 승인 대기 중 |
+| Apple 로그인 실기기 테스트 | Development Build 필요 |
+| Share Intent 실기기 테스트 | Development Build 필요 |
+| eas.json submit 정보 채우기 (appleId, ascAppId, appleTeamId) | App Store Connect 앱 생성 후 |
+| EAS Build → TestFlight → App Store 제출 | 최종 배포 |
+
+## 미완료 (추후)
+
+| 항목 | 비고 |
+|------|------|
+| 태그 수정 기능 | Content Detail에서 태그 편집 |
+| Library 상세 다중 편집 | 체크박스 선택 후 카테고리 변경/삭제 |
 
 ## 기술 메모
 
@@ -73,4 +101,5 @@
 - Share Extension은 Expo Go 불가, Development Build 필요
 - .env 변수: EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY, EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, EXPO_PUBLIC_ANTHROPIC_API_KEY
 - Supabase DB 스키마 이미 적용됨 (재실행 금지)
-- Auth: Google 소셜 로그인 (expo-auth-session + Supabase signInWithIdToken)
+- Auth: Google + Apple 소셜 로그인 (Supabase signInWithIdToken)
+- Apple 로그인: 네이티브 방식 (expo-apple-authentication + nonce), Secret Key 불필요
