@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,9 +90,9 @@ export default function ProfileScreen() {
           <View>
             <SectionLabel text="Information" />
             <View style={styles.settingsCard}>
-              <SettingRow icon="shield-checkmark-outline" label="Privacy Policy" />
+              <SettingRow icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')} />
               <Divider />
-              <SettingRow icon="chatbubble-outline" label="Contact Us" />
+              <SettingRow icon="document-text-outline" label="Terms of Service" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')} />
             </View>
           </View>
 

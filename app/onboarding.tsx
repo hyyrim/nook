@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Colors } from '@/constants';
@@ -78,9 +78,9 @@ export default function OnboardingScreen() {
 
           <Text style={styles.caption}>
             By continuing, you agree to our{' '}
-            <Text style={styles.captionLink}>Terms of Service</Text>
+            <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')}>Terms of Service</Text>
             {' '}and{' '}
-            <Text style={styles.captionLink}>Privacy Policy</Text>
+            <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')}>Privacy Policy</Text>
           </Text>
         </View>
       </View>
