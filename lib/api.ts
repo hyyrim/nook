@@ -25,6 +25,26 @@ function shouldPreferDescriptionUpdate(current: string | null, next?: string) {
   return next.includes('\n') && !current.includes('\n') && next.length >= current.length;
 }
 
+export function isDuplicateContentUrlError(error: unknown) {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message ?? '')
+      : String(error ?? '');
+
+  return (
+    message.includes('contents_user_id_url_key') ||
+    message.includes('contents_user_url_unique') ||
+    message.includes('duplicate key value') ||
+    (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: unknown }).code === '23505'
+    )
+  );
+}
+
 // ─── Categories ───
 
 export async function getCategories() {
@@ -140,6 +160,32 @@ export async function getRecentContents(limit = 10) {
     .limit(limit);
   if (error) throw error;
   return data as (Content & { categories: { name: string } | null })[];
+}
+
+export async function getRelatedContents(content: Content, limit = 2) {
+  const userId = await requireUserId();
+
+  const { data, error } = await supabase
+    .from('contents')
+    .select('*, categories(name)')
+    .eq('user_id', userId)
+    .neq('id', content.id);
+  if (error) throw error;
+
+  const items = data as (Content & { categories: { name: string } | null })[];
+
+  const scored = items.map((item) => {
+    let score = 0;
+    if (content.category_id && item.category_id === content.category_id) score += 3;
+    const tagOverlap = item.tags.filter((t) => content.tags.includes(t)).length;
+    score += tagOverlap * 2;
+    if (content.domain && item.domain === content.domain) score += 1;
+    return { item, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score || new Date(b.item.saved_at).getTime() - new Date(a.item.saved_at).getTime());
+
+  return scored.filter((s) => s.score >= 2).slice(0, limit).map((s) => s.item);
 }
 
 export async function getContentsByCategory(categoryId: string) {
@@ -320,38 +366,62 @@ export async function markContentViewed(id: string) {
 export async function getRediscoverContents(limit = 5) {
   const userId = await requireUserId();
 
-  // 1. 카테고리별 콘텐츠 수 집계 (많은 순)
-  const { data: catCounts, error: countError } = await supabase
+  // 1. 전체 콘텐츠로 카테고리별 조회율(관심도) 계산
+  const { data: allContents, error: allError } = await supabase
     .from('contents')
-    .select('category_id')
+    .select('category_id, viewed_at')
     .eq('user_id', userId)
     .not('category_id', 'is', null);
-  if (countError) throw countError;
+  if (allError) throw allError;
 
-  const freq: Record<string, number> = {};
-  for (const row of catCounts ?? []) {
-    freq[row.category_id!] = (freq[row.category_id!] ?? 0) + 1;
+  const catStats: Record<string, { total: number; viewed: number }> = {};
+  for (const row of allContents ?? []) {
+    const cid = row.category_id!;
+    if (!catStats[cid]) catStats[cid] = { total: 0, viewed: 0 };
+    catStats[cid].total++;
+    if (row.viewed_at) catStats[cid].viewed++;
   }
 
-  // 2. 안 본 콘텐츠 가져오기
+  const interestRate = (categoryId: string | null): number => {
+    if (!categoryId || !catStats[categoryId]) return 0;
+    const s = catStats[categoryId];
+    return s.total > 0 ? s.viewed / s.total : 0;
+  };
+
+  // 2. 안 본 콘텐츠 가져오기 (최근 14일 이내 저장분)
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
     .eq('user_id', userId)
-    .is('viewed_at', null);
+    .is('viewed_at', null)
+    .gte('saved_at', since);
   if (error) throw error;
 
   const items = data as (Content & { categories: { name: string } | null })[];
+  const now = Date.now();
 
-  // 3. 카테고리 빈도 높은 순 → 미분류는 마지막 → saved_at 오래된 순
-  items.sort((a, b) => {
-    const freqA = a.category_id ? (freq[a.category_id] ?? 0) : -1;
-    const freqB = b.category_id ? (freq[b.category_id] ?? 0) : -1;
-    if (freqB !== freqA) return freqB - freqA;
-    return new Date(a.saved_at).getTime() - new Date(b.saved_at).getTime();
+  // 3. 관심도 × 망각도 스코어 → 카테고리당 최대 2개
+  const scored = items.map((item) => {
+    const interest = interestRate(item.category_id);
+    const daysSinceSaved = (now - new Date(item.saved_at).getTime()) / (1000 * 60 * 60 * 24);
+    const forgottenness = Math.max(daysSinceSaved / 7, 0.1);
+    return { item, score: interest * forgottenness };
   });
 
-  return items.slice(0, limit);
+  scored.sort((a, b) => b.score - a.score);
+
+  const result: typeof items = [];
+  const catCount: Record<string, number> = {};
+  for (const { item } of scored) {
+    const cid = item.category_id ?? '__uncategorized__';
+    catCount[cid] = (catCount[cid] ?? 0) + 1;
+    if (catCount[cid] > 2) continue;
+    result.push(item);
+    if (result.length >= limit) break;
+  }
+
+  return result;
 }
 
 // ─── AI Classification (비동기) ───

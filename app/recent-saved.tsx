@@ -118,6 +118,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.tertiary,
     textAlign: 'center',
-    paddingVertical: 40,
+    paddingVertical: 160,
   },
 });

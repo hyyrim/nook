@@ -26,10 +26,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   title: {
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     color: Colors.primary,
-    letterSpacing: -0.8,
+    letterSpacing: -0.6,
   },
   empty: {
     flex: 1,

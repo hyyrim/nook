@@ -73,15 +73,14 @@ export default function AccountSettingsScreen() {
       {/* Navigation */}
       <View style={styles.nav}>
         <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={Colors.primary} />
+          <Ionicons name="chevron-back" size={18} color={Colors.primary} />
           <Text style={styles.backLabel}>프로필</Text>
         </Pressable>
+        <Text style={styles.navTitle}>계정 설정</Text>
+        <View style={styles.navRight} />
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>계정 설정</Text>
-        </View>
 
         <View style={styles.content}>
           {/* Account info */}
@@ -136,33 +135,33 @@ const styles = StyleSheet.create({
   nav: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    marginBottom: 16,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    minWidth: 70,
   },
   backLabel: {
     fontSize: 16,
     color: Colors.primary,
     fontWeight: '500',
   },
+  navTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: Colors.primary,
+    textAlign: 'center',
+  },
+  navRight: {
+    minWidth: 70,
+  },
   scroll: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.8,
-    lineHeight: 36,
   },
   content: {
     paddingHorizontal: 20,

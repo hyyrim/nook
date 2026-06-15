@@ -1,9 +1,9 @@
 import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, ActivityIndicator } from 'react-native';
 import { useRef, useState, useEffect } from 'react';
 import * as Clipboard from 'expo-clipboard';
-import { Colors } from '@/constants';
+import { Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
-import { saveContent } from '@/lib/api';
+import { isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
 
 type SaveBottomSheetProps = {
@@ -23,6 +23,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
     if (!visible) {
       setUrl('');
       setSaved(false);
+      setUrlError('');
     }
   }, [visible]);
 
@@ -63,23 +64,49 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
   }, [visible, backdropOpacity, sheetTranslateY]);
 
   const [saving, setSaving] = useState(false);
+  const [urlError, setUrlError] = useState('');
+
+  const isValidUrl = (text: string) => {
+    try {
+      const parsed = new URL(text);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleUrlChange = (text: string) => {
+    setUrl(text);
+    if (urlError) setUrlError('');
+  };
 
   const handleSave = async () => {
     const trimmed = url.trim();
     if (!trimmed) return;
+    if (!isValidUrl(trimmed)) {
+      setUrlError('올바른 URL을 입력해 주세요');
+      return;
+    }
     setSaving(true);
     try {
-      const domain = (() => { try { return new URL(trimmed).hostname; } catch { return undefined; } })();
+      const domain = new URL(trimmed).hostname;
       await saveContent({ url: trimmed, domain });
       setSaved(true);
       onSaved?.();
       emit('content-saved');
       setTimeout(() => onClose(), 1600);
-    } catch (e: any) {
-      const msg = e.message?.includes('contents_user_url_unique')
-        ? '이미 저장된 링크예요.'
-        : e.message;
-      Alert.alert('Save Failed', msg);
+    } catch (e: unknown) {
+      if (isDuplicateContentUrlError(e)) {
+        Alert.alert(
+          '이미 저장된 링크예요',
+          '검색으로 저장한 콘텐츠를 찾아볼 수 있어요.', [
+            { text: '확인', style: 'default' },
+          ]
+        );
+        return;
+      }
+
+      Alert.alert('저장에 실패했어요', '잠시 후 다시 시도해 주세요.');
     } finally {
       setSaving(false);
     }
@@ -105,7 +132,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
             <View style={styles.dragHandle} />
 
             <View style={styles.header}>
-              <Text style={styles.title}>Nook에 저장</Text>
+              <Text style={styles.title}>링크 저장</Text>
               <Pressable onPress={onClose} style={styles.closeButton}>
                 <Ionicons name="close" size={14} color={Colors.secondary} />
               </Pressable>
@@ -114,10 +141,9 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
             {saved ? (
               <View style={styles.successContainer}>
                 <View style={styles.successCircle}>
-                  <Ionicons name="checkmark" size={24} color={Colors.accent} />
+                  <Ionicons name="checkmark" size={24} color={Colors.success} />
                 </View>
                 <Text style={styles.successTitle}>저장 완료!</Text>
-                <Text style={styles.successSubtitle}>Nook 아카이브에 추가했어요</Text>
               </View>
             ) : (
               <View style={styles.form}>
@@ -128,10 +154,11 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
                     placeholder="https://example.com/article"
                     placeholderTextColor={Colors.tertiary}
                     value={url}
-                    onChangeText={setUrl}
+                    onChangeText={handleUrlChange}
                     autoCapitalize="none"
                     keyboardType="url"
                   />
+                  {urlError ? <Text style={Typography.errorText}>{urlError}</Text> : null}
                 </View>
 
                 <Pressable
@@ -266,7 +293,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#FFF0F0',
+    backgroundColor: `${Colors.success}22`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
@@ -276,9 +303,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
     marginBottom: 5,
-  },
-  successSubtitle: {
-    fontSize: 13,
-    color: Colors.secondary,
   },
 });

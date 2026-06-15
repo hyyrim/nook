@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+- Problem: 중복 링크를 저장할 때 Supabase unique constraint 원문이 Alert에 그대로 노출되어 사용자 안내가 불친절했다.
+- AI tool used: Codex
+- Prompt summary: 중복 링크 저장 실패 안내가 너무 불친절하다는 피드백과 화면 캡처를 바탕으로 사용자 친화적인 안내로 수정 요청.
+- Result: 중복 URL 에러 판별을 `lib/api.ts`의 공통 헬퍼로 분리하고, Save Bottom Sheet Alert와 Share Intent 토스트 모두 `이미 저장된 링크예요` 톤의 한국어 안내를 사용하도록 바꿨다.
+- Lesson learned: 데이터베이스 제약조건은 저장 안정성을 위해 필요하지만, 사용자에게는 기술 원문이 아니라 현재 상태와 다음 행동을 알려주는 카피로 번역되어야 한다.
+
+---
+
 - Problem: Library의 `카테고리 추가` 카드가 dashed 사각형이라 다른 폴더 카드들과 형태 언어가 달라 보였다.
 - AI tool used: Codex
 - Prompt summary: 카테고리 추가 dashed 외곽선을 폴더 모양으로 표현할 수 있는지 요청.

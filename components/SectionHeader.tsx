@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: -0.3,

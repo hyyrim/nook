@@ -1,18 +1,20 @@
 import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { Colors } from '@/constants';
+import { Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type CategoryBottomSheetProps = {
   visible: boolean;
   mode: 'add' | 'edit';
   initialValue?: string;
+  existingNames?: string[];
   onClose: () => void;
   onSubmit?: (name: string) => void;
 };
 
-export function CategoryBottomSheet({ visible, mode, initialValue = '', onClose, onSubmit }: CategoryBottomSheetProps) {
+export function CategoryBottomSheet({ visible, mode, initialValue = '', existingNames = [], onClose, onSubmit }: CategoryBottomSheetProps) {
   const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState('');
   const [isMounted, setIsMounted] = useState(visible);
   const inputRef = useRef<TextInput>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -20,6 +22,7 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', onClose,
 
   useEffect(() => {
     setValue(initialValue);
+    setError('');
   }, [initialValue, visible]);
 
   useEffect(() => {
@@ -69,9 +72,22 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', onClose,
   const title = isEdit ? '카테고리 수정' : '카테고리 추가';
   const cta = isEdit ? '수정' : '추가';
 
+  const handleValueChange = (text: string) => {
+    setValue(text);
+    if (error) setError('');
+  };
+
   const handleSubmit = () => {
-    if (!value.trim()) return;
-    onSubmit?.(value.trim());
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const isDuplicate = existingNames.some(
+      (name) => name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (isDuplicate && trimmed.toLowerCase() !== initialValue.trim().toLowerCase()) {
+      setError('이미 같은 이름의 카테고리가 있어요');
+      return;
+    }
+    onSubmit?.(trimmed);
     onClose();
   };
 
@@ -105,8 +121,9 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', onClose,
                   placeholder="예) AI, 디자인, 여행..."
                   placeholderTextColor={Colors.tertiary}
                   value={value}
-                  onChangeText={setValue}
+                  onChangeText={handleValueChange}
                 />
+                {error ? <Text style={Typography.errorText}>{error}</Text> : null}
               </View>
 
               <Pressable

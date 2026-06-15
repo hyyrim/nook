@@ -143,15 +143,18 @@ contents
 ## 디자인 시스템
 
 ```
-Background:     #F2F2F2
-Card:           #FFFFFF
-Text Primary:   #1A1A1A
-Text Secondary: #767676
-Text Tertiary:  #ABABAB
-Border:         #E5E5E5
-Accent (Red):   #E5251A  ← 재발견 닷, CTA에만 절제 사용
+Background:      #F2F2F2
+Card:            #FFFFFF
+Text Primary:    #1A1A1A
+Text Secondary:  #767676
+Text Tertiary:   #ABABAB
+Border:          #E5E5E5
+Accent (Red):    #E5251A  ← 재발견 닷, CTA에만 절제 사용
+Success (Green): #34C759
 
 Font: Pretendard
+- Page Title (1depth):  700 / 26px  ← 탭 화면 (홈, 폴더, 리포트, 프로필)
+- Nav Title (2depth):   600 / 17px  ← 하위 화면 (카테고리 상세, 계정 설정 등)
 - Title:   700 / 20px
 - Subtitle: 600 / 16px
 - Body:    400 / 14px

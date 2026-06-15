@@ -13,7 +13,7 @@ function FabButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={styles.fabContainer}>
       <View style={styles.fab}>
-        <Ionicons name="add" size={24} color="#FFFFFF" />
+        <Ionicons name="add" size={32} color="#FFFFFF" />
       </View>
     </Pressable>
   );

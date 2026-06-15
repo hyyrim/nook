@@ -81,9 +81,9 @@ export default function ProfileScreen() {
           <View>
             <SectionLabel text="계정" />
             <View style={styles.settingsCard}>
-              <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
-              <Divider />
               <SettingRow icon="settings-outline" label="계정 설정" onPress={() => router.push('/account-settings')} />
+                <Divider />
+              <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
             </View>
           </View>
         </View>
@@ -106,11 +106,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   title: {
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     color: Colors.primary,
-    letterSpacing: -0.8,
-    lineHeight: 36,
+    letterSpacing: -0.6,
   },
   content: {
     paddingHorizontal: 20,

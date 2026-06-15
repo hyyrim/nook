@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useShareIntent } from 'expo-share-intent';
 import { AuthProvider, useAuth } from '@/lib/AuthProvider';
-import { saveContent, getCategories } from '@/lib/api';
+import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
 import { Toast } from '@/components/Toast';
 import { Colors } from '@/constants';
@@ -62,10 +62,10 @@ function RootNavigator() {
     saveContent({ url })
       .then(() => {
         emit('content-saved');
-        setToast({ visible: true, message: 'Nook에 저장했어요!', type: 'success' });
+        setToast({ visible: true, message: '저장 완료!', type: 'success' });
       })
-      .catch((e: any) => {
-        const msg = e.message?.includes('contents_user_url_unique')
+      .catch((e: unknown) => {
+        const msg = isDuplicateContentUrlError(e)
           ? '이미 저장된 링크예요'
           : '저장에 실패했어요';
         setToast({ visible: true, message: msg, type: 'error' });

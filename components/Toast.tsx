@@ -38,7 +38,7 @@ export function Toast({ visible, message, onHide, duration = 2000, type = 'succe
   if (!visible) return null;
 
   const icon = type === 'success' ? 'checkmark-circle' : 'alert-circle';
-  const iconColor = type === 'success' ? '#34C759' : Colors.accent;
+  const iconColor = type === 'success' ? Colors.success : Colors.accent;
 
   return (
     <Animated.View

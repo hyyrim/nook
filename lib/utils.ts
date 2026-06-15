@@ -1,3 +1,67 @@
+import { Linking } from 'react-native';
+
+const APP_SCHEMES: { match: (host: string) => boolean; toAppUrl: (url: URL) => string; scheme: string }[] = [
+  {
+    match: (h) => ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(h),
+    toAppUrl: (url) => `youtube://${url.pathname}${url.search}`,
+    scheme: 'youtube',
+  },
+  {
+    match: (h) => ['instagram.com', 'www.instagram.com'].includes(h),
+    toAppUrl: (url) => `instagram://app${url.pathname}`,
+    scheme: 'instagram',
+  },
+  {
+    match: (h) => ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com'].includes(h),
+    toAppUrl: (url) => `twitter://open${url.pathname}`,
+    scheme: 'twitter',
+  },
+  {
+    match: (h) => ['blog.naver.com', 'm.blog.naver.com'].includes(h),
+    toAppUrl: () => 'naverblog://',
+    scheme: 'naverblog',
+  },
+  {
+    match: (h) => h.endsWith('naver.com'),
+    toAppUrl: () => 'naversearchapp://',
+    scheme: 'naversearchapp',
+  },
+  {
+    match: (h) => ['tiktok.com', 'www.tiktok.com'].includes(h),
+    toAppUrl: (url) => `tiktok://open${url.pathname}`,
+    scheme: 'tiktok',
+  },
+  {
+    match: (h) => ['threads.net', 'www.threads.net'].includes(h),
+    toAppUrl: (url) => `threads://open${url.pathname}`,
+    scheme: 'threads',
+  },
+  {
+    match: (h) => ['linkedin.com', 'www.linkedin.com'].includes(h),
+    toAppUrl: (url) => `linkedin://open${url.pathname}`,
+    scheme: 'linkedin',
+  },
+];
+
+export async function openInAppOrBrowser(urlString: string) {
+  try {
+    const parsed = new URL(urlString);
+    const host = parsed.hostname.toLowerCase();
+    const entry = APP_SCHEMES.find((e) => e.match(host));
+
+    if (entry) {
+      const appUrl = entry.toAppUrl(parsed);
+      const canOpen = await Linking.canOpenURL(appUrl);
+      if (canOpen) {
+        await Linking.openURL(appUrl);
+        return;
+      }
+    }
+  } catch {}
+
+  await Linking.openURL(urlString);
+}
+
 export function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();

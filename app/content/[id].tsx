@@ -1,4 +1,4 @@
-import { Image, Linking, View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { Image, View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback } from 'react';
@@ -8,9 +8,9 @@ import { ActionSheet } from '@/components/ActionSheet';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import { ContentTitleSheet } from '@/components/ContentTitleSheet';
 import { Ionicons } from '@expo/vector-icons';
-import { getContentById, markContentViewed, deleteContent, getRecentContents, refreshContentMetadata, updateContent } from '@/lib/api';
+import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatSource, placeholderColor } from '@/lib/utils';
+import { formatSource, placeholderColor, openInAppOrBrowser } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -85,10 +85,7 @@ export default function ContentDetailScreen() {
       let cancelled = false;
       (async () => {
         try {
-          const [content, recentAll] = await Promise.all([
-            getContentById(id),
-            getRecentContents(10),
-          ]);
+          const content = await getContentById(id);
           if (cancelled) return;
           setItem(content);
           setDescriptionExpanded(false);
@@ -101,13 +98,9 @@ export default function ContentDetailScreen() {
               .catch((error) => console.warn('Metadata refresh failed:', error));
           }
 
-          // 관련 콘텐츠: 같은 카테고리 우선, 자기 자신 제외, 최대 2개
-          const others = recentAll.filter(c => c.id !== id);
-          const sameCat = content.category_id
-            ? others.filter(c => c.category_id === content.category_id)
-            : [];
-          const pool = sameCat.length >= 2 ? sameCat.slice(0, 2) : [...sameCat, ...others.filter(c => !sameCat.includes(c))].slice(0, 2);
-          setRelated(pool);
+          // 관련 콘텐츠: 카테고리 +3, 태그 겹침 ×2, 같은 도메인 +1
+          const relatedItems = await getRelatedContents(content, 2);
+          if (!cancelled) setRelated(relatedItems);
 
           // viewed_at 업데이트
           markContentViewed(id).catch(() => {});
@@ -208,7 +201,7 @@ export default function ContentDetailScreen() {
                     {item.categories?.name ?? '미분류'} · {formatSource(item.domain)}
                   </Text>
                 </View>
-                <Pressable onPress={() => Linking.openURL(item.url)} style={styles.originalLinkButton}>
+                <Pressable onPress={() => openInAppOrBrowser(item.url)} style={styles.originalLinkButton}>
                   <Text style={styles.originalLink}>원문 바로가기 →</Text>
                 </Pressable>
               </View>

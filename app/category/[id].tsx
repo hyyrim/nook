@@ -13,6 +13,7 @@ import {
   getCategoryWithCount,
   getContentsByCategory,
   getUncategorizedContents,
+  getCategories,
   updateCategory,
   deleteCategory,
 } from '@/lib/api';
@@ -32,6 +33,7 @@ export default function CategoryDetailScreen() {
   const [category, setCategory] = useState<Category | null>(null);
   const [count, setCount] = useState(0);
   const [articles, setArticles] = useState<Content[]>([]);
+  const [allCategoryNames, setAllCategoryNames] = useState<string[]>([]);
 
   const isUncategorized = id === 'uncategorized';
 
@@ -48,13 +50,15 @@ export default function CategoryDetailScreen() {
         setArticles(items);
         setCount(items.length);
       } else {
-        const [catData, items] = await Promise.all([
+        const [catData, items, allCats] = await Promise.all([
           getCategoryWithCount(id),
           getContentsByCategory(id),
+          getCategories(),
         ]);
         setCategory(catData.category);
         setCount(catData.count);
         setArticles(items);
+        setAllCategoryNames(allCats.map((c) => c.name));
       }
     } catch (e) {
       console.error('Category load error:', e);
@@ -119,15 +123,17 @@ export default function CategoryDetailScreen() {
             <Ionicons name="chevron-back" size={18} color={Colors.primary} />
             <Text style={styles.backLabel}>폴더</Text>
           </Pressable>
-          {!isUncategorized && (
+          <Text style={styles.navTitle} numberOfLines={1}>{catName}</Text>
+          {!isUncategorized ? (
             <Pressable onPress={() => setShowActionSheet(true)} style={styles.moreButton}>
               <Ionicons name="ellipsis-horizontal" size={18} color={Colors.primary} />
             </Pressable>
+          ) : (
+            <View style={styles.navRight} />
           )}
         </View>
 
         <View style={styles.headerSection}>
-          <Text style={styles.title}>{catName}</Text>
           <Text style={styles.subtitle}>{count}개 저장됨</Text>
           <SearchBar
             placeholder="이 폴더에서 찾기"
@@ -184,6 +190,7 @@ export default function CategoryDetailScreen() {
             visible={showEditSheet}
             mode="edit"
             initialValue={category?.name ?? ''}
+            existingNames={allCategoryNames}
             onClose={() => setShowEditSheet(false)}
             onSubmit={handleUpdate}
           />
@@ -208,18 +215,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 6,
-    paddingBottom: 8,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 2,
     padding: 8,
     borderRadius: 8,
+    minWidth: 70,
   },
   backLabel: {
     fontSize: 16,
     color: Colors.primary,
+    fontWeight: '500',
+  },
+  navTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: Colors.primary,
+    textAlign: 'center',
+    flex: 1,
   },
   moreButton: {
     width: 32,
@@ -227,19 +244,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 6,
+    minWidth: 70,
+  },
+  navRight: {
+    minWidth: 70,
   },
   headerSection: {
     paddingHorizontal: 20,
     paddingBottom: 14,
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.8,
-    lineHeight: 36,
-    marginBottom: 8,
   },
   subtitle: {
     fontSize: 13,
@@ -256,7 +268,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     alignItems: 'center',
-    paddingVertical: 52,
+    paddingVertical: 160,
     gap: 4,
   },
   emptyTitle: {

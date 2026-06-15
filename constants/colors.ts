@@ -6,4 +6,5 @@ export const Colors = {
   tertiary: '#ABABAB',
   border: '#E5E5E5',
   accent: '#E5251A',
+  success: '#34C759'
 } as const;

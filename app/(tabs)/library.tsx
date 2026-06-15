@@ -95,6 +95,7 @@ export default function LibraryScreen() {
       <CategoryBottomSheet
         visible={showAddCategory}
         mode="add"
+        existingNames={categories.map((c) => c.name)}
         onClose={() => setShowAddCategory(false)}
         onSubmit={handleAddCategory}
       />
@@ -116,11 +117,10 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   title: {
-    fontSize: 34,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     color: Colors.primary,
-    letterSpacing: -0.8,
-    lineHeight: 36,
+    letterSpacing: -0.6,
   },
   grid: {
     flexDirection: 'row',

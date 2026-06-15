@@ -33,7 +33,7 @@ export default function HomeScreen() {
     try {
       const [recent, rediscover] = await Promise.all([
         getRecentContents(3),
-        getRediscoverContents(5),
+        getRediscoverContents(10),
       ]);
       setRecentItems(recent);
       setRediscoverItems(rediscover);
@@ -114,7 +114,7 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                   <SectionHeader
                     icon="sparkles"
-                    label="다시 볼 콘텐츠"
+                    label="발견된 콘텐츠"
                     dot
                   />
                   <ScrollView
@@ -142,9 +142,9 @@ export default function HomeScreen() {
               ) : recentItems.length > 0 ? (
                 <View style={styles.rediscoverPlaceholder}>
                   <Ionicons name="sparkles-outline" size={28} color={Colors.tertiary} />
-                  <Text style={styles.placeholderTitle}>지금은 다시 볼 콘텐츠가 없어요</Text>
+                  <Text style={styles.placeholderTitle}>지금은 발견된 콘텐츠가 없어요</Text>
                   <Text style={styles.placeholderText}>
-                    아직 열어보지 않은 관심 콘텐츠가 생기면 여기에 나타나요.
+                    열어보지 않은 관심 콘텐츠가 생기면 여기에 나타나요.
                   </Text>
                 </View>
               ) : null}
@@ -173,9 +173,8 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   appLogo: {
-    height: 52,
-    width: 138,
-    marginBottom: 10,
+    height: 42,
+    width: 110,
   },
   searchButton: {
     width: 40,

@@ -9,7 +9,21 @@
     "scheme": ["nook", "com.nook.app"],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.nook.app"
+      "bundleIdentifier": "com.nook.app",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "youtube",
+          "instagram",
+          "twitter",
+          "naversearchapp",
+          "naverblog",
+          "kakaotalk",
+          "fb",
+          "tiktok",
+          "linkedin",
+          "threads"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
