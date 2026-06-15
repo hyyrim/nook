@@ -203,7 +203,7 @@ export default function ContentDetailScreen() {
             <View style={styles.headerMeta}>
               <View style={styles.categoryRow}>
                 <View style={styles.categoryMeta}>
-                  <Ionicons name="grid-outline" size={10} color={Colors.tertiary} />
+                  <Ionicons name="folder-outline" size={10} color={Colors.tertiary} />
                   <Text style={styles.categoryText} numberOfLines={1}>
                     {item.categories?.name ?? '미분류'} · {formatSource(item.domain)}
                   </Text>

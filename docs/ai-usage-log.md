@@ -2,6 +2,22 @@
 
 ## 2026-06-15
 
+- Problem: Profile의 계정 삭제 UX를 Claude Code와 추가 논의하기 위한 맥락 문서가 필요했다.
+- AI tool used: Codex
+- Prompt summary: 기존 앱들은 계정 삭제를 어떤 방식으로 배치하는지 확인한 뒤, Claude Code와 논의할 수 있는 md 파일 작성 요청.
+- Result: `docs/profile-account-deletion-ux.md`를 추가해 Apple 가이드, 일반 앱 패턴, Nook 추천 방향, 카피, 구현 체크포인트, open question을 정리했다.
+- Lesson learned: 위험 액션은 단순히 숨기는 것보다 사용자가 기대하는 정보 구조 안에 배치해야 자연스럽다. 계정 삭제는 account settings 2depth 안에 두는 방향이 가장 설명 가능하다.
+
+---
+
+- Problem: Profile 화면에서 `계정 삭제`가 `로그아웃`과 같은 1depth 카드에 빨간색으로 노출되어 위험 액션이 과하게 강조되는 문제
+- AI tool used: Codex
+- Prompt summary: 프로필의 계정 삭제 액션을 한 단계 숨기거나 더 작게 표시하는 UX 대안 검토 및 최소 UI 수정 요청
+- Result: 새 주요 화면을 추가하지 않고 기존 `ActionSheet`를 재사용해 `계정 관리` 안에 `계정 삭제`를 배치했다. `로그아웃`은 일반 계정 액션 색상으로 낮춰 Accent Red 노출을 줄였다.
+- Lesson learned: App Store 정책상 계정 삭제는 접근 가능해야 하지만, 일반 설정 목록에서 직접 강조할 필요는 없다. 위험 액션은 별도 관리 액션 안에 두고 최종 Alert 확인을 유지하는 편이 안전하다.
+
+---
+
 - Problem: 로그인부터 시작하는 현재 진입 흐름이 초기 사용자에게 장벽으로 느껴질 수 있어, 로그인 전 서비스 탐색을 허용할지 검토가 필요했다.
 - AI tool used: Codex
 - Prompt summary: Nook에서 `로그인 후 메인 진입`과 `메인 먼저 노출 후 로그인 유도` 중 어떤 흐름이 더 적절한지 논의. 이어서 로그인 화면 하단에 `건너뛰기` 또는 `먼저 둘러보기` 버튼을 두고, 저장 등 개인 데이터 액션 시 로그인 안내를 띄우는 방향이 자연스러운지 검토.

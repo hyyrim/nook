@@ -7,7 +7,6 @@ import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { RediscoverCard } from '@/components/RediscoverCard';
 import { SectionHeader } from '@/components/SectionHeader';
-import { SearchBar } from '@/components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { on } from '@/lib/events';
@@ -66,8 +65,12 @@ export default function HomeScreen() {
             style={styles.appLogo}
             resizeMode="cover"
           />
-          <Pressable onPress={() => router.push('/search')}>
-            <SearchBar />
+          <Pressable
+            onPress={() => router.push('/search')}
+            style={styles.searchButton}
+            hitSlop={8}
+          >
+            <Ionicons name="search-outline" size={21} color={Colors.secondary} />
           </Pressable>
         </View>
 
@@ -111,9 +114,9 @@ export default function HomeScreen() {
                 <View style={styles.section}>
                   <SectionHeader
                     icon="sparkles"
-                    label="Rediscover"
+                    label="다시 볼 콘텐츠"
                     dot
-                    subtitle="관심 높은 카테고리 · 미열람"
+                    subtitle="관심 카테고리 · 미열람"
                   />
                   <ScrollView
                     horizontal
@@ -139,15 +142,11 @@ export default function HomeScreen() {
                 </View>
               ) : recentItems.length > 0 ? (
                 <View style={styles.rediscoverPlaceholder}>
-                  <View style={styles.placeholderIcon}>
-                    <Ionicons name="sparkles" size={16} color={Colors.accent} />
-                  </View>
-                  <View style={styles.placeholderCopy}>
-                    <Text style={styles.placeholderTitle}>Rediscover 준비 중이에요</Text>
-                    <Text style={styles.placeholderText}>
-                      아직 열어보지 않은 저장 콘텐츠가 여기에 나타나요.
-                    </Text>
-                  </View>
+                  <Ionicons name="sparkles-outline" size={28} color={Colors.tertiary} />
+                  <Text style={styles.placeholderTitle}>지금은 다시 볼 콘텐츠가 없어요</Text>
+                  <Text style={styles.placeholderText}>
+                    아직 열어보지 않은 관심 콘텐츠가 생기면 여기에 나타나요.
+                  </Text>
                 </View>
               ) : null}
             </>
@@ -167,6 +166,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 0,
@@ -175,6 +177,21 @@ const styles = StyleSheet.create({
     height: 52,
     width: 138,
     marginBottom: 10,
+  },
+  searchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   content: {
     paddingHorizontal: 20,
@@ -208,42 +225,26 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   rediscoverPlaceholder: {
-    minHeight: 118,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.07)',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  placeholderIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFF2F1',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  placeholderCopy: {
-    flex: 1,
-    gap: 4,
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
+    borderStyle: 'dashed',
   },
   placeholderTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: -0.2,
+    fontWeight: '600',
+    color: Colors.secondary,
+    marginTop: 4,
   },
   placeholderText: {
     fontSize: 12,
-    color: Colors.secondary,
+    color: Colors.tertiary,
     lineHeight: 17,
+    textAlign: 'center',
   },
 });
