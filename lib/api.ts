@@ -419,3 +419,10 @@ export async function createInitialCategories(names: string[]) {
   if (error) throw error;
   return data as Category[];
 }
+
+// ─── Account ───
+
+export async function deleteAccount() {
+  const { error } = await supabase.rpc('delete_user_account');
+  if (error) throw error;
+}

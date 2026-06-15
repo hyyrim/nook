@@ -4,6 +4,23 @@
 
 ### Decision
 
+계정 삭제 기능 구현 (App Store 정책 필수)
+
+### Why
+
+- App Store 정책상 계정 생성을 제공하면 계정 삭제도 제공해야 함
+- Codex 리뷰에서 App Store 제출 요건 누락으로 지적됨
+
+### Impact
+
+- Supabase RPC `delete_user_account()` 함수로 contents → categories → auth.users 순서 삭제
+- Profile 화면 Account 섹션에 Delete Account 버튼 추가
+- 2단계 확인 Alert 후 삭제 + 자동 로그아웃
+
+---
+
+### Decision
+
 iOS 배포 준비: Apple 로그인 구현, EAS Build 설정, 앱 에셋 교체
 
 ### Why
@@ -74,3 +91,22 @@ Freeze scope to the originally defined MVP before expanding to Report, Forgotten
 - Prioritize onboarding route gating, flow verification, and Library/save flow stability
 - Keep Report and Forgotten Content out of the active implementation scope for now
 - iOS distribution preparation remains important, especially Apple Developer enrollment and bundle identity decisions
+
+---
+
+### Decision
+
+Do not treat the project as "MVP 100% complete with only Apple Developer approval tasks remaining."
+
+### Why
+
+- The repo includes major implementation work already, but that does not automatically mean the app is submission-ready
+- A review of the current codebase shows that some remaining work is still app-level, not only Apple account or distribution setup
+- App Store readiness must be judged by actual flows and policy requirements, not just by the existence of screens and integrations
+
+### Impact
+
+- Keep verifying whether Sign in with Apple is fully implemented in app code, not only planned in Apple capabilities
+- Keep checking onboarding/auth route behavior using real user-state conditions
+- Keep App Store readiness items such as account deletion and privacy/help entry points in scope until explicitly confirmed complete
+- Do not compress the remaining work into "Apple approval only" until those checks are closed

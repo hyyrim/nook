@@ -4,6 +4,7 @@ import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
+import { deleteAccount } from '@/lib/api';
 
 function SettingRow({ icon, label, danger, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress?: () => void }) {
   return (
@@ -45,6 +46,27 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '계정 삭제',
+      '모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제', style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              await supabase.auth.signOut();
+            } catch (e: any) {
+              Alert.alert('오류', e.message || '계정 삭제에 실패했습니다.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -79,6 +101,8 @@ export default function ProfileScreen() {
             <SectionLabel text="Account" />
             <View style={styles.settingsCard}>
               <SettingRow icon="log-out-outline" label="Log Out" danger onPress={handleLogout} />
+              <Divider />
+              <SettingRow icon="trash-outline" label="Delete Account" danger onPress={handleDeleteAccount} />
             </View>
           </View>
         </View>
