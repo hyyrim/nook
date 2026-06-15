@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+- Problem: Library의 `카테고리 추가` 카드가 dashed 사각형이라 다른 폴더 카드들과 형태 언어가 달라 보였다.
+- AI tool used: Codex
+- Prompt summary: 카테고리 추가 dashed 외곽선을 폴더 모양으로 표현할 수 있는지 요청.
+- Result: `components/FolderCard.tsx`에서 AddCategoryCard를 일반 사각형 대신 폴더 카드와 같은 탭+본체 구조로 바꾸고, 탭과 본체 모두 dashed 외곽선을 사용하도록 조정했다.
+- Lesson learned: 추가 액션 카드도 주변 반복 카드의 실루엣을 공유하면 화면 전체의 패턴이 더 일관적으로 읽힌다.
+
+---
+
 - Problem: Home의 `다시 볼 콘텐츠` 섹션에서 서브타이틀이 정보량 대비 화면을 바쁘게 만들고, Rediscover 카드의 `음악 카테고리` 표기가 설명문처럼 보여 카테고리 정보의 위계가 약했다.
 - AI tool used: Codex
 - Prompt summary: 다시 볼 콘텐츠 서브타이틀 제거, red dot 유지 여부 판단, 카드 하단 카테고리 표기 방식 검토 및 반영 요청.

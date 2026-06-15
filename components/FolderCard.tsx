@@ -30,12 +30,16 @@ export function AddCategoryCard({ onPress }: { onPress?: () => void }) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.cardItem,
-        styles.addCard,
-        pressed && { backgroundColor: 'rgba(0,0,0,0.015)' },
+        pressed && styles.pressed,
       ]}
     >
-      <Ionicons name="add" size={22} color={Colors.tertiary} />
-      <Text style={styles.addText}>카테고리 추가</Text>
+      <View style={styles.wrapper}>
+        <View style={styles.addTab} />
+        <View style={styles.addCard}>
+          <Ionicons name="add" size={22} color={Colors.tertiary} />
+          <Text style={styles.addText}>카테고리 추가</Text>
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -57,10 +61,10 @@ const styles = StyleSheet.create({
     top: 2,
     left: 0,
     width: 55,
-    height: 16,
+    height: 8,
     backgroundColor: '#E5E4E4',
     borderTopLeftRadius: 5,
-    borderTopRightRadius: 12,
+    borderTopRightRadius: 14,
   },
   card: {
     backgroundColor: Colors.surface,
@@ -88,14 +92,31 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   addCard: {
-    height: 126,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    height: 116,
+    borderTopRightRadius:12,
+    borderBottomLeftRadius:12,
+    borderBottomRightRadius:12,
+    borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#C8C8C8',
+    borderColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 6,
+  },
+  addTab: {
+    position: 'absolute',
+    top: 2,
+    left: 0,
+    width: 55,
+    height: 8,
+    zIndex: 1,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderStyle: 'dashed',
+    borderColor: '#CCCCCC',
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 14,
   },
   addText: {
     fontSize: 13,
