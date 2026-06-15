@@ -167,3 +167,77 @@ Do not treat the project as "MVP 100% complete with only Apple Developer approva
 - Keep checking onboarding/auth route behavior using real user-state conditions
 - Keep App Store readiness items such as account deletion and privacy/help entry points in scope until explicitly confirmed complete
 - Do not compress the remaining work into "Apple approval only" until those checks are closed
+
+---
+
+### Decision
+
+1depth 탭 타이틀은 26px/700, 2depth 하위 화면 타이틀은 17px/600으로 구분하고 Typography 상수로 관리한다.
+
+### Why
+
+- 기존에 모든 화면 타이틀이 32px/800으로 동일하여 화면 깊이 구분이 안 됨
+- iOS 네이티브 앱(설정 등)의 nav bar 패턴을 참고하여 2depth는 센터 정렬 + 작은 폰트로 위계 표현
+- 페이지가 늘어날수록 디자인 토큰 없이는 크기가 제각각 될 위험
+
+### Impact
+
+- `constants/typography.ts`에 `pageTitle`(26px), `navTitle`(17px) 추가
+- `CLAUDE.md` 디자인 시스템에 Page Title / Nav Title 규격 명시
+- 기존 1depth 탭(폴더, 리포트, 프로필) 타이틀 32px → 26px
+- 2depth(카테고리 상세, 계정 설정) 타이틀을 nav bar 센터로 이동, 17px
+
+---
+
+### Decision
+
+발견된 콘텐츠 알고리즘을 카테고리 빈도 기반에서 관심도 × 망각도 스코어링으로 변경한다.
+
+### Why
+
+- 카테고리별 콘텐츠 수(빈도)는 저장량을 반영할 뿐 실제 관심도를 나타내지 않음
+- "재발견"의 핵심은 사용자가 관심 있는 영역에서 놓친 콘텐츠를 꺼내주는 것
+- viewed_at 필드를 활용하면 추가 테이블 없이 조회율 기반 관심도 계산 가능
+- 기간 제한 없이 모든 미열람 콘텐츠를 대상으로 하면 데이터가 무한히 쌓임
+
+### Impact
+
+- 관심도 = 카테고리별 viewed_at != null 비율, 망각도 = 저장 경과일 / 7
+- score = 관심도 × 망각도, 카테고리당 최대 2개 다양성 제한
+- 14일 기간 제한 (테스트 단계, 출시 후 확장 예정)
+- 미분류 콘텐츠는 관심도 0으로 자연스럽게 후순위
+
+---
+
+### Decision
+
+관련 콘텐츠 알고리즘을 최근 10개 기반에서 전체 콘텐츠 대상 복합 점수로 변경하고, 최소 점수 임계값을 둔다.
+
+### Why
+
+- 기존: 최근 저장 10개 중 같은 카테고리 우선 → 매칭 범위가 좁고 무관한 콘텐츠 노출 가능
+- 태그 정확 매칭은 드물지만, 카테고리/태그/도메인을 복합으로 쓰면 신호가 충분
+- 무관한 콘텐츠(예: 요리 글에 음악 추천)는 없는 것보다 나쁨
+
+### Impact
+
+- 전체 콘텐츠 대상: 같은 카테고리 +3, 태그 겹침 ×2, 같은 도메인 +1
+- 최소 2점 이상만 표시 (도메인만 같은 경우 제외)
+- 0점이면 관련 콘텐츠 섹션 비표시
+
+---
+
+### Decision
+
+원문 바로가기에서 설치된 네이티브 앱(YouTube, Instagram, X, Naver 등)으로 열리도록 앱 URL scheme 연동 추가
+
+### Why
+
+- 기존에는 모든 링크가 Safari로만 열려서, 앱이 설치되어 있어도 인앱 경험을 활용하지 못함
+- 사용자가 주로 저장하는 콘텐츠 출처(유튜브, 인스타, 네이버 블로그 등)는 앱에서 여는 게 UX가 훨씬 좋음
+
+### Impact
+
+- `lib/utils.ts`에 `openInAppOrBrowser` 유틸 추가 (canOpenURL 체크 + Safari fallback)
+- `app.json`에 `LSApplicationQueriesSchemes` 등록 (youtube, instagram, twitter, naversearchapp 등)
+- 네이티브 설정 변경이므로 EAS Build 재빌드 필요

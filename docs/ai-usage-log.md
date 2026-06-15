@@ -127,3 +127,43 @@
 - Prompt summary: Review the current repository state and validate the claim that only App ID capability setup, real-device Apple login/share-intent tests, and EAS/TestFlight/App Store steps remained.
 - Result: The review concluded that the project should not be described that narrowly unless the remaining app-level checks are explicitly confirmed complete. The repository needs to be judged by real flow verification and App Store readiness, not only by the presence of implemented screens or integrations.
 - Lesson learned: "Most major features exist" is not the same thing as "only distribution tasks remain." Final-stage claims should be made only after checking route behavior, policy-sensitive account flows, and real submission readiness requirements.
+
+---
+
+- Problem: 링크 저장 시 잘못된 URL을 입력해도 저장이 시도되어 에러가 발생하고, 카테고리 추가 시 동일한 이름을 중복 생성할 수 있었다.
+- AI tool used: Claude Code
+- Prompt summary: SaveBottomSheet에 URL 유효성 검사, CategoryBottomSheet에 중복 카테고리 방지 추가 요청.
+- Result: http/https 프로토콜 검사로 잘못된 URL 차단, 대소문자 무시 중복 검사로 카테고리 중복 방지. errorText 스타일은 Typography 상수로 통합.
+- Lesson learned: 사용자 입력 검증은 서버 에러에 의존하기보다 클라이언트에서 선제적으로 처리하는 게 UX가 매끄럽다. 공통 스타일은 상수로 관리해야 화면 간 불일치를 방지할 수 있다.
+
+---
+
+- Problem: 2depth 페이지와 1depth 탭 화면의 타이틀 크기가 동일(32px)하여 화면 위계 구분이 어려웠다.
+- AI tool used: Claude Code
+- Prompt summary: 2depth는 iOS Settings 스타일(센터 17px), 1depth는 26px로 조정 요청.
+- Result: Typography에 pageTitle(26px)과 navTitle(17px) 상수 추가, CLAUDE.md 디자인 시스템에도 반영.
+- Lesson learned: 1depth와 2depth의 타이틀 크기 차이가 화면 깊이 인지에 큰 영향을 준다. 디자인 토큰으로 관리해야 페이지가 늘어나도 일관성을 유지할 수 있다.
+
+---
+
+- Problem: '발견된 콘텐츠' 알고리즘이 카테고리별 콘텐츠 수(빈도)만 기준으로 하여 실제 관심도를 반영하지 못하고, 콘텐츠가 무한히 쌓이는 구조였다.
+- AI tool used: Claude Code
+- Prompt summary: 발견된 콘텐츠에 적합한 알고리즘 논의 → 관심도 × 망각도 방식 채택, 테스트 단계 기간 제한 논의.
+- Result: 관심도(viewed/total) × 망각도(경과일/7) 스코어링, 카테고리당 최대 2개, 14일 기간 제한 적용.
+- Lesson learned: "재발견"은 사용자가 실제로 관심 있는 영역에서 놓친 콘텐츠를 꺼내주는 것이다. 테스트 단계에서는 짧은 기간 제한으로 알고리즘 동작을 빠르게 확인하고, 출시 후 늘리는 전략이 효과적이다.
+
+---
+
+- Problem: 관련 콘텐츠가 최근 저장 10개에서만 같은 카테고리를 찾아 매칭 정확도가 낮았고, 무관한 콘텐츠가 표시될 수 있었다.
+- AI tool used: Claude Code
+- Prompt summary: 관련 콘텐츠 알고리즘을 태그/카테고리/도메인 복합 점수 기반으로 개선 요청.
+- Result: 전체 콘텐츠 대상 복합 스코어링(카테고리+3, 태그×2, 도메인+1). 최소 2점 이상만 표시하여 무관한 콘텐츠 노출 방지.
+- Lesson learned: 도메인만 같은 경우는 관련성이 낮을 수 있으므로 최소 점수 임계값을 두어 품질을 보장하는 게 중요하다.
+
+---
+
+- Problem: 원문 바로가기를 누르면 항상 Safari로만 열려서, 설치된 앱이 있어도 앱으로 이동하지 않았다.
+- AI tool used: Claude Code
+- Prompt summary: YouTube, Instagram, X, Naver 등 설치된 앱으로 열리게 구현 요청.
+- Result: openInAppOrBrowser 유틸 추가(도메인→앱 URL scheme 매핑 + canOpenURL 체크 + Safari fallback). app.json에 LSApplicationQueriesSchemes 등록.
+- Lesson learned: iOS에서 앱 URL scheme을 사용하려면 LSApplicationQueriesSchemes에 등록이 필수이며, 네이티브 설정이라 EAS Build 재빌드가 필요하다.
