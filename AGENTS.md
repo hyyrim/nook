@@ -229,6 +229,8 @@ Typography
 
 Use Pretendard.
 
+Page Title (1depth):  700 / 26px  ← 탭 화면 (홈, 폴더, 리포트, 프로필)
+Nav Title (2depth):   600 / 17px  ← 하위 화면 (카테고리 상세, 계정 설정 등)
 Title:     700 / 20px
 Subtitle:  600 / 16px
 Body:      400 / 14px
@@ -376,22 +378,48 @@ Use for:
 
 ⸻
 
-Documentation Requirements
+Documentation Convention
 
-Record important decisions in:
+This project maintains two documentation files. All AI agents (Claude Code, Codex, ChatGPT) must follow this convention.
 
-/docs/decision-log.md
+### 1. 의사결정 로그: `docs/decisions.md`
 
-Record AI usage in:
+모든 기술/디자인/UX 의사결정을 기록하는 단일 파일입니다.
 
-/docs/ai-usage-log.md
+포맷:
+```
+## NNN. 제목 (날짜)
 
-Each AI usage log should include:
+**결정**: 무엇을 결정했는지
+**배경**: 왜 이 결정이 필요했는지
+**결과**: 구체적으로 무엇이 변경되었는지
+**교훈** (optional): 배운 점
+```
 
-* problem
-* AI tool used
-* prompt summary
-* result
-* lesson learned
+규칙:
+* 번호는 순차 증가 (현재 마지막 번호 확인 후 +1)
+* 날짜는 `YYYY-MM-DD` 형식
+* 한글로 작성, 기술 용어는 영어 허용
+* 대안 검토가 있었다면 `**대안 검토**` 항목 추가
+* 이전 결정을 고도화한 경우 `> 참고: 이후 NNN에서 고도화됨` 표시
+
+### 2. AI 사용 로그: `docs/ai-usage-log.md`
+
+AI 도구 사용 내역을 한 줄로 기록합니다. 상세 내용은 `decisions.md`를 참고.
+
+포맷:
+```
+| AI 도구 | 작업 내용 |
+```
+
+규칙:
+* 날짜별 섹션 (`## YYYY-MM-DD`)
+* 테이블 형식, 한 줄에 하나의 작업
+* 관련 의사결정이 있으면 `(→ 결정 NNN)` 링크 추가
+* 의사결정과 내용을 중복 작성하지 않음
+
+### 폐기된 파일
+
+* `docs/decision-log.md` — `decisions.md`로 통합됨 (삭제)
 
 This project should demonstrate that AI was used to support problem solving, not to replace developer judgment.
