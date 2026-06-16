@@ -109,12 +109,11 @@ Response format:
 }
 
 // 제네릭 제목 패턴 (Instagram 등 본문 캡션이 title에 안 들어오는 사이트)
+// metadata.ts의 GENERIC_TITLE_PATTERNS와 동기화 유지
 const GENERIC_TITLE_PATTERNS = [
-  /instagram\s+사진\s+및\s+동영상/i,
-  /instagram\s+photos?\s+and\s+videos?/i,
+  /instagram\s+(사진|동영상|photos?|videos?|reels?|릴스)/i,
   /on\s+instagram/i,
-  /instagram\s*릴스/i,
-  /instagram\s*reels?/i,
+  /\(@[\w.]+\)\s*[·•]\s*Instagram/i,
 ];
 
 function isGenericTitle(title: string) {
