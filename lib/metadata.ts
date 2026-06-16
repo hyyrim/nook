@@ -9,7 +9,12 @@ const META_TIMEOUT_MS = 8000;
 
 const INSTAGRAM_HOST_RE = /^(www\.)?instagram\.com$/i;
 const INSTAGRAM_POST_RE = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv)\//i;
+const INSTAGRAM_REEL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|reels)\//i;
 const YOUTUBE_HOST_RE = /^(www\.)?(youtube\.com|youtu\.be)$/i;
+
+function instagramFallbackTitle(url: string) {
+  return INSTAGRAM_REEL_RE.test(url) ? 'Instagram 릴스' : 'Instagram 게시물';
+}
 
 const BROWSER_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
@@ -86,7 +91,9 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return { domain };
+      return isInsta && INSTAGRAM_POST_RE.test(normalizedUrl)
+        ? { domain, title: instagramFallbackTitle(normalizedUrl) }
+        : { domain };
     }
 
     const html = await response.text();
@@ -97,7 +104,9 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
       ...metadata,
     };
   } catch {
-    return { domain };
+    return INSTAGRAM_POST_RE.test(normalizedUrl)
+      ? { domain: getDomain(normalizedUrl), title: instagramFallbackTitle(normalizedUrl) }
+      : { domain: getDomain(normalizedUrl) };
   }
 }
 
@@ -119,11 +128,10 @@ function getDomain(url: string) {
 
 // 제네릭 제목 패턴 (인스타그램 등 본문 캡션이 title에 안 들어오는 사이트)
 const GENERIC_TITLE_PATTERNS = [
-  /instagram\s+사진\s+및\s+동영상/i,
-  /instagram\s+photos?\s+and\s+videos?/i,
+  /instagram\s+(사진|동영상|photos?|videos?|reels?|릴스)/i,
   /on\s+instagram/i,
-  /instagram\s*릴스/i,
-  /instagram\s*reels?/i,
+  // "Name (@username) • Instagram ..." 형식은 캡션이 없는 generic 제목
+  /\(@[\w.]+\)\s*[·•]\s*Instagram/i,
 ];
 
 function isGenericTitle(title: string) {
@@ -152,13 +160,16 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
   let title = rawTitle;
   if ((!title || isGenericTitle(title)) && (caption || description)) {
     const source = caption || description!;
-    const firstLine = source.split(/[.\n]/).find(s => s.trim().length > 0)?.trim();
-    title = firstLine && firstLine.length > 100 ? firstLine.slice(0, 100) + '…' : firstLine ?? source.slice(0, 100);
-  } else if (title && isGenericTitle(title)) {
-    // 캡션/description 없으면 제네릭 접미사만 제거 (계정명만 표시)
-    title = title
-      .replace(/\s*[·•]\s*Instagram\s+(사진\s+및\s+동영상|릴스|Reels?|photos?\s+and\s+videos?)\s*$/i, '')
-      .trim();
+    // "1. 우선..." 같은 번호 매김의 첫 토큰('1') 등 의미 없는 짧은 조각은 skip
+    const firstLine = source
+      .split(/[.\n]/)
+      .map(s => s.trim())
+      .find(s => s.length >= 3 && !/^\d+$/.test(s));
+    const candidate = firstLine ?? source.trim();
+    title = candidate.length > 100 ? candidate.slice(0, 100) + '…' : candidate;
+  } else if (title && isGenericTitle(title) && isInstagramUrl(baseUrl)) {
+    // 캡션/description을 못 가져왔으면 계정명 단독 노출 대신 형식 기반 fallback 사용
+    title = instagramFallbackTitle(baseUrl);
   }
 
   const thumbnail =

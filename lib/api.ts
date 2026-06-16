@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { classifyContent } from './ai';
+import { emit, markClassified, markClassifying } from './events';
 import { fetchLinkMetadata, normalizeUrl } from './metadata';
 import type { Category, Content } from '@/types';
 
@@ -256,10 +257,16 @@ export async function saveContent(input: {
 
   const saved = data as Content;
 
-  // 비동기 AI 분류 (저장 UX와 분리, 실패해도 저장은 유지)
-  classifyAndUpdate(saved, metaDescription).catch(err =>
-    console.warn('AI classification failed:', err),
-  );
+  // 비동기 AI 분류 (저장 UX와 분리, 실패해도 저장은 유지).
+  // markClassifying은 saveContent return 전에 동기로 수행되어
+  // 호출자가 emit('content-saved')로 화면을 갱신할 때 "분류 중" 상태가 반영되도록 보장.
+  markClassifying(saved.id);
+  classifyAndUpdate(saved, metaDescription)
+    .catch(err => console.warn('AI classification failed:', err))
+    .finally(() => {
+      markClassified(saved.id);
+      emit('content-classified');
+    });
 
   return saved;
 }

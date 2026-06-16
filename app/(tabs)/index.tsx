@@ -9,7 +9,7 @@ import { RediscoverCard } from '@/components/RediscoverCard';
 import { SectionHeader } from '@/components/SectionHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
-import { on } from '@/lib/events';
+import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, placeholderColor, rediscoverColors } from '@/lib/utils';
 import type { Content } from '@/types';
@@ -52,7 +52,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!session) return;
-    return on('content-saved', loadData);
+    const offSaved = on('content-saved', loadData);
+    const offClassified = on('content-classified', loadData);
+    return () => {
+      offSaved();
+      offClassified();
+    };
   }, [session, loadData]);
 
   return (
@@ -91,6 +96,7 @@ export default function HomeScreen() {
                       thumbnailUrl={item.thumbnail_url}
                       thumbnailColor={placeholderColor(item.id)}
                       savedAt={formatRelativeTime(item.saved_at)}
+                      isClassifying={isClassifying(item.id)}
                       onPress={() => router.push(`/content/${item.id}`)}
                     />
                   ))

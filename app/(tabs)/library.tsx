@@ -49,7 +49,12 @@ export default function LibraryScreen() {
 
   useEffect(() => {
     if (!session) return;
-    return on('content-saved', loadData);
+    const offSaved = on('content-saved', loadData);
+    const offClassified = on('content-classified', loadData);
+    return () => {
+      offSaved();
+      offClassified();
+    };
   }, [session, loadData]);
 
   const handleAddCategory = async (name: string) => {
