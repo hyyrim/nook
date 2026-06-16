@@ -8,10 +8,11 @@ type ContentCardProps = {
   thumbnailUrl?: string | null;
   thumbnailColor?: string;
   savedAt?: string;
+  isClassifying?: boolean;
   onPress?: () => void;
 };
 
-export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, onPress }: ContentCardProps) {
+export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, isClassifying = false, onPress }: ContentCardProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -27,11 +28,16 @@ export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailC
         <View style={styles.metaRow}>
           <View style={styles.sourceTagRow}>
             <Text style={styles.source}>{source}</Text>
-            {tags.length > 0 && (
+            {isClassifying ? (
+              <View style={styles.classifyingTag}>
+                <View style={styles.classifyingDot} />
+                <Text style={styles.classifyingText}>AI 분류 중</Text>
+              </View>
+            ) : tags.length > 0 ? (
               <View style={styles.tag}>
                 <Text style={styles.tagText}>{tags[0]}</Text>
               </View>
-            )}
+            ) : null}
           </View>
           {savedAt && <Text style={styles.savedAt}>{savedAt}</Text>}
         </View>
@@ -100,6 +106,26 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '500',
     color: Colors.secondary,
+  },
+  classifyingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.background,
+    borderRadius: 100,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+  },
+  classifyingDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.tertiary,
+  },
+  classifyingText: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    color: Colors.tertiary,
   },
   savedAt: {
     fontSize: 11,

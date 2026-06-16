@@ -1,12 +1,13 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
+import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
 import type { Content } from '@/types';
@@ -19,26 +20,31 @@ export default function RecentSavedScreen() {
   const [items, setItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const loadData = useCallback(async () => {
+    if (isAuthLoading || !session) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = await getRecentContents(50);
+      setItems(data);
+    } catch (e) {
+      console.error('Recent saved load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [session, isAuthLoading]);
+
   useFocusEffect(
     useCallback(() => {
-      if (isAuthLoading) return;
-      if (!session) {
-        setLoading(false);
-        return;
-      }
-
-      (async () => {
-        try {
-          const data = await getRecentContents(50);
-          setItems(data);
-        } catch (e) {
-          console.error('Recent saved load error:', e);
-        } finally {
-          setLoading(false);
-        }
-      })();
-    }, [session, isAuthLoading])
+      loadData();
+    }, [loadData])
   );
+
+  useEffect(() => {
+    if (!session) return;
+    return on('content-classified', loadData);
+  }, [session, loadData]);
 
   return (
     <View style={styles.container}>
@@ -66,6 +72,7 @@ export default function RecentSavedScreen() {
                 thumbnailUrl={item.thumbnail_url}
                 thumbnailColor={placeholderColor(item.id)}
                 savedAt={formatRelativeTime(item.saved_at)}
+                isClassifying={isClassifying(item.id)}
                 onPress={() => router.push(`/content/${item.id}`)}
               />
             ))

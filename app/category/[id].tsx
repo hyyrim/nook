@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
@@ -17,6 +17,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '@/lib/api';
+import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
 import type { Category, Content } from '@/types';
@@ -72,6 +73,11 @@ export default function CategoryDetailScreen() {
       loadData();
     }, [loadData])
   );
+
+  useEffect(() => {
+    if (!session) return;
+    return on('content-classified', loadData);
+  }, [session, loadData]);
 
   const catName = isUncategorized ? '미분류' : (category?.name ?? 'Category');
 
@@ -158,6 +164,7 @@ export default function CategoryDetailScreen() {
                 thumbnailUrl={a.thumbnail_url}
                 thumbnailColor={placeholderColor(a.id)}
                 savedAt={formatRelativeTime(a.saved_at)}
+                isClassifying={isClassifying(a.id)}
                 onPress={() => router.push(`/content/${a.id}`)}
               />
             ))
