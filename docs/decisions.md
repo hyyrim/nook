@@ -302,3 +302,83 @@
 - EAS Build 재빌드 필요
 
 **교훈**: iOS에서 앱 URL scheme 사용 시 LSApplicationQueriesSchemes 등록 필수. Expo Go에서는 테스트 불가.
+
+---
+
+## 021. Expo SDK 56 실행 안정화 — 의존성 정렬 및 설정 검증 (2026-06-16)
+
+**결정**: Expo Doctor 기준으로 SDK 56 호환 의존성을 정렬하고 누락된 `expo-font`를 추가
+
+**배경**:
+- Apple Developer 승인 이후 iOS 개발 빌드 준비 전 `npx expo start`와 TypeScript 안정성 확인 필요
+- Android adaptive icon 설정이 존재하지 않는 asset 파일을 참조
+- 일부 React Native 패키지가 SDK 56 권장 버전과 불일치
+
+**결과**:
+- `expo`, `expo-router`, `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context`, `react-native-worklets`를 SDK 56 권장 버전으로 정렬
+- `@expo/vector-icons` peer dependency인 `expo-font` 추가
+- Android adaptive icon foreground를 실제 존재하는 `assets/icon.png`로 수정
+- `npx tsc --noEmit`, `npx expo-doctor`, Metro iOS bundle 생성 확인 완료
+
+**교훈**: EAS/iOS 빌드로 넘어가기 전 Expo Doctor를 먼저 통과시키면 네이티브 빌드 단계의 설정 오류를 줄일 수 있다.
+
+---
+
+## 022. iOS 실기기 개발 빌드 준비 — expo-dev-client + EAS device profile (2026-06-16)
+
+**결정**: Share Extension 테스트를 위해 Expo Go 대신 Nook 전용 iOS development build를 사용
+
+**배경**:
+- `expo-share-intent`와 iOS Share Extension은 Expo Go에서 충분히 검증하기 어려움
+- Apple Developer 승인 이후 실제 iPhone ad hoc/internal distribution 빌드 준비 필요
+- 기존 `development` profile은 iOS Simulator 전용으로 설정되어 있어 실기기 설치에 사용할 수 없음
+
+**결과**:
+- `expo-dev-client` 설치
+- `eas.json`에 `development-device` profile 추가 (`developmentClient: true`, `distribution: internal`)
+- `npm run start:dev-client` 스크립트 추가
+- Expo 계정 로그인이 필요해 실제 EAS cloud build 실행은 로그인 이후 진행
+
+**교훈**: simulator build와 device build는 설치 대상이 다르므로 EAS profile을 분리해야 실수 없이 테스트할 수 있다.
+
+---
+
+## 023. iOS Bundle Identifier 변경 — Apple Team 등록 가능 ID로 전환 (2026-06-16)
+
+**결정**: iOS 앱 Bundle Identifier를 `com.nook.app`에서 `com.hyerimhan.nook`으로 변경
+
+**배경**:
+- EAS credential 생성 중 Apple Developer Team에서 `com.nook.app`을 사용할 수 없다는 오류 발생
+- iOS 앱, Share Extension, App Group은 같은 identifier 체계를 공유해야 함
+
+**결과**:
+- 앱 Bundle Identifier: `com.hyerimhan.nook`
+- Share Extension Bundle Identifier: `com.hyerimhan.nook.share-extension`
+- App Group Identifier: `group.com.hyerimhan.nook`
+- `app.json`의 중복 URL scheme 및 수동 appExtensions 설정 제거
+- iOS native project의 bundle id, entitlements, Info.plist, ShareViewController 값 동기화
+
+**교훈**: Apple Developer 등록 전에는 브랜드 일반명보다 개인/팀 고유 namespace를 포함한 bundle id를 사용하는 것이 안전하다.
+
+---
+
+## 024. iPhone16Pro 실기기 UI 안정화 — safe area와 검색 전환 조정 (2026-06-16)
+
+**결정**: 실기기 테스트에서 어색했던 탭 safe area, 검색 화면 포커스 타이밍, 2depth nav 크기, 홈 헤더 여백을 최소 수정으로 조정
+
+**배경**:
+- iPhone16Pro 테스트에서 하단 탭이 홈 인디케이터와 가까워 보이고, 검색 화면 진입 시 키보드가 화면 전환과 한 레이어처럼 움직여 부자연스러움
+- 카테고리 상세 상단의 `폴더`, 제목, 더보기 아이콘이 작아 보여 2depth nav 위계가 약함
+- 홈 화면은 헤더와 최근 저장 영역 사이가 붙어 보여 구분감이 부족함
+
+**결과**:
+- 루트에 `SafeAreaProvider`를 적용하고 탭바 높이/하단 패딩을 safe area 기반으로 계산
+- 검색 화면은 stack `transitionEnd` 이후 input focus를 실행해 화면 전환과 키보드 상승 타이밍을 분리
+- 검색 input 스타일을 기존 카테고리 검색창과 맞춰 높이, padding, shadow, clear button touch area를 통일
+- 카테고리 상세 nav의 back/menu touch area와 아이콘/타이틀 크기를 조정
+- 홈 화면은 divider 없이 헤더 하단 여백과 content 상단 여백으로 자연스럽게 구분
+- 바텀시트 keyboard 실험 코드는 제거하고 자동 focus만 제외해 안정 상태로 복귀
+
+**대안 검토**: 헤더 아래 구분선을 넣는 안도 검토했지만, 현재 Nook의 부드러운 카드형 톤에는 선보다 여백 기반 구분이 더 자연스러워 채택하지 않음.
+
+**교훈**: 모바일 전환과 키보드 애니메이션은 같은 컴포넌트 안에서 delay로 맞추기보다 navigation transition과 focus 시점을 분리하는 편이 더 예측 가능하다.

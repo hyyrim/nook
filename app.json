@@ -6,10 +6,13 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": ["nook", "com.nook.app"],
+    "scheme": [
+      "nook",
+      "com.hyerimhan.nook"
+    ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.nook.app",
+      "bundleIdentifier": "com.hyerimhan.nook",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "youtube",
@@ -22,15 +25,14 @@
           "tiktok",
           "linkedin",
           "threads"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F2F2F2",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icon.png"
       }
     },
     "plugins": [
@@ -44,7 +46,14 @@
             "NSExtensionActivationSupportsWebPageWithMaxCount": 1
           }
         }
-      ]
-    ]
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f9e3f2df-f0df-4d35-b7a3-15bc1169f33c"
+      }
+    }
   }
 }

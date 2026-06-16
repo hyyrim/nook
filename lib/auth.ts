@@ -7,7 +7,7 @@ import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const iosRedirectUri = 'com.nook.app:/oauthredirect';
+const iosRedirectUri = 'com.hyerimhan.nook:/oauthredirect';
 
 const googleClientIds = {
   iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,

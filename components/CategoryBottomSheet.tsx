@@ -27,13 +27,6 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
 
   useEffect(() => {
     if (visible) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 260);
-      return () => clearTimeout(timer);
-    }
-  }, [visible]);
-
-  useEffect(() => {
-    if (visible) {
       setIsMounted(true);
       Animated.parallel([
         Animated.timing(backdropOpacity, {

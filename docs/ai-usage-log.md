@@ -42,3 +42,12 @@
 | Claude Code | 발견된 콘텐츠 알고리즘 — 관심도 × 망각도 (→ 결정 018) |
 | Claude Code | 관련 콘텐츠 알고리즘 — 복합 점수 스코어링 (→ 결정 019) |
 | Claude Code | 원문 바로가기 네이티브 앱 연동 (→ 결정 020) |
+
+## 2026-06-16
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Codex | Expo SDK 56 실행 안정화 — 의존성 정렬, 설정 검증, Metro 번들 확인 (→ 결정 021) |
+| Codex | iOS 실기기 개발 빌드 준비 — expo-dev-client 설치 + EAS device profile 추가 (→ 결정 022) |
+| Codex | Apple Team 등록 오류 해결 — iOS Bundle Identifier 고유 namespace로 변경 (→ 결정 023) |
+| Codex | iPhone16Pro 실기기 피드백 기반 safe area, 검색 전환, 2depth nav, 홈 헤더 여백 조정 (→ 결정 024) |

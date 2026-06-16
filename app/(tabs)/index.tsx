@@ -73,7 +73,6 @@ export default function HomeScreen() {
             <Ionicons name="search-outline" size={21} color={Colors.secondary} />
           </Pressable>
         </View>
-
         <View style={styles.content}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
@@ -170,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 0,
+    paddingBottom: 18,
   },
   appLogo: {
     height: 42,
@@ -193,7 +192,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 22,
+    paddingTop: 12,
     paddingBottom: 28,
   },
   section: {

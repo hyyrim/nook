@@ -8,6 +8,7 @@ import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/ap
 import { emit } from '@/lib/events';
 import { Toast } from '@/components/Toast';
 import { Colors } from '@/constants';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 function RootNavigator() {
   const { session, isLoading } = useAuth();
@@ -130,9 +131,11 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

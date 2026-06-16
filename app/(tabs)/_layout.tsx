@@ -4,6 +4,7 @@ import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { SaveBottomSheet } from '@/components/SaveBottomSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function TabBarIcon({ name, focused }: { name: keyof typeof Ionicons.glyphMap; focused: boolean }) {
   return <Ionicons name={name} size={24} color={focused ? Colors.primary : Colors.tertiary} />;
@@ -21,13 +22,21 @@ function FabButton({ onPress }: { onPress: () => void }) {
 
 export default function TabLayout() {
   const [showSave, setShowSave] = useState(false);
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom - 2, 12);
 
   return (
     <>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: styles.tabBar,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              height: 56 + bottomInset,
+              paddingBottom: bottomInset,
+            },
+          ],
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: Colors.tertiary,
           tabBarLabelStyle: styles.tabLabel,
@@ -88,9 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopColor: 'rgba(0,0,0,0.09)',
     borderTopWidth: 0.5,
-    height: 84,
-    paddingBottom: 20,
-    paddingTop: 8,
+    paddingTop: 6,
   },
   tabLabel: {
     fontSize: 10,

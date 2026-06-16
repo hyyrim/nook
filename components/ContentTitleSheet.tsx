@@ -23,13 +23,6 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
 
   useEffect(() => {
     if (visible) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 360);
-      return () => clearTimeout(timer);
-    }
-  }, [visible]);
-
-  useEffect(() => {
-    if (visible) {
       backdropOpacity.setValue(0);
       sheetTranslateY.setValue(280);
       setIsMounted(true);

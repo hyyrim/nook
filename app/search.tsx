@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useNavigation, useRouter } from 'expo-router';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
@@ -12,9 +12,14 @@ import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils'
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
+type TransitionEndEvent = { data?: { closing?: boolean } };
+type StackTransitionNavigation = {
+  addListener: (event: 'transitionEnd', callback: (event: TransitionEndEvent) => void) => () => void;
+};
 
 export default function SearchScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [allItems, setAllItems] = useState<ContentWithCategory[]>([]);
   const [query, setQuery] = useState('');
@@ -42,9 +47,15 @@ export default function SearchScreen() {
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 100);
-    return () => clearTimeout(timer);
-  }, []);
+    const stackNavigation = navigation as unknown as StackTransitionNavigation;
+    const unsubscribe = stackNavigation.addListener('transitionEnd', (event) => {
+      if (event.data?.closing) return;
+
+      inputRef.current?.focus();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const filtered = query.trim().length === 0
     ? []
@@ -76,8 +87,8 @@ export default function SearchScreen() {
               returnKeyType="search"
             />
             {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')}>
-                <Ionicons name="close-circle" size={16} color={Colors.tertiary} />
+              <Pressable onPress={() => setQuery('')} style={styles.clearButton}>
+                <Ionicons name="close" size={16} color={Colors.tertiary} />
               </Pressable>
             )}
           </View>
@@ -139,15 +150,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.055,
+    shadowRadius: 3,
+    elevation: 1,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   searchInput: {
     flex: 1,
     fontSize: 14.5,
     color: Colors.primary,
+  },
+  clearButton: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scroll: {
     flex: 1,

@@ -120,13 +120,13 @@ export default function CategoryDetailScreen() {
       <SafeAreaView edges={['top']} style={styles.safeTop}>
         <View style={styles.nav}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={18} color={Colors.primary} />
+            <Ionicons name="chevron-back" size={22} color={Colors.primary} />
             <Text style={styles.backLabel}>폴더</Text>
           </Pressable>
           <Text style={styles.navTitle} numberOfLines={1}>{catName}</Text>
           {!isUncategorized ? (
             <Pressable onPress={() => setShowActionSheet(true)} style={styles.moreButton}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={Colors.primary} />
+              <Ionicons name="ellipsis-horizontal" size={22} color={Colors.primary} />
             </Pressable>
           ) : (
             <View style={styles.navRight} />
@@ -222,26 +222,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    padding: 8,
+    height: 44,
     borderRadius: 8,
     minWidth: 70,
   },
   backLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: Colors.primary,
     fontWeight: '500',
   },
   navTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
     color: Colors.primary,
     textAlign: 'center',
     flex: 1,
   },
   moreButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 70,
