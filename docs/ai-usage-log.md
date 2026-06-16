@@ -51,3 +51,5 @@
 | Codex | iOS 실기기 개발 빌드 준비 — expo-dev-client 설치 + EAS device profile 추가 (→ 결정 022) |
 | Codex | Apple Team 등록 오류 해결 — iOS Bundle Identifier 고유 namespace로 변경 (→ 결정 023) |
 | Codex | iPhone16Pro 실기기 피드백 기반 safe area, 검색 전환, 2depth nav, 홈 헤더 여백 조정 (→ 결정 024) |
+| Claude Code | Instagram 제목 추출 견고화 — generic 패턴 완화 + fallback + 토큰 필터 (→ 결정 025) |
+| Claude Code | AI 분류 진행 중 뱃지 + 분류 완료 자동 갱신 (→ 결정 026) |

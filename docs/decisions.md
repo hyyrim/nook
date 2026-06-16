@@ -382,3 +382,55 @@
 **대안 검토**: 헤더 아래 구분선을 넣는 안도 검토했지만, 현재 Nook의 부드러운 카드형 톤에는 선보다 여백 기반 구분이 더 자연스러워 채택하지 않음.
 
 **교훈**: 모바일 전환과 키보드 애니메이션은 같은 컴포넌트 안에서 delay로 맞추기보다 navigation transition과 focus 시점을 분리하는 편이 더 예측 가능하다.
+
+---
+
+## 025. Instagram 제목 추출 견고화 — 패턴 완화 + fallback + 토큰 필터 (2026-06-16)
+
+**결정**: Instagram 게시물 제목 추출에서 발생한 3가지 케이스를 동시에 해결
+
+**배경**:
+- 같은 계정의 게시물인데도 제목이 제각각: 캡션 첫 문장 / 계정명 단독 / "1" 같은 의미 없는 텍스트
+- Instagram이 oEmbed/HTML 응답에서 캡션을 일관되지 않게 노출하기 때문
+- 기존 generic 패턴이 너무 엄격해서 "Name (@username) • Instagram 사진" 같은 형태가 통과돼 그대로 저장됨
+
+**결과**:
+1. **Generic 패턴 강화** (`lib/metadata.ts`, `lib/ai.ts` 동기화):
+   - 기존: `/instagram\s+사진\s+및\s+동영상/i` (풀 phrase 강제)
+   - 변경: `/instagram\s+(사진|동영상|photos?|videos?|reels?|릴스)/i` (단어 단위 매치)
+   - 신규: `/\(@[\w.]+\)\s*[·•]\s*Instagram/i` — 계정명 패턴 잡기
+2. **Fallback 문구 명시**: 캡션/description 모두 추출 실패 시 계정명 단독 노출 대신 `"Instagram 게시물"` 또는 `"Instagram 릴스"` 사용 (URL path 기반 분기). HTML fetch 실패 케이스에도 동일 적용.
+3. **번호 매김 첫 토큰 필터**: `"1. 우선 채널의..."` 같은 description에서 split 첫 토큰 `"1"`이 title로 들어가던 버그 — 3자 이상 + 숫자만 아닌 토큰만 채택하도록 변경.
+
+**대안 검토**:
+- 서버사이드 추출(Edge Function) → 안정성 우수하나 MVP 인프라 복잡도 증가, Phase 2 검토
+- Instagram Graph API → access_token 필요, 인프라 복잡도 증가
+
+**제약**: 이미 저장된 `title="1"`, `"Somewon (@somewon_co)..."` 같은 잘못된 제목은 자동 보정 안 함. Content Detail의 ContentTitleSheet로 사용자가 직접 수정. `refreshContentMetadata` 조건은 `!title || title === url`이라 매치 안 됨.
+
+**교훈**: 외부 플랫폼의 메타데이터 추출은 응답이 일관되지 않으므로, generic 패턴은 단어 단위로 완화하고 최종 fallback을 명시하는 게 안전하다.
+
+---
+
+## 026. 비동기 AI 분류 UX — "분류 중" 뱃지 + 자동 갱신 (2026-06-16)
+
+**결정**: 저장 직후 AI 분류가 진행 중인 콘텐츠에 "AI 분류 중" 뱃지 표시 + 분류 완료 시 화면 자동 갱신
+
+**배경**:
+- CLAUDE.md 원칙 — 저장 UX와 AI 분류는 비동기 분리
+- 그 결과 저장 직후엔 카테고리/태그 없는 "미분류" 상태로 노출되고, 다른 탭 갔다 돌아와야 분류 결과 반영
+- 사용자가 "분류가 동작하는지" 불확실하고, 새로고침 동작이 일관되지 않음
+
+**결과**:
+- `lib/events.ts`: 모듈 레벨 `classifyingIds: Set<string>` + `markClassifying`/`markClassified`/`isClassifying` 헬퍼 추가
+- `lib/api.ts`: `saveContent`에서 분류 시작 시 `markClassifying(id)` (동기), `classifyAndUpdate` finally에서 `markClassified(id)` + `emit('content-classified')`
+- `components/ContentCard.tsx`: `isClassifying` prop 추가 → 첫 태그 자리에 회색 점 + "AI 분류 중" 뱃지
+- 5개 화면(Home, Library, Recent Saved, Search, Category Detail)에서 `content-classified` 이벤트 구독 → 분류 완료 시 자동 loadData
+
+**대안 검토**:
+- DB에 `classification_status` 컬럼 추가 → 정확하지만 마이그레이션 필요. MVP 단계에서 과도.
+- 저장을 동기화 (분류 완료 후 반환) → CLAUDE.md 원칙(비동기 분리) 위반, 저장 UX 2-3초 지연
+
+**트레이드오프**: 앱 재시작 시 `classifyingIds`는 휘발됨. 다만 분류는 보통 5초 내 완료되므로 재시작 시점엔 이미 DB에 반영되어 자연스러운 미분류 또는 정상 표시로 보임.
+
+**교훈**: 비동기 작업의 진행 상태는 DB 컬럼 추가보다 클라이언트 모듈 레벨 상태 + 이벤트 emit이 MVP 단계에서 가벼우면서 충분한 UX를 제공한다.
