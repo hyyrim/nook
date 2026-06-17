@@ -2,7 +2,8 @@ import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal,
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
-import { getCategories } from '@/lib/api';
+import { getCategories, createCategory } from '@/lib/api';
+import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
 import type { Category } from '@/types';
 
 type MoveCategorySheetProps = {
@@ -17,6 +18,7 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
+  const [showAddSheet, setShowAddSheet] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(360)).current;
 
@@ -69,6 +71,17 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   const handleSelect = (categoryId: string | null) => {
     onSelect(categoryId);
     onClose();
+  };
+
+  const handleAddCategory = async (name: string) => {
+    try {
+      const created = await createCategory(name);
+      setCategories((prev) => [...prev, created]);
+      setShowAddSheet(false);
+      handleSelect(created.id);
+    } catch (error: any) {
+      console.error('Inline category create error:', error);
+    }
   };
 
   const options = [
@@ -126,11 +139,25 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
                     </Pressable>
                   );
                 })}
+                <Pressable
+                  style={[styles.option, styles.addOption]}
+                  onPress={() => setShowAddSheet(true)}
+                >
+                  <Ionicons name="add" size={18} color={Colors.secondary} />
+                  <Text style={styles.addOptionText}>새 카테고리 만들기</Text>
+                </Pressable>
               </ScrollView>
             )}
           </View>
         </Animated.View>
       </Pressable>
+      <CategoryBottomSheet
+        visible={showAddSheet}
+        mode="add"
+        existingNames={categories.map((c) => c.name)}
+        onClose={() => setShowAddSheet(false)}
+        onSubmit={handleAddCategory}
+      />
     </Modal>
   );
 }
@@ -228,5 +255,15 @@ const styles = StyleSheet.create({
   optionTextSelected: {
     fontWeight: '600',
     color: Colors.accent,
+  },
+  addOption: {
+    justifyContent: 'flex-start',
+    gap: 8,
+    borderBottomWidth: 0,
+  },
+  addOptionText: {
+    fontSize: 15,
+    color: Colors.secondary,
+    fontWeight: '500',
   },
 });
