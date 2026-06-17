@@ -1,5 +1,6 @@
-import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -10,12 +11,24 @@ type ContentTitleSheetProps = {
   onSubmit: (title: string) => void;
 };
 
+const SHEET_PADDING_BOTTOM = 44;
+
 export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmit }: ContentTitleSheetProps) {
   const [value, setValue] = useState(initialValue);
   const [isMounted, setIsMounted] = useState(visible);
   const inputRef = useRef<TextInput>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(280)).current;
+
+  const keyboard = useAnimatedKeyboard();
+  const sheetAnimatedStyle = useAnimatedStyle(() => ({
+    paddingBottom: SHEET_PADDING_BOTTOM + keyboard.height.value,
+  }));
+
+  const handleClose = useCallback(() => {
+    Keyboard.dismiss();
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     setValue(initialValue);
@@ -58,23 +71,23 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
   const handleSubmit = () => {
     if (!trimmed) return;
     onSubmit(trimmed);
-    onClose();
+    handleClose();
   };
 
   return (
-    <Modal visible={isMounted} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={isMounted} transparent animationType="none" onRequestClose={handleClose}>
       <Animated.View pointerEvents="none" style={[styles.dim, { opacity: backdropOpacity }]} />
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.backdrop} onPress={handleClose}>
         <Animated.View
           style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
           onStartShouldSetResponder={() => true}
         >
-          <View style={styles.sheet}>
+          <Reanimated.View style={[styles.sheet, sheetAnimatedStyle]}>
             <View style={styles.dragHandle} />
 
             <View style={styles.header}>
               <Text style={styles.title}>제목 수정</Text>
-              <Pressable onPress={onClose} style={styles.closeButton}>
+              <Pressable onPress={handleClose} style={styles.closeButton}>
                 <Ionicons name="close" size={14} color={Colors.secondary} />
               </Pressable>
             </View>
@@ -100,7 +113,7 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
                 <Text style={styles.ctaText}>저장</Text>
               </Pressable>
             </View>
-          </View>
+          </Reanimated.View>
         </Animated.View>
       </Pressable>
     </Modal>
@@ -128,7 +141,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: 44,
+    paddingBottom: SHEET_PADDING_BOTTOM,
     paddingTop: 12,
   },
   dragHandle: {
