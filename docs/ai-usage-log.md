@@ -53,3 +53,10 @@
 | Codex | iPhone16Pro 실기기 피드백 기반 safe area, 검색 전환, 2depth nav, 홈 헤더 여백 조정 (→ 결정 024) |
 | Claude Code | Instagram 제목 추출 견고화 — generic 패턴 완화 + fallback + 토큰 필터 (→ 결정 025) |
 | Claude Code | AI 분류 진행 중 뱃지 + 분류 완료 자동 갱신 (→ 결정 026) |
+
+## 2026-06-17
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Claude Code | 바텀시트 키보드 회피 — Reanimated 4 `useAnimatedKeyboard` (→ 결정 027) |
+| Claude Code | Content Detail 태그 수정 — chip + input 시트 (→ 결정 028) |

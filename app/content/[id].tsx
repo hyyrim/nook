@@ -7,6 +7,7 @@ import { Colors } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import { ContentTitleSheet } from '@/components/ContentTitleSheet';
+import { TagsSheet } from '@/components/TagsSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { useAuth } from '@/lib/AuthProvider';
@@ -69,6 +70,7 @@ export default function ContentDetailScreen() {
   const [showSheet, setShowSheet] = useState(false);
   const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [showTitleSheet, setShowTitleSheet] = useState(false);
+  const [showTagsSheet, setShowTagsSheet] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<ContentWithCategory | null>(null);
@@ -130,6 +132,16 @@ export default function ContentDetailScreen() {
     try {
       const updated = await updateContent(id, { title });
       setItem(prev => prev ? { ...prev, title: updated.title } : prev);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  const handleUpdateTags = async (tags: string[]) => {
+    if (!item) return;
+    try {
+      const updated = await updateContent(id, { tags });
+      setItem(prev => prev ? { ...prev, tags: updated.tags } : prev);
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
@@ -271,6 +283,7 @@ export default function ContentDetailScreen() {
         handoffDelay={320}
         actions={[
           { label: '제목 수정', onPress: () => setShowTitleSheet(true) },
+          { label: '태그 수정', onPress: () => setShowTagsSheet(true) },
           { label: '카테고리 변경', onPress: () => setShowMoveSheet(true) },
           { label: '삭제', danger: true, onPress: handleDelete },
         ]}
@@ -280,6 +293,12 @@ export default function ContentDetailScreen() {
         initialValue={item?.title ?? ''}
         onClose={() => setShowTitleSheet(false)}
         onSubmit={handleUpdateTitle}
+      />
+      <TagsSheet
+        visible={showTagsSheet}
+        initialTags={item?.tags ?? []}
+        onClose={() => setShowTagsSheet(false)}
+        onSubmit={handleUpdateTags}
       />
       <MoveCategorySheet
         visible={showMoveSheet}
