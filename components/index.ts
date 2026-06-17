@@ -7,3 +7,4 @@ export { ActionSheet } from './ActionSheet';
 export { SaveBottomSheet } from './SaveBottomSheet';
 export { CategoryBottomSheet } from './CategoryBottomSheet';
 export { ContentTitleSheet } from './ContentTitleSheet';
+export { TagsSheet } from './TagsSheet';

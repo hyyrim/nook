@@ -434,3 +434,58 @@
 **트레이드오프**: 앱 재시작 시 `classifyingIds`는 휘발됨. 다만 분류는 보통 5초 내 완료되므로 재시작 시점엔 이미 DB에 반영되어 자연스러운 미분류 또는 정상 표시로 보임.
 
 **교훈**: 비동기 작업의 진행 상태는 DB 컬럼 추가보다 클라이언트 모듈 레벨 상태 + 이벤트 emit이 MVP 단계에서 가벼우면서 충분한 UX를 제공한다.
+
+---
+
+## 027. 바텀시트 키보드 회피 — Reanimated 4 `useAnimatedKeyboard` (2026-06-17)
+
+**결정**: 입력이 있는 3개 바텀시트(Save / Category / ContentTitle)의 키보드 회피를 Reanimated 4 `useAnimatedKeyboard` + UI 스레드 paddingBottom 동기 방식으로 통일
+
+**배경**:
+- iOS 실기기에서 input focus 시 키보드가 시트의 input/CTA 영역을 가려 입력 중인 텍스트가 안 보이는 문제
+- 시도 1(수동 Animated.translateY + Keyboard listener) → 시트가 키보드 위로 떠오를 때 border-radius가 화면 중앙에 어색하게 위치, 원복
+- 시도 2(@gorhom/bottom-sheet PoC) → `present()` 호출은 되나 mount/animate 안 됨, 원인 미확정으로 원복. babel.config.js worklets plugin 추가는 babel-preset-expo 56 내장 처리와 충돌
+- 시도 3(`keyboardWillChangeFrame`으로 paddingBottom 늘리기) → 열 때는 OK였으나 닫을 때 시트가 먼저 닫히고 키보드가 뒤따라 내려가 어색
+
+**결과**:
+- 내부 sheet 컨테이너를 `Reanimated.View`로 교체, `useAnimatedStyle`로 `paddingBottom = SHEET_PADDING_BOTTOM + keyboard.height.value` 적용 (UI 스레드에서 키보드 높이 추적 → JS 브리지 지연 없이 프레임 단위 sync)
+- 외부 backdrop/translateY는 기존 RN `Animated` 유지 (paddingBottom과 transform은 서로 다른 속성/뷰라 충돌 없음)
+- `handleClose` 헬퍼에서 `Keyboard.dismiss()` → `onClose()` 순차 호출로 키보드↓ + 시트↓ 동시 시작
+- 적용 범위: SaveBottomSheet, CategoryBottomSheet, ContentTitleSheet (3개 동일 패턴). MoveCategorySheet는 입력 없어 제외
+
+**대안 검토**:
+- `react-native-keyboard-controller` → `KeyboardAvoidingView` 한 줄로 해결 가능하지만 새 의존성 필요. 이미 reanimated 4가 설치되어 있어 우선순위 낮음
+- `@gorhom/bottom-sheet` 전면 마이그레이션 → 시도 2 실패 원인 미확정, 4개 시트 모두 다시 짜야 해서 ROI 낮음
+
+**트레이드오프 / 제약**:
+- 추가 의존성 없음 (`react-native-reanimated 4.3.1` 활용, babel-preset-expo가 worklets 내장 처리)
+- 시트 외 다른 화면의 키보드 회피는 영향 없음 (시트 내부에서만 동작)
+
+**교훈**: 키보드와 UI를 동기화할 때 JS 브리지를 통한 이벤트 리스너 방식은 닫힐 때 미세한 시차를 피하기 어렵다. Reanimated 4의 `useAnimatedKeyboard`처럼 UI 스레드에서 직접 SharedValue로 추적하는 방식이 자연스러운 sync를 보장한다.
+
+---
+
+## 028. Content Detail 태그 수정 — chip + input 시트 (2026-06-17)
+
+**결정**: Content Detail에서 태그를 편집할 수 있도록 chip + 인풋 형태의 별도 `TagsSheet`로 구현. ActionSheet의 "제목 수정"과 "카테고리 변경" 사이에 배치
+
+**배경**:
+- CLAUDE.md 원칙 — "태그: AI 자동 생성 후 사용자가 Content Detail에서 수정 가능"
+- AI가 생성한 태그가 사용자 의도와 다를 수 있고, 미분류 콘텐츠에 직접 태그를 보강할 수도 있어야 함
+- 기존 ActionSheet 패턴(제목 수정, 카테고리 변경, 삭제)이 정착되어 있어 동일한 진입 경로 유지
+
+**결과**:
+- 신규 `components/TagsSheet.tsx`: 현재 태그를 chip으로 표시(× 탭으로 삭제), 하단 인풋 + "+" 버튼(또는 키보드 done)으로 추가, 저장 CTA로 일괄 반영
+- 키보드 회피는 결정 027의 `useAnimatedKeyboard` 패턴 그대로 재사용
+- 검증: 트림 후 빈 값 무시, 중복 차단(case-insensitive), 태그당 20자, 총 10개 제한
+- ActionSheet에 "태그 수정" 항목 추가 — `[제목 수정, 태그 수정, 카테고리 변경, 삭제]` 순서
+- DB 업데이트: 기존 `updateContent(id, { tags })`가 이미 tags 필드를 지원
+
+**대안 검토**:
+- 콤마로 구분된 텍스트 영역 → 입력 모델이 명료하지 않고 모바일 키보드에서 콤마 입력이 번거로움
+- Content Detail 본문에 인라인 편집(태그 칩 직접 탭) → 진입 경로가 숨겨져 있어 발견성 낮음
+- AI 재분류 트리거 → 사용자가 직접 의도를 반영하는 게 우선, 재분류는 별도 기능으로 분리 가능
+
+**제약**: 태그 검색/필터링은 여전히 MVP 제외(데이터 모델은 `text[]` 단순 컬럼 유지). 분류 결과 변경 후 관련 콘텐츠 알고리즘(결정 019)에 자동 반영됨
+
+**교훈**: AI 자동 생성 결과는 사용자가 손쉽게 수정할 수 있어야 하고, 진입 경로는 기존 액션 시트 패턴과 일관되게 두는 것이 발견성과 학습 비용 측면에서 유리하다.

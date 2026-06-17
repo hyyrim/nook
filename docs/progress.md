@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-17 (8차 — 바텀시트 키보드 회피 해결)
+최종 업데이트: 2026-06-17 (9차 — Content Detail 태그 수정)
 
 ---
 
@@ -121,6 +121,15 @@
 | CategoryBottomSheet 동일 패턴 적용 | ✅ |
 | ContentTitleSheet 동일 패턴 적용 (multiline input) | ✅ |
 
+## 완료 (9차 — Content Detail 태그 수정)
+
+| 항목 | 상태 |
+|------|------|
+| TagsSheet 컴포넌트 추가 (chip + input, useAnimatedKeyboard 패턴 재사용) | ✅ |
+| 칩 × 탭으로 태그 삭제, 인풋 + "+" 또는 키보드 done으로 추가 | ✅ |
+| 검증: 중복 차단(case-insensitive) / 20자 / 최대 10개 | ✅ |
+| ActionSheet에 "태그 수정" 항목 추가 (제목 ↔ 카테고리 사이) | ✅ |
+
 ## 미완료 (Apple Developer 승인 후)
 
 | 항목 | 비고 |
@@ -135,7 +144,6 @@
 
 | 항목 | 비고 |
 |------|------|
-| 태그 수정 기능 | Content Detail에서 태그 편집 |
 | 폴더 상세 다중 편집 | 체크박스 선택 후 카테고리 변경/삭제 |
 | 카테고리 변경 시트에서 카테고리 추가 | MoveCategorySheet 내 인라인 카테고리 생성 기능 |
 
