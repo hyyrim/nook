@@ -60,3 +60,4 @@
 |---------|----------|
 | Claude Code | 바텀시트 키보드 회피 — Reanimated 4 `useAnimatedKeyboard` (→ 결정 027) |
 | Claude Code | Content Detail 태그 수정 — chip + input 시트 (→ 결정 028) |
+| Claude Code | 폴더 상세 다중 편집 — 선택 모드 + Optimistic UI + LayoutAnimation (→ 결정 029) |

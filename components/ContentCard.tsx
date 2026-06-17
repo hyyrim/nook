@@ -1,4 +1,5 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants';
 
 type ContentCardProps = {
@@ -9,15 +10,22 @@ type ContentCardProps = {
   thumbnailColor?: string;
   savedAt?: string;
   isClassifying?: boolean;
+  selectionMode?: boolean;
+  selected?: boolean;
   onPress?: () => void;
 };
 
-export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, isClassifying = false, onPress }: ContentCardProps) {
+export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, isClassifying = false, selectionMode = false, selected = false, onPress }: ContentCardProps) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
+      {selectionMode && (
+        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+          {selected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+        </View>
+      )}
       {thumbnailUrl ? (
         <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
       ) : (
@@ -62,6 +70,21 @@ const styles = StyleSheet.create({
   },
   pressed: {
     transform: [{ scale: 0.97 }],
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   thumbnail: {
     width: 56,

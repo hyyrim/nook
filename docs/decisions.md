@@ -489,3 +489,30 @@
 **제약**: 태그 검색/필터링은 여전히 MVP 제외(데이터 모델은 `text[]` 단순 컬럼 유지). 분류 결과 변경 후 관련 콘텐츠 알고리즘(결정 019)에 자동 반영됨
 
 **교훈**: AI 자동 생성 결과는 사용자가 손쉽게 수정할 수 있어야 하고, 진입 경로는 기존 액션 시트 패턴과 일관되게 두는 것이 발견성과 학습 비용 측면에서 유리하다.
+
+---
+
+## 029. 폴더 상세 다중 편집 — 선택 모드 + Optimistic UI (2026-06-17)
+
+**결정**: 폴더 상세 화면에 선택 모드를 도입해 다수 콘텐츠를 한 번에 카테고리 이동/삭제. 액션은 Optimistic UI + LayoutAnimation으로 즉시 반영
+
+**배경**:
+- 사용자가 다수 콘텐츠를 한 번에 정리할 수단이 없어 카드 하나씩 들어가서 처리해야 함
+- 단순히 await→reload 흐름은 잠깐 멈췄다가 항목이 뚝 사라지는 어색한 UX(사용자 표현: "뚱땅거리며 없어지는 느낌")
+
+**결과**:
+- `components/ContentCard.tsx`: `selectionMode`, `selected` props 추가 → 좌측에 체크 원형 인디케이터 표시 (선택 시 primary 색 fill)
+- `app/category/[id].tsx`: 진입(일반 폴더는 ActionSheet에 "선택" 추가, 미분류는 우상단 텍스트 버튼) / 헤더(`[취소] n개 선택됨 [전체 선택/해제]`) / 하단 고정 액션 바(카테고리 이동, 삭제) / SearchBar는 선택 모드에서 숨김
+- `MoveCategorySheet`는 `currentCategoryId` 안 넘기면 체크 없는 상태가 되어 다중 이동 모드로 그대로 재사용
+- 액션 흐름: 선택 → `LayoutAnimation.configureNext` + 로컬 articles 즉시 필터 + 카운트 즉시 감소 → 선택 모드 해제 → 백그라운드 `Promise.all(updateContent/deleteContent)`. 실패 시 snapshot 복원 + Alert
+- 현재 폴더로 이동 같은 no-op은 시트만 닫음
+- 전체 선택은 검색 결과(filtered) 기준 (검색 + 선택 동시는 불가, 선택 모드에서 SearchBar 숨김)
+
+**대안 검토**:
+- 카드 long-press로 진입 → iOS 표준이지만 발견성 낮음. 우상단 명시 진입이 모바일 메모/사진 앱 패턴에 더 맞음
+- Reanimated FadeOut 적용 → 의존성 추가 필요. RN 내장 `LayoutAnimation`만으로 충분히 부드럽게 처리됨
+- 동기 흐름(await → loadData) 유지 → "뚱땅" UX 그대로. Optimistic UI가 정답
+
+**제약**: LayoutAnimation은 Android에서 `setLayoutAnimationEnabledExperimental(true)` 필요(방어적으로 추가). 동시 작업 도중 다른 이벤트로 articles가 갱신되면 snapshot 롤백이 충돌 가능 — MVP 규모에서는 발생 가능성 낮음
+
+**교훈**: 다수 항목 조작 UX는 "API 완료 후 반영"이 아니라 "즉시 반영 + 백그라운드 동기 + 실패 시 롤백"이 자연스럽다. LayoutAnimation 한 줄로 RN 기본 컴포넌트도 충분히 부드러운 전환을 줄 수 있다.
