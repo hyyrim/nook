@@ -365,8 +365,8 @@ export default function CategoryDetailScreen() {
             onClose={() => setShowActionSheet(false)}
             actions={[
               { label: '선택', onPress: enterSelectionMode },
-              { label: '수정', onPress: () => setShowEditSheet(true) },
-              { label: '삭제', danger: true, onPress: handleDelete },
+              { label: '카테고리 수정', onPress: () => setShowEditSheet(true) },
+              { label: '카테고리 삭제', danger: true, onPress: handleDelete },
             ]}
           />
           <CategoryBottomSheet

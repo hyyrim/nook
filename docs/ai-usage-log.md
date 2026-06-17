@@ -65,3 +65,4 @@
 | Codex | 선택 모드 진입 시 숨겨진 검색 조건 초기화 (→ 결정 029) |
 | Codex | 카테고리 이동 시트 조회 실패 상태 + 재시도 UX 추가 (→ 결정 031) |
 | Codex | 미사용 import·prop·스타일과 Playwright 생성 로그 정리 |
+| Claude Code | 카테고리 추가 UX (자동 스크롤 + 인라인 추가) + Category Detail 라벨 명확화 (→ 결정 032) |

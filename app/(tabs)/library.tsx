@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { FolderCard, AddCategoryCard } from '@/components/FolderCard';
@@ -18,6 +18,7 @@ export default function LibraryScreen() {
   const [categories, setCategories] = useState<(Category & { count: number })[]>([]);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const scrollRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
     if (isAuthLoading) return;
@@ -60,7 +61,10 @@ export default function LibraryScreen() {
   const handleAddCategory = async (name: string) => {
     try {
       await createCategory(name);
-      loadData();
+      await loadData();
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      });
     } catch (e: any) {
       console.error('Create category error:', e);
     }
@@ -68,7 +72,7 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>폴더</Text>
         </View>
