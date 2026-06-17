@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-15
+최종 업데이트: 2026-06-17 (8차 — 바텀시트 키보드 회피 해결)
 
 ---
 
@@ -112,6 +112,15 @@
 | 관련 콘텐츠 알고리즘 개선 (카테고리+태그+도메인 복합 점수) | ✅ |
 | 관련 콘텐츠 최소 점수 2점 이상만 표시 | ✅ |
 
+## 완료 (8차 — 바텀시트 키보드 회피)
+
+| 항목 | 상태 |
+|------|------|
+| Reanimated 4 `useAnimatedKeyboard`로 SaveBottomSheet paddingBottom 동기 | ✅ |
+| `handleClose`에서 `Keyboard.dismiss()` 호출 → 키보드↓ + 시트↓ 동시 동작 | ✅ |
+| CategoryBottomSheet 동일 패턴 적용 | ✅ |
+| ContentTitleSheet 동일 패턴 적용 (multiline input) | ✅ |
+
 ## 미완료 (Apple Developer 승인 후)
 
 | 항목 | 비고 |
@@ -129,6 +138,35 @@
 | 태그 수정 기능 | Content Detail에서 태그 편집 |
 | 폴더 상세 다중 편집 | 체크박스 선택 후 카테고리 변경/삭제 |
 | 카테고리 변경 시트에서 카테고리 추가 | MoveCategorySheet 내 인라인 카테고리 생성 기능 |
+
+## 보류 / 시도 기록
+
+### 바텀시트 키보드 회피 (2026-06-16 시작 → 2026-06-17 해결)
+
+**증상**: iOS 실기기에서 SaveBottomSheet, CategoryBottomSheet, ContentTitleSheet의 TextInput에 focus 시 키보드가 올라와 input과 CTA 버튼을 가림. 입력 중인 텍스트가 안 보임.
+
+**시도 1 — 수동 Animated translateY + Keyboard listener (codex, 이전 작업)**
+- 결과: 키보드 등장과 시트 위치 동기가 안 맞아 버벅임. 시트가 키보드 위로 떠오를 때 top border-radius가 화면 중앙에 어색하게 위치. 원복함.
+
+**시도 2 — @gorhom/bottom-sheet v5.2.14로 SaveBottomSheet PoC (원복)**
+- `BottomSheetModalProvider` + `BottomSheetModal` + `BottomSheetTextInput` + `keyboardBehavior="interactive"` 구성
+- 증상: + 버튼 탭 시 `present()`는 호출되나(`visible= true ref= true` 로그 OK) 모달이 mount/animate 안 됨(`onChange` 미발생, 화면 변화 없음)
+- 시도한 디버그: `enableDynamicSizing` off + 명시 `snapPoints=['50%']`, `FullWindowOverlay` containerComponent, babel.config.js에 `react-native-worklets/plugin` 추가 — 모두 효과 없거나 (babel은 오히려 번들 깨짐: babel-preset-expo 56 내장 처리와 충돌)
+- 원인 미확정. 깔끔히 원복함. 브랜치/패키지 모두 제거 완료.
+
+**시도 3 — 수동 Animated + `keyboardWillChangeFrame`으로 paddingBottom 늘리기 (2026-06-17, 부분 개선)**
+- SaveBottomSheet에 `sheetPaddingBottom` Animated.Value 추가, `keyboardWillChangeFrame` 이벤트의 `duration`/`easing`을 그대로 받아 `Animated.timing`에 전달
+- sheet 자체는 화면 하단 고정, paddingBottom만 키워서 입력 영역을 키보드 위로 띄움
+- 정리: `keyboardWillHide`는 `keyboardWillChangeFrame`이 hide도 커버해서 제거. `SHEET_PADDING_BOTTOM=44` 상수화
+- 결과: 키보드 열릴 때는 동기 어느 정도 맞음. 단, **닫힐 때 sheet가 먼저 닫히고 키보드가 뒤따라 내려가 어색함**. 전반적으로 "자연스럽다"고 하기엔 부족.
+
+**시도 4 — Reanimated 4 `useAnimatedKeyboard` (2026-06-17, ✅ 해결)**
+- `react-native-reanimated 4.3.1` 이미 설치되어 있어 추가 의존성 없음. babel-preset-expo가 worklets 내장 처리
+- 내부 sheet 컨테이너를 `Reanimated.View`로 교체, `useAnimatedStyle`로 `paddingBottom = SHEET_PADDING_BOTTOM + keyboard.height.value` 적용 (UI 스레드에서 키보드 높이 추적 → 프레임 단위 sync)
+- 외부 backdrop/translateY는 기존 RN `Animated` 그대로 유지 (충돌 없음)
+- `handleClose` 헬퍼에서 `Keyboard.dismiss()` → `onClose()` 순차 호출로 키보드↓ + 시트↓ 동시 시작
+- 적용 범위: SaveBottomSheet → CategoryBottomSheet → ContentTitleSheet (3개 시트, 동일 패턴). MoveCategorySheet는 입력 없어 제외
+- 결과: 시도 3의 "닫을 때 시트가 먼저 닫히고 키보드가 뒤따라 내려가는 어색함" 해결. 키보드와 시트가 자연스럽게 동기
 
 ## 기술 메모
 

@@ -1,5 +1,6 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, ActivityIndicator } from 'react-native';
-import { useRef, useState, useEffect } from 'react';
+import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, ActivityIndicator, Keyboard } from 'react-native';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
 import { Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,12 +13,24 @@ type SaveBottomSheetProps = {
   onSaved?: () => void;
 };
 
+const SHEET_PADDING_BOTTOM = 44;
+
 export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetProps) {
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(360)).current;
+
+  const keyboard = useAnimatedKeyboard();
+  const sheetAnimatedStyle = useAnimatedStyle(() => ({
+    paddingBottom: SHEET_PADDING_BOTTOM + keyboard.height.value,
+  }));
+
+  const handleClose = useCallback(() => {
+    Keyboard.dismiss();
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!visible) {
@@ -94,6 +107,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
       setSaved(true);
       onSaved?.();
       emit('content-saved');
+      Keyboard.dismiss();
       setTimeout(() => onClose(), 1600);
     } catch (e: unknown) {
       if (isDuplicateContentUrlError(e)) {
@@ -118,22 +132,22 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
   };
 
   return (
-    <Modal visible={isMounted} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={isMounted} transparent animationType="none" onRequestClose={handleClose}>
       <Animated.View
         pointerEvents="none"
         style={[styles.dim, { opacity: backdropOpacity }]}
       />
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.backdrop} onPress={handleClose}>
         <Animated.View
           style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
           onStartShouldSetResponder={() => true}
         >
-          <View style={styles.sheet}>
+          <Reanimated.View style={[styles.sheet, sheetAnimatedStyle]}>
             <View style={styles.dragHandle} />
 
             <View style={styles.header}>
               <Text style={styles.title}>링크 저장</Text>
-              <Pressable onPress={onClose} style={styles.closeButton}>
+              <Pressable onPress={handleClose} style={styles.closeButton}>
                 <Ionicons name="close" size={14} color={Colors.secondary} />
               </Pressable>
             </View>
@@ -181,7 +195,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
                 </Pressable>
               </View>
             )}
-          </View>
+          </Reanimated.View>
         </Animated.View>
       </Pressable>
     </Modal>
@@ -209,8 +223,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: 44,
+    paddingBottom: SHEET_PADDING_BOTTOM,
     paddingTop: 12,
+    minHeight: 330,
   },
   dragHandle: {
     width: 36,
