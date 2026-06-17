@@ -137,10 +137,12 @@
 | ContentCard에 selectionMode / selected props 추가 (체크 원형 표시) | ✅ |
 | 우상단 진입: 일반 폴더는 `…` → "선택", 미분류는 텍스트 버튼 직접 | ✅ |
 | 선택 모드 헤더: `[취소] n개 선택됨/항목 선택 [전체 선택/전체 해제]` | ✅ |
+| 선택 모드 진입 시 검색어 초기화 → 전체 선택 범위를 폴더 전체로 보장 | ✅ |
 | 하단 고정 액션 바: 카테고리 이동 / 삭제 (선택 0개면 비활성화) | ✅ |
 | MoveCategorySheet 재사용 (currentCategoryId 안 넘김 → 다중 이동 모드) | ✅ |
+| 카테고리 조회 실패 시 옵션 차단 + 오류 안내/재시도 | ✅ |
 | Optimistic UI + LayoutAnimation으로 부드러운 사라짐 (260ms easeInOut) | ✅ |
-| 실패 시 snapshot 복원 + Alert | ✅ |
+| 단일 Supabase bulk 요청 + 실패 시 snapshot 복원/Alert | ✅ |
 | 현재 폴더로 이동 시 no-op (시트만 닫음) | ✅ |
 
 ## 미완료 (Apple Developer 승인 후)

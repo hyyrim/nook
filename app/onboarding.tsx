@@ -60,9 +60,10 @@ export default function OnboardingScreen() {
 
           <Pressable
             onPress={handleGoogleSignIn}
-            disabled={loading !== null}
+            disabled={loading !== null || !isReady}
             style={({ pressed }) => [
               styles.googleButton,
+              !isReady && styles.googleButtonDisabled,
               pressed && styles.googleButtonPressed,
             ]}
           >
@@ -149,6 +150,9 @@ const styles = StyleSheet.create({
   },
   googleButtonPressed: {
     backgroundColor: Colors.background,
+  },
+  googleButtonDisabled: {
+    opacity: 0.5,
   },
   googleButtonText: {
     fontSize: 15,

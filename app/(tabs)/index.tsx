@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatRelativeTime, formatSource, placeholderColor, rediscoverColors } from '@/lib/utils';
+import { formatRelativeTime, formatSource, placeholderColor, rediscoverColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -128,7 +128,7 @@ export default function HomeScreen() {
                     contentContainerStyle={styles.rediscoverScroll}
                   >
                     {rediscoverItems.map((item) => {
-                      const colors = rediscoverColors(item.id);
+                      const color = rediscoverColor(item.id);
                       return (
                         <RediscoverCard
                           key={item.id}
@@ -136,8 +136,7 @@ export default function HomeScreen() {
                           source={formatSource(item.domain)}
                           hint={item.categories?.name ?? '미분류'}
                           thumbnailUrl={item.thumbnail_url}
-                          gradientDark={colors.dark}
-                          gradientMid={colors.mid}
+                          gradientDark={color}
                           onPress={() => router.push(`/content/${item.id}`)}
                         />
                       );

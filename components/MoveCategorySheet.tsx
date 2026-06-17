@@ -1,5 +1,5 @@
 import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategories } from '@/lib/api';
@@ -15,19 +15,26 @@ type MoveCategorySheetProps = {
 export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelect }: MoveCategorySheetProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(360)).current;
 
+  const loadCategories = useCallback(() => {
+    setLoading(true);
+    setLoadError(false);
+    getCategories()
+      .then(setCategories)
+      .catch((error) => {
+        console.error('Move category load error:', error);
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   useEffect(() => {
-    if (visible) {
-      setLoading(true);
-      getCategories()
-        .then(setCategories)
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
-  }, [visible]);
+    if (visible) loadCategories();
+  }, [visible, loadCategories]);
 
   useEffect(() => {
     if (visible) {
@@ -88,6 +95,18 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
 
             {loading ? (
               <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginVertical: 24 }} />
+            ) : loadError ? (
+              <View style={styles.errorState}>
+                <Ionicons name="cloud-offline-outline" size={28} color={Colors.tertiary} />
+                <Text selectable style={styles.errorText}>카테고리를 불러오지 못했어요</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={loadCategories}
+                  style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+                >
+                  <Text style={styles.retryButtonText}>다시 시도</Text>
+                </Pressable>
+              </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
                 {options.map(opt => {
@@ -95,7 +114,7 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
                   return (
                     <Pressable
                       key={opt.id ?? 'uncategorized'}
-                      style={[styles.option, isSelected && styles.optionSelected]}
+                      style={styles.option}
                       onPress={() => handleSelect(opt.id)}
                     >
                       <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
@@ -169,6 +188,29 @@ const styles = StyleSheet.create({
   list: {
     flexGrow: 0,
   },
+  errorState: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 28,
+  },
+  errorText: {
+    fontSize: 14,
+    color: Colors.secondary,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  retryButtonPressed: {
+    opacity: 0.7,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.surface,
+  },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -177,9 +219,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  optionSelected: {
-    backgroundColor: 'transparent',
   },
   optionText: {
     fontSize: 15,

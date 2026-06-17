@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useShareIntent } from 'expo-share-intent';
 import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/api';

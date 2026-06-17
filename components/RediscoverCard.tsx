@@ -8,11 +8,10 @@ type RediscoverCardProps = {
   hint: string;
   thumbnailUrl?: string | null;
   gradientDark?: string;
-  gradientMid?: string;
   onPress?: () => void;
 };
 
-export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark = '#1E1C2A', gradientMid = '#2E2B40', onPress }: RediscoverCardProps) {
+export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark = '#1E1C2A', onPress }: RediscoverCardProps) {
   return (
     <Pressable
       onPress={onPress}

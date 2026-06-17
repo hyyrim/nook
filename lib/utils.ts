@@ -99,11 +99,11 @@ export function placeholderColor(id: string): string {
 }
 
 const DARK_COLORS = [
-  { dark: '#1E1C2A', mid: '#2E2B40' },
-  { dark: '#172128', mid: '#243240' },
-  { dark: '#201E18', mid: '#342F24' },
-  { dark: '#1A2020', mid: '#283434' },
-  { dark: '#221A22', mid: '#382E38' },
+  '#1E1C2A',
+  '#172128',
+  '#201E18',
+  '#1A2020',
+  '#221A22',
 ];
 
 const DOMAIN_LABELS: Record<string, string> = {
@@ -141,7 +141,7 @@ export function formatSource(domain?: string): string {
   return DOMAIN_LABELS[domain.toLowerCase()] ?? domain.replace(/^www\./, '');
 }
 
-export function rediscoverColors(id: string) {
+export function rediscoverColor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) | 0;

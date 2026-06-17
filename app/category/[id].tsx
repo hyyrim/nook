@@ -17,8 +17,8 @@ import {
   getCategories,
   updateCategory,
   deleteCategory,
-  updateContent,
-  deleteContent,
+  moveContents,
+  deleteContents,
 } from '@/lib/api';
 import { isClassifying, on, emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
@@ -117,6 +117,7 @@ export default function CategoryDetailScreen() {
   };
 
   const enterSelectionMode = () => {
+    setQuery('');
     setSelectionMode(true);
     setSelectedIds(new Set());
   };
@@ -172,7 +173,7 @@ export default function CategoryDetailScreen() {
     setCount((prev) => Math.max(0, prev - ids.length));
     exitSelectionMode();
 
-    Promise.all(ids.map((cid) => updateContent(cid, { category_id: categoryId })))
+    moveContents(ids, categoryId)
       .then(() => emit('content-saved'))
       .catch((e: any) => {
         setArticles(snapshot);
@@ -201,7 +202,7 @@ export default function CategoryDetailScreen() {
             setCount((prev) => Math.max(0, prev - ids.length));
             exitSelectionMode();
 
-            Promise.all(ids.map((cid) => deleteContent(cid)))
+            deleteContents(ids)
               .then(() => emit('content-saved'))
               .catch((e: any) => {
                 setArticles(snapshot);
@@ -426,9 +427,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 70,
-  },
-  navRight: {
     minWidth: 70,
   },
   headerSection: {

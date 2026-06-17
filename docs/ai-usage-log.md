@@ -61,3 +61,7 @@
 | Claude Code | 바텀시트 키보드 회피 — Reanimated 4 `useAnimatedKeyboard` (→ 결정 027) |
 | Claude Code | Content Detail 태그 수정 — chip + input 시트 (→ 결정 028) |
 | Claude Code | 폴더 상세 다중 편집 — 선택 모드 + Optimistic UI + LayoutAnimation (→ 결정 029) |
+| Codex | 다중 콘텐츠 이동/삭제를 단일 Supabase bulk 요청으로 원자화 (→ 결정 030) |
+| Codex | 선택 모드 진입 시 숨겨진 검색 조건 초기화 (→ 결정 029) |
+| Codex | 카테고리 이동 시트 조회 실패 상태 + 재시도 UX 추가 (→ 결정 031) |
+| Codex | 미사용 import·prop·스타일과 Playwright 생성 로그 정리 |

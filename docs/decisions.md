@@ -494,6 +494,9 @@
 
 ## 029. 폴더 상세 다중 편집 — 선택 모드 + Optimistic UI (2026-06-17)
 
+> 참고: 다중 DB 요청의 원자성은 이후 030에서 고도화됨
+> 참고: 카테고리 목록 로드 실패 UX는 이후 031에서 고도화됨
+
 **결정**: 폴더 상세 화면에 선택 모드를 도입해 다수 콘텐츠를 한 번에 카테고리 이동/삭제. 액션은 Optimistic UI + LayoutAnimation으로 즉시 반영
 
 **배경**:
@@ -504,9 +507,9 @@
 - `components/ContentCard.tsx`: `selectionMode`, `selected` props 추가 → 좌측에 체크 원형 인디케이터 표시 (선택 시 primary 색 fill)
 - `app/category/[id].tsx`: 진입(일반 폴더는 ActionSheet에 "선택" 추가, 미분류는 우상단 텍스트 버튼) / 헤더(`[취소] n개 선택됨 [전체 선택/해제]`) / 하단 고정 액션 바(카테고리 이동, 삭제) / SearchBar는 선택 모드에서 숨김
 - `MoveCategorySheet`는 `currentCategoryId` 안 넘기면 체크 없는 상태가 되어 다중 이동 모드로 그대로 재사용
-- 액션 흐름: 선택 → `LayoutAnimation.configureNext` + 로컬 articles 즉시 필터 + 카운트 즉시 감소 → 선택 모드 해제 → 백그라운드 `Promise.all(updateContent/deleteContent)`. 실패 시 snapshot 복원 + Alert
+- 액션 흐름: 선택 → `LayoutAnimation.configureNext` + 로컬 articles 즉시 필터 + 카운트 즉시 감소 → 선택 모드 해제 → 백그라운드 bulk 요청. 실패 시 snapshot 복원 + Alert
 - 현재 폴더로 이동 같은 no-op은 시트만 닫음
-- 전체 선택은 검색 결과(filtered) 기준 (검색 + 선택 동시는 불가, 선택 모드에서 SearchBar 숨김)
+- 선택 모드 진입 시 검색어를 초기화하고 SearchBar를 숨겨 전체 선택 범위가 항상 현재 폴더 전체와 일치
 
 **대안 검토**:
 - 카드 long-press로 진입 → iOS 표준이지만 발견성 낮음. 우상단 명시 진입이 모바일 메모/사진 앱 패턴에 더 맞음
@@ -516,3 +519,37 @@
 **제약**: LayoutAnimation은 Android에서 `setLayoutAnimationEnabledExperimental(true)` 필요(방어적으로 추가). 동시 작업 도중 다른 이벤트로 articles가 갱신되면 snapshot 롤백이 충돌 가능 — MVP 규모에서는 발생 가능성 낮음
 
 **교훈**: 다수 항목 조작 UX는 "API 완료 후 반영"이 아니라 "즉시 반영 + 백그라운드 동기 + 실패 시 롤백"이 자연스럽다. LayoutAnimation 한 줄로 RN 기본 컴포넌트도 충분히 부드러운 전환을 줄 수 있다.
+
+---
+
+## 030. 다중 콘텐츠 변경을 단일 DB 요청으로 원자화 (2026-06-17)
+
+**결정**: 다중 카테고리 이동과 삭제를 콘텐츠별 `Promise.all` 요청 대신 `.in('id', ids)`를 사용하는 단일 Supabase update/delete 요청으로 처리
+
+**배경**: 여러 요청 중 일부만 성공한 뒤 하나가 실패하면 UI는 전체 snapshot을 복원하지만 DB에는 일부 변경이 남을 수 있다. 특히 삭제된 레코드는 클라이언트 snapshot만으로 복구할 수 없다.
+
+**결과**:
+- `lib/api.ts`에 `moveContents`와 `deleteContents` 추가
+- 모든 쿼리에 `user_id` 조건을 유지해 사용자 데이터 격리
+- 이동 대상 카테고리가 현재 사용자 소유인지 bulk update 전에 한 번 검증
+- 단일 SQL 문장 실패 시 전체 변경이 롤백되어 Optimistic UI의 snapshot 복원과 DB 상태가 일치
+
+**대안 검토**: Supabase RPC 트랜잭션도 가능하지만, 현재 작업은 동일 값으로 여러 행을 update/delete하는 단일 SQL 문장으로 충분해 별도 DB 함수와 마이그레이션을 추가하지 않음
+
+**교훈**: Optimistic UI의 롤백은 서버 변경도 원자적일 때만 신뢰할 수 있다.
+
+---
+
+## 031. 카테고리 이동 시트의 로드 실패 차단 UX (2026-06-17)
+
+**결정**: 카테고리 목록 조회 실패 시 오류를 무시하지 않고, 옵션 목록 대신 오류 안내와 재시도 버튼을 표시
+
+**배경**: 조회 실패를 빈 목록처럼 처리하면 시트에 가상 옵션인 "미분류"만 남아 사용자가 정상 목록으로 오인하고 다수 콘텐츠를 잘못 이동할 수 있다.
+
+**결과**:
+- `MoveCategorySheet`에 명시적인 `loadError` 상태 추가
+- 실패 시 카테고리 옵션을 전혀 렌더링하지 않아 이동 선택 차단
+- 오류 안내와 "다시 시도" 버튼 제공
+- 개발 중 원인 확인을 위해 실제 오류는 console에 기록
+
+**교훈**: 데이터 로드 실패와 정상적인 빈 목록은 서로 다른 UI 상태로 다뤄야 한다.

@@ -33,6 +33,7 @@ yarn-error.*
 # local tool state
 .omc/
 .codex/
+.playwright-mcp/
 
 # local env files
 .env

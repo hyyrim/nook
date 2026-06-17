@@ -15,7 +15,7 @@ const googleClientIds = {
 };
 
 export function useGoogleAuth() {
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const [request, , promptAsync] = Google.useAuthRequest({
     iosClientId: googleClientIds.iosClientId,
     webClientId: googleClientIds.webClientId,
     shouldAutoExchangeCode: false,

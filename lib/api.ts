@@ -357,6 +357,43 @@ export async function deleteContent(id: string) {
   if (error) throw error;
 }
 
+export async function moveContents(ids: string[], categoryId: string | null) {
+  if (ids.length === 0) return;
+
+  const userId = await requireUserId();
+
+  if (categoryId) {
+    const { data: category, error: categoryError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('id', categoryId)
+      .maybeSingle();
+    if (categoryError) throw categoryError;
+    if (!category) throw new Error('Category not found');
+  }
+
+  const { error } = await supabase
+    .from('contents')
+    .update({ category_id: categoryId })
+    .eq('user_id', userId)
+    .in('id', ids);
+  if (error) throw error;
+}
+
+export async function deleteContents(ids: string[]) {
+  if (ids.length === 0) return;
+
+  const userId = await requireUserId();
+
+  const { error } = await supabase
+    .from('contents')
+    .delete()
+    .eq('user_id', userId)
+    .in('id', ids);
+  if (error) throw error;
+}
+
 export async function markContentViewed(id: string) {
   const userId = await requireUserId();
 
