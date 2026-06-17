@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
+import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
@@ -25,6 +26,7 @@ export default function SearchScreen() {
   const [allItems, setAllItems] = useState<ContentWithCategory[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const loadData = useCallback(async () => {
@@ -32,11 +34,13 @@ export default function SearchScreen() {
       setLoading(false);
       return;
     }
+    setLoadError(false);
     try {
       const data = await getRecentContents(200);
       setAllItems(data);
     } catch (e) {
       console.error('Search load error:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -111,6 +115,8 @@ export default function SearchScreen() {
         <View style={[styles.list, query.trim().length === 0 && !loading && styles.emptySearchList]}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
+          ) : loadError ? (
+            <ErrorState onRetry={loadData} />
           ) : query.trim().length === 0 ? (
             <Text style={styles.hintText}>제목, 출처, 태그로 찾아보세요</Text>
           ) : filtered.length > 0 ? (

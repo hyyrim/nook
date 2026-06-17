@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-17 (11차 — 카테고리 추가 UX + 라벨 명확화)
+최종 업데이트: 2026-06-17 (12차 — 빈 상태/에러 통일 + 신규 유저 환영 카드)
 
 ---
 
@@ -153,6 +153,16 @@
 | MoveCategorySheet 옵션 마지막에 "+ 새 카테고리 만들기" 추가 | ✅ |
 | 인라인 추가 → `CategoryBottomSheet` (mode=add) → 추가 후 자동 선택 + 시트 닫힘 | ✅ |
 | Category Detail ActionSheet 라벨 명확화 (`수정`→`카테고리 수정`, `삭제`→`카테고리 삭제`) | ✅ |
+
+## 완료 (12차 — 빈 상태/에러 통일 + 신규 유저 환영 카드)
+
+| 항목 | 상태 |
+|------|------|
+| `EmptyState` 공통 컴포넌트 추가 (아이콘 + 제목 + 부제목 통일 디자인) | ✅ |
+| `ErrorState` 공통 컴포넌트 추가 (다시 시도 버튼 포함) | ✅ |
+| Home / Library / Recent Saved / Search / Category Detail 5개 화면에 적용 | ✅ |
+| 각 화면 `loadData`에 `loadError` state 추가 + 실패 시 재시도 UI | ✅ |
+| 신규 유저 홈(콘텐츠 + 발견 둘 다 0) 환영 카드 + 3개 사용 팁 표시 | ✅ |
 
 ## 미완료 (Apple Developer 승인 후)
 

@@ -66,3 +66,4 @@
 | Codex | 카테고리 이동 시트 조회 실패 상태 + 재시도 UX 추가 (→ 결정 031) |
 | Codex | 미사용 import·prop·스타일과 Playwright 생성 로그 정리 |
 | Claude Code | 카테고리 추가 UX (자동 스크롤 + 인라인 추가) + Category Detail 라벨 명확화 (→ 결정 032) |
+| Claude Code | 빈 상태/에러 상태 통일 (EmptyState/ErrorState) + 신규 유저 환영 카드 (→ 결정 033) |

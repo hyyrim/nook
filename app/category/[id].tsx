@@ -8,6 +8,8 @@ import { ContentCard } from '@/components/ContentCard';
 import { SearchBar } from '@/components/SearchBar';
 import { ActionSheet } from '@/components/ActionSheet';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import {
@@ -47,6 +49,7 @@ export default function CategoryDetailScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const [category, setCategory] = useState<Category | null>(null);
   const [count, setCount] = useState(0);
@@ -62,6 +65,7 @@ export default function CategoryDetailScreen() {
       return;
     }
 
+    setLoadError(false);
     try {
       if (isUncategorized) {
         const items = await getUncategorizedContents();
@@ -80,6 +84,7 @@ export default function CategoryDetailScreen() {
       }
     } catch (e) {
       console.error('Category load error:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -294,6 +299,8 @@ export default function CategoryDetailScreen() {
         <View style={[styles.list, selectionMode && styles.listSelectionMode]}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
+          ) : loadError ? (
+            <ErrorState onRetry={loadData} />
           ) : filtered.length > 0 ? (
             filtered.map(a => (
               <ContentCard
@@ -313,16 +320,17 @@ export default function CategoryDetailScreen() {
               />
             ))
           ) : articles.length === 0 ? (
-            <View style={styles.empty}>
-              <Ionicons name="document-text-outline" size={36} color={Colors.tertiary} />
-              <Text style={styles.emptyTitle}>아직 저장된 콘텐츠가 없어요</Text>
-              <Text style={styles.emptySubtitle}>이 카테고리에 콘텐츠를 저장해보세요</Text>
-            </View>
+            <EmptyState
+              icon="document-text-outline"
+              title="아직 저장된 콘텐츠가 없어요"
+              subtitle="이 카테고리에 콘텐츠를 저장해보세요"
+            />
           ) : (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>검색 결과가 없어요</Text>
-              <Text style={styles.emptySubtitle}>다른 검색어를 입력해보세요</Text>
-            </View>
+            <EmptyState
+              icon="search-outline"
+              title="검색 결과가 없어요"
+              subtitle="다른 검색어를 입력해보세요"
+            />
           )}
         </View>
       </ScrollView>
