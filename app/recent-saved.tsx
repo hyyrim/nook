@@ -5,6 +5,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
@@ -19,17 +21,20 @@ export default function RecentSavedScreen() {
   const { session, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadData = useCallback(async () => {
     if (isAuthLoading || !session) {
       setLoading(false);
       return;
     }
+    setLoadError(false);
     try {
       const data = await getRecentContents(50);
       setItems(data);
     } catch (e) {
       console.error('Recent saved load error:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -62,6 +67,8 @@ export default function RecentSavedScreen() {
         <View style={styles.list}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
+          ) : loadError ? (
+            <ErrorState onRetry={loadData} />
           ) : items.length > 0 ? (
             items.map(item => (
               <ContentCard
@@ -77,7 +84,11 @@ export default function RecentSavedScreen() {
               />
             ))
           ) : (
-            <Text style={styles.emptyText}>아직 저장된 콘텐츠가 없어요</Text>
+            <EmptyState
+              icon="bookmark-outline"
+              title="아직 저장된 콘텐츠가 없어요"
+              subtitle="공유하기로 링크를 빠르게 모을 수 있어요"
+            />
           )}
         </View>
       </ScrollView>

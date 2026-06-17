@@ -7,6 +7,8 @@ import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { RediscoverCard } from '@/components/RediscoverCard';
 import { SectionHeader } from '@/components/SectionHeader';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
@@ -22,6 +24,7 @@ export default function HomeScreen() {
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadData = useCallback(async () => {
     if (isAuthLoading) return;
@@ -30,6 +33,7 @@ export default function HomeScreen() {
       return;
     }
 
+    setLoadError(false);
     try {
       const [recent, rediscover] = await Promise.all([
         getRecentContents(3),
@@ -39,6 +43,7 @@ export default function HomeScreen() {
       setRediscoverItems(rediscover);
     } catch (e) {
       console.error('Home load error:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -81,6 +86,50 @@ export default function HomeScreen() {
         <View style={styles.content}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
+          ) : loadError ? (
+            <ErrorState onRetry={loadData} />
+          ) : recentItems.length === 0 && rediscoverItems.length === 0 ? (
+            <View style={styles.welcomeCard}>
+              <View style={styles.welcomeIconWrap}>
+                <Ionicons name="bookmark" size={28} color={Colors.primary} />
+              </View>
+              <Text style={styles.welcomeTitle}>Nook 시작하기</Text>
+              <Text style={styles.welcomeSubtitle}>
+                관심 있는 콘텐츠를 모아{'\n'}잊지 않고 다시 발견해보세요
+              </Text>
+
+              <View style={styles.tipsList}>
+                <View style={styles.tipRow}>
+                  <View style={styles.tipIconWrap}>
+                    <Ionicons name="share-outline" size={16} color={Colors.secondary} />
+                  </View>
+                  <View style={styles.tipText}>
+                    <Text style={styles.tipTitle}>공유하기 → Nook</Text>
+                    <Text style={styles.tipDesc}>Safari, Instagram 등에서 빠르게 저장</Text>
+                  </View>
+                </View>
+
+                <View style={styles.tipRow}>
+                  <View style={styles.tipIconWrap}>
+                    <Ionicons name="add" size={18} color={Colors.secondary} />
+                  </View>
+                  <View style={styles.tipText}>
+                    <Text style={styles.tipTitle}>+ 버튼으로 직접 저장</Text>
+                    <Text style={styles.tipDesc}>URL을 입력하거나 클립보드에서 붙여넣기</Text>
+                  </View>
+                </View>
+
+                <View style={styles.tipRow}>
+                  <View style={styles.tipIconWrap}>
+                    <Ionicons name="sparkles-outline" size={15} color={Colors.secondary} />
+                  </View>
+                  <View style={styles.tipText}>
+                    <Text style={styles.tipTitle}>AI 자동 분류</Text>
+                    <Text style={styles.tipDesc}>저장하면 폴더와 태그를 자동으로 정리해요</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
           ) : (
             <>
               {/* Recent Saved */}
@@ -101,7 +150,11 @@ export default function HomeScreen() {
                     />
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>첫 콘텐츠를 저장해보세요</Text>
+                  <EmptyState
+                    icon="bookmark-outline"
+                    title="첫 콘텐츠를 저장해보세요"
+                    subtitle="공유하기로 링크를 빠르게 모을 수 있어요"
+                  />
                 )}
                 {recentItems.length > 0 && (
                   <Pressable
@@ -248,5 +301,71 @@ const styles = StyleSheet.create({
     color: Colors.tertiary,
     lineHeight: 17,
     textAlign: 'center',
+  },
+  welcomeCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.055,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  welcomeIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  welcomeTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  welcomeSubtitle: {
+    fontSize: 13,
+    color: Colors.secondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 22,
+  },
+  tipsList: {
+    alignSelf: 'stretch',
+    gap: 14,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  tipIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipText: {
+    flex: 1,
+    gap: 2,
+  },
+  tipTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  tipDesc: {
+    fontSize: 12,
+    color: Colors.tertiary,
+    lineHeight: 16,
   },
 });

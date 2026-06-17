@@ -578,3 +578,30 @@
 **제약**: nested Modal(MoveCategorySheet 안의 CategoryBottomSheet) 구조는 iOS에서 정상 동작 확인. 추후 시트 라이브러리 이관 시 호환성 재점검 필요
 
 **교훈**: UX 피드백은 "원래 의도한 디자인" 고집보다 사용자 인지 부담 최소화가 우선. 같은 이름의 액션이 다른 대상(콘텐츠 vs 카테고리)을 가질 때는 prefix로 명확히 하고, 맥락이 명확한 곳은 짧게 둔다.
+
+---
+
+## 033. 빈 상태/에러 상태 통일 + 신규 유저 환영 카드 (2026-06-17)
+
+**결정**: 모든 데이터 로드 화면에 공통 `EmptyState` / `ErrorState` 컴포넌트를 적용해 일관성을 확보하고, 신규 유저가 처음 로그인했을 때 빈 홈 대신 환영 카드 + 사용 팁을 노출
+
+**배경**:
+- Home / Recent Saved / Search / Category Detail의 빈 상태가 4가지 패턴(텍스트만 / paddingVertical 24~160 / dashed placeholder / 아이콘+텍스트)으로 혼재 → 같은 의미(빈 상태)인데 시각적 일관성 부족
+- 모든 화면이 `loadData` 실패 시 `console.error`만 호출 → 네트워크 끊긴 상태에서 사용자에겐 "그냥 빈 화면"으로 보여 데이터 분실 오해 가능
+- 신규 유저 첫 로그인 시 홈에 EmptyState 한 줄만 노출 → 서비스 가치를 전달하지 못하고 어색한 시작
+
+**결과**:
+- `components/EmptyState.tsx`: 아이콘 + 제목 + 부제목 통일. props `icon` / `title` / `subtitle?`
+- `components/ErrorState.tsx`: cloud-offline 아이콘 + 안내 문구 + "다시 시도" 버튼. props `onRetry?`
+- 적용 화면 5개: Home, Library, Recent Saved, Search, Category Detail. 각 화면 `loadError` state + 실패 시 재시도 UI
+- 신규 유저 홈 환영 카드: `recentItems.length === 0 && rediscoverItems.length === 0` 조건에서 EmptyState 대신 카드 1장으로 대체. 큰 북마크 아이콘 + "Nook 시작하기" + 안내 + 3개 팁(공유하기/+ 버튼/AI 자동 분류). 첫 콘텐츠 저장 시 자연스럽게 사라지고 일반 레이아웃으로 전환
+- Search 힌트("제목/출처/태그로 찾아보세요")는 빈 상태가 아니라 검색 시작 안내라 EmptyState 미적용 (디자인 의도 유지)
+
+**대안 검토**:
+- 글로벌 ErrorBoundary 한 곳에서 처리 → 화면별 컨텍스트(어떤 데이터인지)를 잃고 재시도 버튼이 화면 전체를 무너뜨림. 화면별 inline 처리가 적절
+- 환영 카드에 "콘텐츠 저장하기" CTA로 SaveBottomSheet를 직접 띄우기 → Home 컴포넌트가 (tabs)/_layout.tsx의 showSave 상태를 알아야 해서 결합도 증가. 3개 팁만으로 충분히 안내, 사용자는 자연스럽게 공유/+ 버튼 사용
+- 예시 콘텐츠 자동 삽입 → 사용자 데이터에 시스템이 끼어드는 형태라 부담. 가이드만 보여주는 게 깔끔
+
+**제약**: 환영 카드는 `recentItems === 0 && rediscoverItems === 0` 조건에서만 나타남. 사용자가 콘텐츠를 모두 삭제하면 다시 노출됨(의도된 동작)
+
+**교훈**: 빈 상태 / 에러 상태 / 로딩 상태는 "결국 같은 의미라면 같은 컴포넌트로" 통일하는 게 디자인 부채를 줄인다. 신규 유저 첫 화면은 단순히 비어있는 게 아니라 "다음에 뭘 해야 하는지" 안내하는 기회로 활용한다.

@@ -6,6 +6,7 @@ import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { FolderCard, AddCategoryCard } from '@/components/FolderCard';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
+import { ErrorState } from '@/components/ErrorState';
 import { getCategoriesWithCounts, getUncategorizedContents, createCategory } from '@/lib/api';
 import { on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
@@ -18,6 +19,7 @@ export default function LibraryScreen() {
   const [categories, setCategories] = useState<(Category & { count: number })[]>([]);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
@@ -27,6 +29,7 @@ export default function LibraryScreen() {
       return;
     }
 
+    setLoadError(false);
     try {
       const [cats, uncategorized] = await Promise.all([
         getCategoriesWithCounts(),
@@ -37,6 +40,7 @@ export default function LibraryScreen() {
       setUncategorizedCount(uncategorized.length);
     } catch (e) {
       console.error('Library load error:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -79,6 +83,8 @@ export default function LibraryScreen() {
 
         {loading ? (
           <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
+        ) : loadError ? (
+          <ErrorState onRetry={loadData} />
         ) : (
           <View style={styles.grid}>
             <AddCategoryCard onPress={() => setShowAddCategory(true)} />
