@@ -1,7 +1,7 @@
 import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
-import { Colors, Typography } from '@/constants';
+import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type CategoryBottomSheetProps = {
@@ -13,8 +13,6 @@ type CategoryBottomSheetProps = {
   onSubmit?: (name: string) => void;
 };
 
-const SHEET_PADDING_BOTTOM = 44;
-
 export function CategoryBottomSheet({ visible, mode, initialValue = '', existingNames = [], onClose, onSubmit }: CategoryBottomSheetProps) {
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState('');
@@ -25,7 +23,7 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
 
   const keyboard = useAnimatedKeyboard();
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    paddingBottom: SHEET_PADDING_BOTTOM + keyboard.height.value,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM + keyboard.height.value,
   }));
 
   const handleClose = useCallback(() => {
@@ -167,7 +165,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: SHEET_PADDING_BOTTOM,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM,
     paddingTop: 12,
   },
   dragHandle: {

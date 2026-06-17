@@ -2,7 +2,7 @@ import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, A
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
-import { Colors, Typography } from '@/constants';
+import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
@@ -13,8 +13,6 @@ type SaveBottomSheetProps = {
   onSaved?: () => void;
 };
 
-const SHEET_PADDING_BOTTOM = 44;
-
 export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetProps) {
   const [url, setUrl] = useState('');
   const [saved, setSaved] = useState(false);
@@ -24,7 +22,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
 
   const keyboard = useAnimatedKeyboard();
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    paddingBottom: SHEET_PADDING_BOTTOM + keyboard.height.value,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM + keyboard.height.value,
   }));
 
   const handleClose = useCallback(() => {
@@ -223,9 +221,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: SHEET_PADDING_BOTTOM,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM,
     paddingTop: 12,
-    minHeight: 330,
   },
   dragHandle: {
     width: 36,

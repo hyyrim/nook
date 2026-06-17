@@ -67,3 +67,4 @@
 | Codex | 미사용 import·prop·스타일과 Playwright 생성 로그 정리 |
 | Claude Code | 카테고리 추가 UX (자동 스크롤 + 인라인 추가) + Category Detail 라벨 명확화 (→ 결정 032) |
 | Claude Code | 빈 상태/에러 상태 통일 (EmptyState/ErrorState) + 신규 유저 환영 카드 (→ 결정 033) |
+| Codex | 링크 저장·카테고리 추가/수정·제목/태그 수정 바텀시트 하단 여백 통일 (→ 결정 027) |

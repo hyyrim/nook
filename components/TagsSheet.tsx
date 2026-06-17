@@ -1,7 +1,7 @@
 import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
-import { Colors, Typography } from '@/constants';
+import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type TagsSheetProps = {
@@ -11,7 +11,6 @@ type TagsSheetProps = {
   onSubmit: (tags: string[]) => void;
 };
 
-const SHEET_PADDING_BOTTOM = 44;
 const MAX_TAGS = 10;
 const MAX_TAG_LENGTH = 20;
 
@@ -26,7 +25,7 @@ export function TagsSheet({ visible, initialTags = [], onClose, onSubmit }: Tags
 
   const keyboard = useAnimatedKeyboard();
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    paddingBottom: SHEET_PADDING_BOTTOM + keyboard.height.value,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM + keyboard.height.value,
   }));
 
   const handleClose = useCallback(() => {
@@ -211,7 +210,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: SHEET_PADDING_BOTTOM,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM,
     paddingTop: 12,
   },
   dragHandle: {

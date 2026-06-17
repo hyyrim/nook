@@ -1,0 +1,1 @@
+export const BOTTOM_SHEET_PADDING_BOTTOM = 44;

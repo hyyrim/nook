@@ -164,6 +164,24 @@
 | 각 화면 `loadData`에 `loadError` state 추가 + 실패 시 재시도 UI | ✅ |
 | 신규 유저 홈(콘텐츠 + 발견 둘 다 0) 환영 카드 + 3개 사용 팁 표시 | ✅ |
 
+## 추가 이슈 (Claude Code 작업 대기)
+
+### Instagram 릴스 저장/원문 열기
+
+1. **제목·내용 누락**
+   - 재현: iOS Instagram 공유 시트에서 릴스 URL 저장
+   - 현재: 썸네일은 저장되지만 제목은 `Instagram 릴스` fallback만 표시되고 Content Detail의 `내용`이 비어 있음
+   - 기대: Instagram이 공개하는 범위 내에서 캡션을 제목·description으로 저장. 비공개/로그인 필수 콘텐츠는 명시적 fallback 유지
+   - 확인 필요: 실제 Instagram 응답(`oEmbed`, `og:title`, `og:description`, embedded JSON`) 캡처 후 파서 수정. 신규 저장과 기존 fallback 레코드 재조회 모두 검증
+
+2. **`원문 바로가기`가 해당 게시물 대신 Instagram 홈을 여는 문제**
+   - 재현: Content Detail → `원문 바로가기` 탭
+   - 현재: Instagram 앱은 열리지만 저장한 릴스/게시물로 이동하지 않음
+   - 기대: 앱 설치 시 정확한 게시물, 미설치 시 원문 URL을 열기
+   - UX 검토: 미설치 시 외부 Safari로 즉시 이탈하기보다 인앱 브라우저를 우선. `외부 브라우저에서 확인` 버튼을 직접 두려면 custom WebView 화면이 필요하므로, Expo WebBrowser의 iOS 표준 제어로 충분한지 먼저 비교
+
+**제약**: AI 요약 추가 금지, 저장 UX를 막지 않아야 하며, 실제 제목/캡션을 얻지 못한 경우 추측 생성하지 않음.
+
 ## 미완료 (Apple Developer 승인 후)
 
 | 항목 | 비고 |
@@ -180,6 +198,7 @@
 |------|------|
 | 카테고리 정렬 순서 변경 | 사용자가 카테고리 순서를 변경 가능. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
 | 카테고리 폴더 컬러칩 | 각 카테고리에 컬러 지정해 폴더 카드/Content Detail에서 시각 구분. DB 스키마 `categories.color` 컬럼 필요 |
+| 2depth 헤더 스타일 통일 | nav title 17px(Typography.navTitle) 일괄 적용 + 2depth 화면 헤더(타이틀/좌우 액션 정렬·간격) 공통 패턴으로 정리 |
 
 ## 보류 / 시도 기록
 
