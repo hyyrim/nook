@@ -18,25 +18,6 @@ function instagramFallbackTitle(url: string) {
 
 const BROWSER_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
-async function fetchInstagramOEmbed(url: string): Promise<{ title?: string; thumbnail_url?: string } | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
-    const res = await fetch(`https://api.instagram.com/oembed/?url=${encodeURIComponent(url)}`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return {
-      title: data.title || undefined,
-      thumbnail_url: data.thumbnail_url || undefined,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function isInstagramUrl(url: string) {
   try {
     return INSTAGRAM_HOST_RE.test(new URL(url).hostname);
@@ -60,19 +41,8 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   try {
     const isInsta = isInstagramUrl(normalizedUrl);
 
-    // Instagram 포스트: oEmbed로 캡션(title)과 썸네일을 직접 가져옴
-    if (isInsta && INSTAGRAM_POST_RE.test(normalizedUrl)) {
-      const oembed = await fetchInstagramOEmbed(normalizedUrl);
-      if (oembed?.title) {
-        const oembedTitle = oembed.title.length > 100 ? oembed.title.slice(0, 100) + '…' : oembed.title;
-        return {
-          domain,
-          title: oembedTitle,
-          description: oembed.title, // oEmbed title = 캡션 전문
-          thumbnail_url: oembed.thumbnail_url,
-        };
-      }
-    }
+    // Instagram 공개 oEmbed는 2020년부터 access_token 필수로 변경되어 토큰 없이는 항상 실패.
+    // HTML 파싱(og:description / embedded JSON)으로 캡션 추출을 시도하고, 실패 시 generic fallback.
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);

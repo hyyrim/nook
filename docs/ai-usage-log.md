@@ -75,3 +75,4 @@
 | AI 도구 | 작업 내용 |
 |---------|----------|
 | Claude Code | 2depth 헤더 NavHeader 공통 컴포넌트 추출 + 3개 화면 적용 (→ 결정 035) |
+| Claude Code | Instagram 릴스: 죽은 oEmbed 호출 제거 + 원문 바로가기 SFSafariViewController 라우팅 (→ 결정 036) |

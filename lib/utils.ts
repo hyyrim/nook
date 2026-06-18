@@ -1,15 +1,15 @@
 import { Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+
+// Instagram은 게시물 deep-link용 공개 scheme이 없어(`instagram://app/reel/…`은 앱 홈으로 빠짐),
+// SFSafariViewController(인앱 브라우저)로 라우팅한다.
+const INSTAGRAM_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 const APP_SCHEMES: { match: (host: string) => boolean; toAppUrl: (url: URL) => string; scheme: string }[] = [
   {
     match: (h) => ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(h),
     toAppUrl: (url) => `youtube://${url.pathname}${url.search}`,
     scheme: 'youtube',
-  },
-  {
-    match: (h) => ['instagram.com', 'www.instagram.com'].includes(h),
-    toAppUrl: (url) => `instagram://app${url.pathname}`,
-    scheme: 'instagram',
   },
   {
     match: (h) => ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com'].includes(h),
@@ -44,9 +44,30 @@ const APP_SCHEMES: { match: (host: string) => boolean; toAppUrl: (url: URL) => s
 ];
 
 export async function openInAppOrBrowser(urlString: string) {
+  let host = '';
+  try {
+    host = new URL(urlString).hostname.toLowerCase();
+  } catch {}
+
+  if (INSTAGRAM_HOSTS.has(host)) {
+    // 앱 설치 시: https URL을 그대로 던져 iOS Universal Link로 Instagram 앱이 잡게 함
+    // (instagram://app{path}는 path를 무시하고 홈으로 빠지므로 사용 X)
+    try {
+      const hasApp = await Linking.canOpenURL('instagram://app');
+      if (hasApp) {
+        await Linking.openURL(urlString);
+        return;
+      }
+    } catch {}
+    // 미설치: SFSafariViewController 인앱 브라우저로 — Safari 외부 이탈 방지
+    try {
+      await WebBrowser.openBrowserAsync(urlString);
+      return;
+    } catch {}
+  }
+
   try {
     const parsed = new URL(urlString);
-    const host = parsed.hostname.toLowerCase();
     const entry = APP_SCHEMES.find((e) => e.match(host));
 
     if (entry) {

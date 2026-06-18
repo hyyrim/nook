@@ -647,3 +647,40 @@
 **제약**: NavHeader는 헤더 자체만 담당. border-bottom 같은 화면 컨텍스트(검색바·count·SectionLabel 등이 따라오는지)에 따라 다른 처리는 각 화면 wrapper에서 결정
 
 **교훈**: 디자인 토큰을 상수로 정의(결정 017)했어도 화면마다 인라인 스타일을 작성하면 결국 표류한다. 같은 의미(2depth nav)를 가진 UI는 토큰 + 컴포넌트 양쪽으로 묶어야 강제력이 생긴다.
+
+---
+
+## 036. Instagram 릴스 메타데이터 + 원문 바로가기 처리 (2026-06-18)
+
+**결정**:
+1. Instagram 메타데이터 추출에서 공개 oEmbed 호출을 제거하고 HTML 파싱(`og:description` + embedded JSON) 단일 경로로 일원화
+2. 원문 바로가기 Instagram 라우팅은 하이브리드: 앱 설치되어 있으면 https URL을 `Linking.openURL`로 던져 iOS **Universal Link**가 잡게 하고, 미설치면 `WebBrowser.openBrowserAsync`(SFSafariViewController) 인앱 브라우저로 fallback
+
+**배경**:
+- 결정 006/008에서 Instagram oEmbed를 1차 캡션 소스로 사용했지만, 공개 `https://api.instagram.com/oembed/`는 2020년부터 `access_token` 필수 — 토큰 없는 호출은 사실상 100% 실패한다. 모든 Instagram 저장 경로에서 의미 없는 네트워크 왕복이 추가되고, 결과는 항상 HTML fallback으로 떨어진다
+- 결정 020에서 `instagram://app{pathname}` 형태로 deep-link를 시도했으나, Instagram iOS 앱은 `instagram://app` 단독 외에 path 부분을 인식하지 않고 무시한다. 결과: 어떤 게시물·릴스를 눌러도 Instagram 앱 홈으로 빠짐 (`docs/progress.md`에 기록된 실 사용자 재현 증상과 일치)
+- 캡션 추출 실패 시 `Instagram 릴스`/`Instagram 게시물` generic fallback은 이미 정착(`instagramFallbackTitle`) — 사용자 제약("추측 생성 금지")과 맞아 그대로 유지
+
+**결과**:
+- `lib/metadata.ts`:
+  - `fetchInstagramOEmbed` 함수와 `fetchLinkMetadata`의 oEmbed 분기 삭제
+  - 모든 Instagram URL은 HTML(브라우저 UA) → `parseMetadata` → `extractInstagramCaption`(og:description 인용 패턴 + embedded JSON `caption.text` / `edge_media_to_caption`) 경로로 통일
+  - 캡션도 description도 못 얻으면 `instagramFallbackTitle(url)`로 종결, `description`은 `undefined`
+- `lib/utils.ts`:
+  - `APP_SCHEMES`에서 Instagram 엔트리 제거
+  - `openInAppOrBrowser`가 Instagram 호스트면: `Linking.canOpenURL('instagram://app')` → 설치 시 `Linking.openURL(httpsUrl)` (Universal Link로 Instagram 앱이 해당 게시물 표시) → 미설치 시 `WebBrowser.openBrowserAsync(httpsUrl)` → 모두 실패 시 일반 `Linking.openURL` fallback
+  - `instagram://app{path}` 커스텀 스키마는 path를 무시하고 앱 홈으로만 빠지므로 사용 안 함. Universal Link 시스템을 우회하지 않는 것이 핵심
+  - YouTube / X / Naver / TikTok / Threads / LinkedIn 의 앱 deep-link는 결정 020 그대로 유지
+
+**대안 검토**:
+- Edge Function에 access token 보관하고 oEmbed 정식 호출 → 캡션 정확도 가장 높으나 MVP 인프라 부담. 결정 004의 비동기 분류처럼 다음 단계로 분리
+- 항상 SFSafariViewController(WebBrowser)만 사용 → 외부 이탈은 없지만 Instagram 앱이 있는 사용자가 앱에서 게시물 보는 자연스러운 UX를 잃음
+- 항상 `Linking.openURL(https)`만 사용 → 앱 있으면 좋지만 미설치 사용자는 외부 Safari로 이탈
+- shortcode → numeric media id 변환 후 `instagram://media?id=` 사용 → 변환에 비공식 API 필요, MVP 범위 밖
+
+**제약**:
+- 비공개·로그인 필수 게시물은 SFSafariViewController에서 Instagram 로그인 페이지가 노출됨 (앱 deep-link로도 어차피 동일하게 막힘)
+- 기존에 `title="Instagram 릴스"`로 저장된 레코드는 자동 보정 안 함. Content Detail의 `ContentTitleSheet`로 사용자가 직접 수정 가능
+- `app.json`의 `LSApplicationQueriesSchemes`의 `instagram` 항목은 `canOpenURL('instagram://app')` 호출에 필요해 그대로 유지 (앱 설치 여부 감지용)
+
+**교훈**: 외부 플랫폼 API/스키마는 한 번 정착한 뒤에도 정책 변화로 죽을 수 있다. 매번 시도해서 실패시키는 것보다 실패가 예측 가능해진 시점에 분기 자체를 제거하는 게 코드/네트워크 모두 깔끔하다. iOS 앱 deep-link도 "scheme이 있다 = path를 인식한다"가 아니므로, 커스텀 스키마를 강제하면 오히려 OS의 Universal Link 시스템을 우회시켜 결과를 망친다. https URL을 그대로 던지는 게 가장 강력한 라우팅이다.
