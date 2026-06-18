@@ -685,8 +685,11 @@
 
 **교훈**: 외부 플랫폼 API/스키마는 한 번 정착한 뒤에도 정책 변화로 죽을 수 있다. 매번 시도해서 실패시키는 것보다 실패가 예측 가능해진 시점에 분기 자체를 제거하는 게 코드/네트워크 모두 깔끔하다. iOS 앱 deep-link도 "scheme이 있다 = path를 인식한다"가 아니므로, 커스텀 스키마를 강제하면 오히려 OS의 Universal Link 시스템을 우회시켜 결과를 망친다. https URL을 그대로 던지는 게 가장 강력한 라우팅이다.
 
-**후속 보강 (2026-06-18, 같은 작업 세션)**:
+**후속 진단 (2026-06-18, 같은 작업 세션)**:
 - 게시물(`/p/`)은 캡션 추출이 정상인데 릴스(`/reel/`)만 항상 `Instagram 릴스` fallback으로 떨어지는 증상 관찰
-- 원인 분석: Instagram이 릴스 페이지의 `og:description`에는 캡션을 거의 안 넣고 `"Watch this Reel by @user on Instagram."` 같은 generic 텍스트만 노출 (비디오 플레이어 메타 우선). 같은 shortcode라도 `/p/{shortcode}/` 응답은 캡션 인용 패턴을 그대로 포함
-- 해결: `lib/metadata.ts`에 `reelToPostUrl` 추가. `fetchLinkMetadata`가 Instagram URL일 때 내부 fetch URL만 `/reel/` → `/p/`로 변환. 저장된 URL과 `원문 바로가기`는 원본 그대로 유지하며, `parseMetadata`에도 원본 URL을 넘겨 fallback 판정(`Instagram 릴스` vs `Instagram 게시물`)은 정확하게 유지
-- 트레이드오프: shortcode가 같다는 Instagram 내부 데이터 모델에 의존. 변환된 `/p/` URL이 404를 주는 경우(드물지만 가능) 캡션 추출은 실패하고 기존 fallback으로 안전하게 떨어짐
+- 1차 가설(폐기): shortcode를 공유하는 `/p/`로 fetch URL을 변환하면 캡션을 담은 응답을 받을 것 → 실측 결과 `/reel/`과 `/p/` 응답이 거의 동일(둘 다 `og:title`/`og:description` 비어 있음, `caption.text` JSON 0건). 변환 코드는 같은 커밋에서 롤백
+- 2차 진단(실측 발견): Instagram은 **link-preview bot UA에만 og:description에 캡션을 노출하는 차등 응답 정책**. 일반 브라우저 UA(`Mozilla/5.0 ... Safari`)에는 빈 메타를 주고, `Slackbot-LinkExpanding`/`facebookexternalhit` 같은 봇 UA로 요청하면 `"104K views, 4,173 likes: \"실제 캡션\""` 형식의 풍부한 메타를 반환 (실 URL `instagram.com/reel/DZXAMZRq3aa/`로 curl 비교 확인)
+- 해결:
+  - `lib/metadata.ts`의 Instagram fetch UA를 `'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)'`로 교체. 다른 사이트는 기존 기본 UA 유지
+  - `extractInstagramCaption`에 `[:：]\s*["…"]([\s\S]+?)["…"]\s*$` 패턴 추가 — Slackbot 응답 형식(콜론 뒤 끝 인용된 캡션)을 처리. 기존 `on Instagram: "..."` 패턴은 다른 봇 응답을 위해 유지
+- 트레이드오프: Slackbot UA 흉내내기는 외부 서비스 UA를 사칭하는 회색 영역. Instagram이 차후 봇 UA 응답을 더 빡빡하게 막으면 다시 fallback으로 떨어진다(자동으로 안전). 첫 베타까지는 캡션을 얻는 사용자 가치가 회색 영역 비용보다 크다는 판단. 장기적으로는 Edge Function + Graph API access_token 방식으로 이전

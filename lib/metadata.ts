@@ -16,13 +16,11 @@ function instagramFallbackTitle(url: string) {
   return INSTAGRAM_REEL_RE.test(url) ? 'Instagram 릴스' : 'Instagram 게시물';
 }
 
-const BROWSER_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const DEFAULT_FETCH_UA = 'Nook/1.0 (+https://nook.app)';
 
-// Instagram 릴스(`/reel/{shortcode}/`)는 og:description에 캡션이 빠지지만, 같은 shortcode의 게시물
-// 형식(`/p/{shortcode}/`)으로 요청하면 캡션을 포함한 응답을 받는다. 저장 URL과 원문 바로가기는 원본 유지.
-function reelToPostUrl(url: string) {
-  return url.replace(/(\/\/(?:www\.)?instagram\.com)\/(?:reel|reels)\//i, '$1/p/');
-}
+// Instagram은 일반 브라우저 UA에는 빈 og 메타를 주고, link-preview bot UA에만 캡션을 노출한다.
+// Slackbot UA가 가장 풍부한 og:description(캡션 인용 포함)을 반환.
+const INSTAGRAM_FETCH_UA = 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)';
 
 function isInstagramUrl(url: string) {
   try {
@@ -53,13 +51,9 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
 
-    // Instagram은 브라우저 UA로 요청해야 description을 반환
-    const userAgent = isInsta ? BROWSER_UA : 'Nook/1.0 (+https://nook.app)';
+    const userAgent = isInsta ? INSTAGRAM_FETCH_UA : DEFAULT_FETCH_UA;
 
-    // 릴스는 게시물 형식으로 fetch — 캡션 노출 차이를 우회. parseMetadata에는 원본 URL을 넘겨 fallback 판정 유지
-    const fetchUrl = isInsta ? reelToPostUrl(normalizedUrl) : normalizedUrl;
-
-    const response = await fetch(fetchUrl, {
+    const response = await fetch(normalizedUrl, {
       signal: controller.signal,
       headers: {
         Accept: 'text/html,application/xhtml+xml',
@@ -189,6 +183,11 @@ function extractInstagramCaption(description?: string, html?: string): string | 
     const quotedMatch = description.match(/on Instagram:\s*["""](.+?)["""]\s*$/s);
     if (quotedMatch?.[1]?.trim()) {
       return decodeJsonString(quotedMatch[1]) ?? quotedMatch[1].trim();
+    }
+    // Slackbot UA 응답 형식: "N views, M likes: "캡션"" — 마지막 콜론 뒤 인용된 텍스트
+    const trailingQuoted = description.match(/[:：]\s*["""]([\s\S]+?)["""]\s*$/);
+    if (trailingQuoted?.[1]?.trim()) {
+      return decodeJsonString(trailingQuoted[1]) ?? trailingQuoted[1].trim();
     }
     // "... on Instagram: 캡션 내용" (따옴표 없는 경우)
     const colonMatch = description.match(/on Instagram:\s*(.+)$/s);
