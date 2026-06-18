@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-17 (12차 — 빈 상태/에러 통일 + 신규 유저 환영 카드)
+최종 업데이트: 2026-06-18 (13차 — 2depth 헤더 NavHeader 컴포넌트로 통일)
 
 ---
 
@@ -164,6 +164,17 @@
 | 각 화면 `loadData`에 `loadError` state 추가 + 실패 시 재시도 UI | ✅ |
 | 신규 유저 홈(콘텐츠 + 발견 둘 다 0) 환영 카드 + 3개 사용 팁 표시 | ✅ |
 
+## 완료 (13차 — 2depth 헤더 NavHeader 컴포넌트로 통일)
+
+| 항목 | 상태 |
+|------|------|
+| `NavHeader` 공통 컴포넌트 추가 (title + backLabel? + rightAction?) | ✅ |
+| Typography.navTitle (17/600) 적용, height 44, paddingHorizontal 12 | ✅ |
+| rightAction은 icon 버튼 또는 text 버튼 슬롯으로 분기 | ✅ |
+| Category Detail 일반 모드 헤더에 적용 (selectionMode 헤더는 유지) | ✅ |
+| Recent Saved / Account Settings 헤더에 적용 | ✅ |
+| Content Detail (floating nav) / Search (input 헤더) 제외 — 의도된 패턴 | ✅ |
+
 ## 추가 이슈 (Claude Code 작업 대기)
 
 ### Instagram 릴스 저장/원문 열기
@@ -198,7 +209,6 @@
 |------|------|
 | 카테고리 정렬 순서 변경 | 사용자가 카테고리 순서를 변경 가능. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
 | 카테고리 폴더 컬러칩 | 각 카테고리에 컬러 지정해 폴더 카드/Content Detail에서 시각 구분. DB 스키마 `categories.color` 컬럼 필요 |
-| 2depth 헤더 스타일 통일 | nav title 17px(Typography.navTitle) 일괄 적용 + 2depth 화면 헤더(타이틀/좌우 액션 정렬·간격) 공통 패턴으로 정리 |
 
 ## 보류 / 시도 기록
 

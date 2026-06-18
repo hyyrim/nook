@@ -10,6 +10,7 @@ import { ActionSheet } from '@/components/ActionSheet';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { NavHeader } from '@/components/NavHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import {
@@ -264,22 +265,16 @@ export default function CategoryDetailScreen() {
             </Pressable>
           </View>
         ) : (
-          <View style={styles.nav}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={22} color={Colors.primary} />
-              <Text style={styles.backLabel}>폴더</Text>
-            </Pressable>
-            <Text style={styles.navTitle} numberOfLines={1}>{catName}</Text>
-            {isUncategorized ? (
-              <Pressable onPress={enterSelectionMode} style={styles.textButton}>
-                <Text style={styles.textButtonLabel}>선택</Text>
-              </Pressable>
-            ) : (
-              <Pressable onPress={() => setShowActionSheet(true)} style={styles.moreButton}>
-                <Ionicons name="ellipsis-horizontal" size={22} color={Colors.primary} />
-              </Pressable>
-            )}
-          </View>
+          <NavHeader
+            title={catName}
+            backLabel="폴더"
+            onBack={() => router.back()}
+            rightAction={
+              isUncategorized
+                ? { type: 'text', label: '선택', onPress: enterSelectionMode }
+                : { type: 'icon', icon: 'ellipsis-horizontal', onPress: () => setShowActionSheet(true) }
+            }
+          />
         )}
 
         <View style={styles.headerSection}>
@@ -409,33 +404,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 12,
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    height: 44,
-    borderRadius: 8,
-    minWidth: 70,
-  },
-  backLabel: {
-    fontSize: 17,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
   navTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: Colors.primary,
     textAlign: 'center',
     flex: 1,
-  },
-  moreButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 70,
   },
   headerSection: {
     paddingHorizontal: 20,

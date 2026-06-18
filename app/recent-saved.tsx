@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
@@ -7,7 +7,7 @@ import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
-import { Ionicons } from '@expo/vector-icons';
+import { NavHeader } from '@/components/NavHeader';
 import { getRecentContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
@@ -53,14 +53,8 @@ export default function RecentSavedScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView edges={['top']}>
-        <View style={styles.nav}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={18} color={Colors.primary} />
-          </Pressable>
-          <Text style={styles.navTitle}>최근 저장</Text>
-          <View style={styles.navSpacer} />
-        </View>
+      <SafeAreaView edges={['top']} style={styles.safeTop}>
+        <NavHeader title="최근 저장" onBack={() => router.back()} />
       </SafeAreaView>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -101,29 +95,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
+  safeTop: {
+    backgroundColor: Colors.background,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  backButton: {
-    width: 44,
-    alignItems: 'flex-start',
-    padding: 4,
-  },
-  navTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.primary,
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  navSpacer: {
-    width: 44,
   },
   scroll: {
     flex: 1,
@@ -131,11 +106,5 @@ const styles = StyleSheet.create({
   list: {
     padding: 16,
     paddingBottom: 36,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: Colors.tertiary,
-    textAlign: 'center',
-    paddingVertical: 160,
   },
 });

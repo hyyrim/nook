@@ -10,3 +10,4 @@ export { ContentTitleSheet } from './ContentTitleSheet';
 export { TagsSheet } from './TagsSheet';
 export { EmptyState } from './EmptyState';
 export { ErrorState } from './ErrorState';
+export { NavHeader } from './NavHeader';

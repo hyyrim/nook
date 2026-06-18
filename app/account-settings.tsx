@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
+import { NavHeader } from '@/components/NavHeader';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
 import { deleteAccount } from '@/lib/api';
@@ -70,14 +71,8 @@ export default function AccountSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Navigation */}
-      <View style={styles.nav}>
-        <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
-          <Ionicons name="chevron-back" size={18} color={Colors.primary} />
-          <Text style={styles.backLabel}>프로필</Text>
-        </Pressable>
-        <Text style={styles.navTitle}>계정 설정</Text>
-        <View style={styles.navRight} />
+      <View style={styles.headerWrap}>
+        <NavHeader title="계정 설정" backLabel="프로필" onBack={() => router.back()} />
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -132,33 +127,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  headerWrap: {
     marginBottom: 16,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 70,
-  },
-  backLabel: {
-    fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  navTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: Colors.primary,
-    textAlign: 'center',
-  },
-  navRight: {
-    minWidth: 70,
   },
   scroll: {
     flex: 1,

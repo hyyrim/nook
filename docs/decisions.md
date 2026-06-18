@@ -605,3 +605,45 @@
 **제약**: 환영 카드는 `recentItems === 0 && rediscoverItems === 0` 조건에서만 나타남. 사용자가 콘텐츠를 모두 삭제하면 다시 노출됨(의도된 동작)
 
 **교훈**: 빈 상태 / 에러 상태 / 로딩 상태는 "결국 같은 의미라면 같은 컴포넌트로" 통일하는 게 디자인 부채를 줄인다. 신규 유저 첫 화면은 단순히 비어있는 게 아니라 "다음에 뭘 해야 하는지" 안내하는 기회로 활용한다.
+
+---
+
+## 034. MVP 사용자 행동 측정 가설과 집계 기준 고정 (2026-06-17)
+
+**결정**: 첫 저장, 7일 내 두 번째 저장, 자연 재방문 후 Rediscover 열람을 MVP의 핵심 검증 가설로 정하고, 이벤트 도구 도입 전에 계산식과 집계 규칙을 문서로 고정
+
+**배경**: 포트폴리오에서 정확한 사용자 데이터 수치를 제시하려면 구현 전에 분모, 관찰 기간, 이벤트 발생 조건을 정해야 한다. 알림이 없는 MVP에서 Rediscover가 재방문 자체를 유도했다고 해석하면 인과관계를 과장할 수 있다.
+
+**결과**: `docs/analytics-plan.md`에 세 가지 가설, 원본 데이터 우선순위, 최소 행동 이벤트, 개인정보 제외 항목, 테스트 계정 제외와 7일 관찰 기간 등의 집계 규칙을 정의했다. Rediscover는 재방문 유도가 아니라 재방문 이후 콘텐츠 열람 지표로 제한한다.
+
+**대안 검토**: Mixpanel 등 외부 분석 도구를 먼저 도입하는 방식은 보류했다. 초기 베타에서는 Supabase 원본 데이터와 최소 이벤트만으로 기준선을 확보하고, 퍼널 분석 운영 부담이 커질 때 도구 도입을 재검토한다.
+
+**교훈**: 분석 도구보다 먼저 검증할 주장과 계산식을 고정해야 작은 표본에서도 재현 가능하고 과장되지 않은 결과를 만들 수 있다.
+
+---
+
+## 035. 2depth 헤더 — NavHeader 공통 컴포넌트 추출 (2026-06-18)
+
+**결정**: 2depth 화면 헤더(타이틀/뒤로가기/우측 액션)를 `components/NavHeader.tsx` 단일 컴포넌트로 추출하고 Category Detail / Recent Saved / Account Settings 3개 화면에 적용. Content Detail(floating)과 Search(input 헤더)는 의도된 다른 패턴이라 제외
+
+**배경**:
+- 결정 017에서 `Typography.navTitle`(17/600)을 정의했으나 실제 적용은 account-settings 한 곳뿐
+- 화면별 헤더 폰트가 16/700(recent-saved), 18/600(category), 17/600(account-settings)으로 흩어져 위계 불일치
+- back chevron 사이즈(18px vs 22px), backLabel 존재 여부, padding 값, border-bottom 유무까지 모두 제각각
+- 향후 2depth 화면 추가될 때 일관성을 자동으로 보장할 패턴이 필요
+
+**결과**:
+- `components/NavHeader.tsx`: `title` + 선택적 `backLabel`/`onBack` + 선택적 `rightAction`(`type: 'icon' | 'text'`) 슬롯
+- 공통 사양: `Typography.navTitle`, `paddingHorizontal: 12 / paddingVertical: 10`, `minHeight: 44`, side 컬럼 `minWidth: 70`(타이틀 센터 유지용)
+- 좌측: chevron-back 22px + 선택적 라벨(17/500)
+- 우측 슬롯: icon은 44x44 원형 터치 영역, text는 우측 정렬 라벨(15/500, danger/disabled 색 분기)
+- 적용: `category/[id]`(일반 모드), `recent-saved`, `account-settings`
+- 제외: `content/[id]`는 이미지 위 floating chip 패턴, `search`는 검색 input이 헤더 자체라 NavHeader 추상화 범위를 벗어남. `category/[id]`의 selectionMode 헤더도 `[취소] n개 선택됨 [전체 선택]` 3-슬롯 구조라 NavHeader와 의미가 달라 인라인 유지
+
+**대안 검토**:
+- 스타일 값만 Typography.navTitle로 정렬하고 인라인 유지 → 변경 최소화는 되지만 다음에 추가될 2depth 화면이 또 다른 값으로 표류할 위험
+- Content Detail / Search까지 모두 한 컴포넌트로 통일 → floating/검색 input 패턴은 의도된 차이라 props가 비대해지고 통일의 의미가 약해짐. ROI 낮음
+
+**제약**: NavHeader는 헤더 자체만 담당. border-bottom 같은 화면 컨텍스트(검색바·count·SectionLabel 등이 따라오는지)에 따라 다른 처리는 각 화면 wrapper에서 결정
+
+**교훈**: 디자인 토큰을 상수로 정의(결정 017)했어도 화면마다 인라인 스타일을 작성하면 결국 표류한다. 같은 의미(2depth nav)를 가진 UI는 토큰 + 컴포넌트 양쪽으로 묶어야 강제력이 생긴다.
