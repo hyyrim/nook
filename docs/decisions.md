@@ -688,8 +688,12 @@
 **후속 진단 (2026-06-18, 같은 작업 세션)**:
 - 게시물(`/p/`)은 캡션 추출이 정상인데 릴스(`/reel/`)만 항상 `Instagram 릴스` fallback으로 떨어지는 증상 관찰
 - 1차 가설(폐기): shortcode를 공유하는 `/p/`로 fetch URL을 변환하면 캡션을 담은 응답을 받을 것 → 실측 결과 `/reel/`과 `/p/` 응답이 거의 동일(둘 다 `og:title`/`og:description` 비어 있음, `caption.text` JSON 0건). 변환 코드는 같은 커밋에서 롤백
-- 2차 진단(실측 발견): Instagram은 **link-preview bot UA에만 og:description에 캡션을 노출하는 차등 응답 정책**. 일반 브라우저 UA(`Mozilla/5.0 ... Safari`)에는 빈 메타를 주고, `Slackbot-LinkExpanding`/`facebookexternalhit` 같은 봇 UA로 요청하면 `"104K views, 4,173 likes: \"실제 캡션\""` 형식의 풍부한 메타를 반환 (실 URL `instagram.com/reel/DZXAMZRq3aa/`로 curl 비교 확인)
+- 2차 진단(폐기): Instagram이 일반 브라우저 UA에는 빈 메타를, Slackbot UA에는 og:description 짧은 캡션 인용(`"N views, M likes: \"캡션\""`)을 반환한다는 발견으로 fetch UA를 Slackbot으로 교체. 사용자 검증 결과 og:description의 캡션이 ~100자에서 잘려서 description이 매우 짧고, og:title이 한국어(`"Instagram의 <계정명>"`) 형식이라 기존 generic 패턴이 매치를 못해 title도 잘못 들어옴
+- 3차 진단(실측 발견·채택): `facebookexternalhit/1.1` UA로 fetch하면 응답 HTML 내에 `"caption":{"text":"<JSON 이스케이프된 캡션 전문>"}` 패턴이 다수 포함됨. 다만 페이지에 **추천 게시물 caption도 함께 들어오므로** 첫 매치를 사용하면 다른 콘텐츠 캡션이 우리 콘텐츠로 들어가는 오염 발생. 실측: 우리 콘텐츠는 항상 `"text":"..."}, "code":"<shortcode>"` 형태로 인접(50자 이내), 추천 콘텐츠 caption은 같은 shortcode 주변 4000자 안에서도 다른 위치에 있음
 - 해결:
-  - `lib/metadata.ts`의 Instagram fetch UA를 `'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)'`로 교체. 다른 사이트는 기존 기본 UA 유지
-  - `extractInstagramCaption`에 `[:：]\s*["…"]([\s\S]+?)["…"]\s*$` 패턴 추가 — Slackbot 응답 형식(콜론 뒤 끝 인용된 캡션)을 처리. 기존 `on Instagram: "..."` 패턴은 다른 봇 응답을 위해 유지
-- 트레이드오프: Slackbot UA 흉내내기는 외부 서비스 UA를 사칭하는 회색 영역. Instagram이 차후 봇 UA 응답을 더 빡빡하게 막으면 다시 fallback으로 떨어진다(자동으로 안전). 첫 베타까지는 캡션을 얻는 사용자 가치가 회색 영역 비용보다 크다는 판단. 장기적으로는 Edge Function + Graph API access_token 방식으로 이전
+  - `lib/metadata.ts`의 Instagram fetch UA를 `'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'`로 변경
+  - `extractInstagramCaptionFromHtml(html, baseUrl)` 신설: URL에서 shortcode 추출 → `"caption":{...,"text":"<x>"}` 뒤 200자 이내에 `"code"|"shortcode":"<해당 shortcode>"`가 오는 경우만 매치 (BWD 방향만). FWD 방향(shortcode → caption)은 timeline 추천 첫 노드를 잘못 잡는 케이스가 확인되어 사용하지 않음
+  - `parseMetadata`에서 caption 추출 순서를 (1) `extractInstagramCaptionFromHtml`(전문) → (2) 기존 `extractInstagramCaption`(og:description 인용 fallback)로 변경
+  - `GENERIC_TITLE_PATTERNS`에 `/^Instagram(의|에서)/i` 추가 (`metadata.ts` + `ai.ts` 동기화). 한국어 link-preview 응답에서도 generic 판정되어 caption-우선 분기로 진입
+- 트레이드오프: facebookexternalhit UA 흉내내기는 외부 서비스 UA를 사칭하는 회색 영역. Instagram이 차후 응답 구조(shortcode-caption 인접성)를 바꾸면 다시 fallback으로 떨어진다(자동으로 안전). 첫 베타까지는 캡션을 얻는 사용자 가치가 회색 영역 비용보다 크다는 판단. 장기적으로는 Edge Function + Graph API access_token 방식으로 이전
+- 검증: 실 URL `instagram.com/reel/DZXAMZRq3aa/`의 fb 응답에서 BWD 거리 50/100/200/400/800 모두 정확한 캡션(`"캡컷으로 모자이크 쉽게 하는 법 .. ★ 🎩 ..."`)을 추출. 200자로 고정하여 같은 객체 sibling 거리만 허용

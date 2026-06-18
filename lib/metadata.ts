@@ -18,9 +18,19 @@ function instagramFallbackTitle(url: string) {
 
 const DEFAULT_FETCH_UA = 'Nook/1.0 (+https://nook.app)';
 
-// Instagram은 일반 브라우저 UA에는 빈 og 메타를 주고, link-preview bot UA에만 캡션을 노출한다.
-// Slackbot UA가 가장 풍부한 og:description(캡션 인용 포함)을 반환.
-const INSTAGRAM_FETCH_UA = 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)';
+// Instagram은 일반 브라우저 UA에는 빈 og 메타를 주지만, link-preview bot UA에는 응답 안에
+// `"caption":{"text":"..."}` JSON으로 캡션 전문이 포함된다.
+// Slackbot은 og:description으로 짧은 캡션을, facebookexternalhit은 응답 HTML 안에 풍부한 caption JSON을 준다.
+// 응답에 추천 게시물 캡션도 함께 들어오므로 추출 시 shortcode 컨텍스트로 현재 콘텐츠를 식별해야 한다.
+const INSTAGRAM_FETCH_UA = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+
+function extractInstagramShortcode(url: string): string | undefined {
+  return url.match(/\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/)?.[1];
+}
+
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function isInstagramUrl(url: string) {
   try {
@@ -105,6 +115,8 @@ const GENERIC_TITLE_PATTERNS = [
   /on\s+instagram/i,
   // "Name (@username) • Instagram ..." 형식은 캡션이 없는 generic 제목
   /\(@[\w.]+\)\s*[·•]\s*Instagram/i,
+  // 한국어 link-preview bot 응답: "Instagram의 ...", "Instagram에서 ..."
+  /^Instagram(의|에서)/i,
 ];
 
 function isGenericTitle(title: string) {
@@ -119,10 +131,10 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
   const description =
     findMetaContent(html, ['og:description', 'twitter:description', 'description']);
 
-  // Instagram 캡션 추출 시도: og:description 또는 임베디드 JSON에서
+  // Instagram 캡션 추출 시도: 1) 응답 HTML embedded JSON(shortcode 컨텍스트), 2) og:description 인용 패턴
   let caption: string | undefined;
   if (isInstagramUrl(baseUrl)) {
-    caption = extractInstagramCaption(description, html);
+    caption = extractInstagramCaptionFromHtml(html, baseUrl) ?? extractInstagramCaption(description, html);
   }
 
   const fullDescription = isYouTubeUrl(baseUrl)
@@ -196,18 +208,29 @@ function extractInstagramCaption(description?: string, html?: string): string | 
     }
   }
 
-  // 2. HTML 내 embedded JSON에서 캡션 추출
-  if (html) {
-    // Instagram은 JSON-LD 또는 script 태그에 캡션을 포함할 수 있음
-    const captionMatch = html.match(/"caption"\s*:\s*\{[^}]*"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-    if (captionMatch?.[1]) {
-      const decoded = decodeJsonString(captionMatch[1]);
-      if (decoded) return decoded;
-    }
-    // 대체 패턴: "edge_media_to_caption"
-    const altMatch = html.match(/"edge_media_to_caption".*?"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-    if (altMatch?.[1]) {
-      const decoded = decodeJsonString(altMatch[1]);
+  // 2. HTML 내 embedded JSON 추출은 추천 게시물 캡션과 섞일 위험이 있어
+  //    별도 함수 `extractInstagramCaptionFromHtml(html, baseUrl)`에서 shortcode 컨텍스트로 처리한다.
+
+  return undefined;
+}
+
+/** baseUrl의 shortcode와 같은 객체 블록에 속한 caption.text를 추출. 추천 게시물 캡션 오염 방지. */
+function extractInstagramCaptionFromHtml(html: string, baseUrl: string): string | undefined {
+  const shortcode = extractInstagramShortcode(baseUrl);
+  if (!shortcode) return undefined;
+  const esc = escapeRegex(shortcode);
+
+  // Instagram fb 응답에는 추천 게시물 caption도 함께 들어오므로 위치만으로 분기.
+  // 우리 콘텐츠는 항상 `"text":"..."}, "code":"<shortcode>"` 형태(text 객체 직후 shortcode)로 인접한다.
+  // 200자는 같은 부모 객체 안 sibling 거리 정도라 보수적이면서 충분.
+  // 반대 방향(shortcode → caption)은 timeline 추천 노드의 첫 caption을 잘못 잡는 케이스가 확인되어 사용하지 않는다.
+  const fields = ['code', 'shortcode'];
+  for (const field of fields) {
+    const m = html.match(new RegExp(
+      `"caption"\\s*:\\s*\\{[^}]*?"text"\\s*:\\s*"((?:[^"\\\\]|\\\\.)+?)"[\\s\\S]{0,200}?"${field}"\\s*:\\s*"${esc}"`,
+    ));
+    if (m?.[1]) {
+      const decoded = decodeJsonString(m[1]);
       if (decoded) return decoded;
     }
   }

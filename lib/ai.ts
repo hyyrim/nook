@@ -114,6 +114,7 @@ const GENERIC_TITLE_PATTERNS = [
   /instagram\s+(사진|동영상|photos?|videos?|reels?|릴스)/i,
   /on\s+instagram/i,
   /\(@[\w.]+\)\s*[·•]\s*Instagram/i,
+  /^Instagram(의|에서)/i,
 ];
 
 function isGenericTitle(title: string) {

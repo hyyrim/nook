@@ -182,8 +182,9 @@
 | 죽은 Instagram oEmbed 호출 제거 (`fetchInstagramOEmbed`) — token 필수로 사실상 항상 실패 | ✅ |
 | HTML 파싱 경로로 캡션 추출 일원화 (`extractInstagramCaption`은 유지) | ✅ |
 | 캡션 추출 실패 시 `Instagram 릴스`/`Instagram 게시물` fallback은 그대로 — 추측 생성 금지 원칙 유지 | ✅ |
-| 릴스 캡션 추출: Instagram fetch UA를 Slackbot으로 교체. Instagram이 일반 브라우저 UA에는 빈 og를 주고 link-preview bot UA에만 og:description에 캡션을 노출하는 차등 응답 정책 우회 | ✅ |
-| `extractInstagramCaption`에 콜론 뒤 끝 인용 패턴 추가 — Slackbot 응답 형식(`"N views, M likes: \"캡션\""`) 처리 | ✅ |
+| 릴스 캡션 추출: Instagram fetch UA를 facebookexternalhit으로 교체. 응답 HTML embedded JSON `"caption":{"text":"..."}` 패턴으로 캡션 전문 추출 (Slackbot 시도는 og 짧은 인용만 줘서 폐기) | ✅ |
+| `extractInstagramCaptionFromHtml` 추가 — URL shortcode와 caption.text가 200자 이내로 인접한 경우만 매치하여 추천 게시물 오염 방지 | ✅ |
+| `GENERIC_TITLE_PATTERNS`에 한국어 패턴(`^Instagram(의|에서)`) 추가 — link-preview bot 응답이 `"Instagram의 ..."` 형식일 때도 generic 판정되어 caption 추출 분기로 진입 | ✅ |
 | 원문 바로가기 Instagram 경로 하이브리드: 앱 설치 시 Universal Link (`Linking.openURL(https)`) → 미설치 시 SFSafariViewController fallback | ✅ |
 | 다른 사이트(YouTube/X/Naver/TikTok 등)의 앱 scheme 동작은 결정 020 그대로 유지 | ✅ |
 
