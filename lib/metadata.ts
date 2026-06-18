@@ -18,6 +18,12 @@ function instagramFallbackTitle(url: string) {
 
 const BROWSER_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 
+// Instagram 릴스(`/reel/{shortcode}/`)는 og:description에 캡션이 빠지지만, 같은 shortcode의 게시물
+// 형식(`/p/{shortcode}/`)으로 요청하면 캡션을 포함한 응답을 받는다. 저장 URL과 원문 바로가기는 원본 유지.
+function reelToPostUrl(url: string) {
+  return url.replace(/(\/\/(?:www\.)?instagram\.com)\/(?:reel|reels)\//i, '$1/p/');
+}
+
 function isInstagramUrl(url: string) {
   try {
     return INSTAGRAM_HOST_RE.test(new URL(url).hostname);
@@ -50,7 +56,10 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
     // Instagram은 브라우저 UA로 요청해야 description을 반환
     const userAgent = isInsta ? BROWSER_UA : 'Nook/1.0 (+https://nook.app)';
 
-    const response = await fetch(normalizedUrl, {
+    // 릴스는 게시물 형식으로 fetch — 캡션 노출 차이를 우회. parseMetadata에는 원본 URL을 넘겨 fallback 판정 유지
+    const fetchUrl = isInsta ? reelToPostUrl(normalizedUrl) : normalizedUrl;
+
+    const response = await fetch(fetchUrl, {
       signal: controller.signal,
       headers: {
         Accept: 'text/html,application/xhtml+xml',

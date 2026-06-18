@@ -684,3 +684,9 @@
 - `app.json`의 `LSApplicationQueriesSchemes`의 `instagram` 항목은 `canOpenURL('instagram://app')` 호출에 필요해 그대로 유지 (앱 설치 여부 감지용)
 
 **교훈**: 외부 플랫폼 API/스키마는 한 번 정착한 뒤에도 정책 변화로 죽을 수 있다. 매번 시도해서 실패시키는 것보다 실패가 예측 가능해진 시점에 분기 자체를 제거하는 게 코드/네트워크 모두 깔끔하다. iOS 앱 deep-link도 "scheme이 있다 = path를 인식한다"가 아니므로, 커스텀 스키마를 강제하면 오히려 OS의 Universal Link 시스템을 우회시켜 결과를 망친다. https URL을 그대로 던지는 게 가장 강력한 라우팅이다.
+
+**후속 보강 (2026-06-18, 같은 작업 세션)**:
+- 게시물(`/p/`)은 캡션 추출이 정상인데 릴스(`/reel/`)만 항상 `Instagram 릴스` fallback으로 떨어지는 증상 관찰
+- 원인 분석: Instagram이 릴스 페이지의 `og:description`에는 캡션을 거의 안 넣고 `"Watch this Reel by @user on Instagram."` 같은 generic 텍스트만 노출 (비디오 플레이어 메타 우선). 같은 shortcode라도 `/p/{shortcode}/` 응답은 캡션 인용 패턴을 그대로 포함
+- 해결: `lib/metadata.ts`에 `reelToPostUrl` 추가. `fetchLinkMetadata`가 Instagram URL일 때 내부 fetch URL만 `/reel/` → `/p/`로 변환. 저장된 URL과 `원문 바로가기`는 원본 그대로 유지하며, `parseMetadata`에도 원본 URL을 넘겨 fallback 판정(`Instagram 릴스` vs `Instagram 게시물`)은 정확하게 유지
+- 트레이드오프: shortcode가 같다는 Instagram 내부 데이터 모델에 의존. 변환된 `/p/` URL이 404를 주는 경우(드물지만 가능) 캡션 추출은 실패하고 기존 fallback으로 안전하게 떨어짐
