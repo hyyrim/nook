@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { classifyContent } from './ai';
 import { emit, markClassified, markClassifying } from './events';
-import { fetchLinkMetadata, normalizeUrl } from './metadata';
+import { fetchLinkMetadata, isBadInstagramMetadataText, normalizeUrl } from './metadata';
 import type { Category, Content } from '@/types';
 
 async function requireUserId() {
@@ -278,17 +278,25 @@ export async function refreshContentMetadata(
   const metadata = await fetchLinkMetadata(content.url);
   const updates: {
     title?: string;
-    description?: string;
+    description?: string | null;
     thumbnail_url?: string;
     domain?: string;
   } = {};
 
-  if ((!content.title || content.title === content.url) && metadata.title) {
+  if (
+    (!content.title ||
+      content.title === content.url ||
+      isInstagramPlaceholderTitle(content) ||
+      isInstagramMetadataPolluted(content)) &&
+    metadata.title
+  ) {
     updates.title = metadata.title;
   }
 
   if (shouldPreferDescriptionUpdate(content.description, metadata.description)) {
     updates.description = metadata.description;
+  } else if (isInstagramMetadataPolluted(content) && isBadInstagramMetadataText(content.description)) {
+    updates.description = metadata.description ?? null;
   }
 
   if (!content.thumbnail_url && metadata.thumbnail_url) {
@@ -315,6 +323,25 @@ export async function refreshContentMetadata(
     .single();
   if (error) throw error;
   return data as Content & { categories: { name: string } | null };
+}
+
+function isInstagramMetadataPolluted(content: Content) {
+  if (!isInstagramContent(content)) return false;
+  return isBadInstagramMetadataText(content.title) || isBadInstagramMetadataText(content.description);
+}
+
+function isInstagramPlaceholderTitle(content: Content) {
+  if (!isInstagramContent(content)) return false;
+  return content.title === 'Instagram 릴스' || content.title === 'Instagram 게시물';
+}
+
+function isInstagramContent(content: Content) {
+  if (content.domain?.toLowerCase().includes('instagram.com')) return true;
+  try {
+    return new URL(content.url).hostname.replace(/^www\./, '') === 'instagram.com';
+  } catch {
+    return false;
+  }
 }
 
 export async function updateContent(id: string, updates: {

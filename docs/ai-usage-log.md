@@ -76,3 +76,5 @@
 |---------|----------|
 | Claude Code | 2depth 헤더 NavHeader 공통 컴포넌트 추출 + 3개 화면 적용 (→ 결정 035) |
 | Claude Code | Instagram 릴스: 죽은 oEmbed 호출 제거 + 원문 바로가기 SFSafariViewController 라우팅 (→ 결정 036) |
+| Codex | Instagram 릴스 통계/깨진 캡션 fallback 차단 (→ 결정 037) |
+| Codex | Instagram 릴스 현재 media 객체 caption 매칭 보강 (→ 결정 038) |

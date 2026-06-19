@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatSource, placeholderColor, openInAppOrBrowser } from '@/lib/utils';
+import { isBadInstagramMetadataText } from '@/lib/metadata';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -33,6 +34,30 @@ function shouldRefreshDescription(content: ContentWithCategory) {
     !content.description ||
     (content.description.length > 120 && !content.description.includes('\n')),
   );
+}
+
+function shouldRefreshMetadata(content: ContentWithCategory) {
+  return Boolean(
+    !content.thumbnail_url ||
+    !content.title ||
+    content.title === content.url ||
+    shouldRefreshDescription(content) ||
+    isPollutedInstagramMetadata(content),
+  );
+}
+
+function isPollutedInstagramMetadata(content: ContentWithCategory) {
+  if (!isInstagramContent(content)) return false;
+  return isBadInstagramMetadataText(content.title) || isBadInstagramMetadataText(content.description);
+}
+
+function isInstagramContent(content: ContentWithCategory) {
+  if (content.domain?.toLowerCase().includes('instagram.com')) return true;
+  try {
+    return new URL(content.url).hostname.replace(/^www\./, '') === 'instagram.com';
+  } catch {
+    return false;
+  }
 }
 
 function RelatedCard({
@@ -92,7 +117,7 @@ export default function ContentDetailScreen() {
           setItem(content);
           setDescriptionExpanded(false);
 
-          if (!content.thumbnail_url || !content.title || content.title === content.url || shouldRefreshDescription(content)) {
+          if (shouldRefreshMetadata(content)) {
             refreshContentMetadata(content)
               .then((updated) => {
                 if (!cancelled) setItem(updated);

@@ -697,3 +697,39 @@
   - `GENERIC_TITLE_PATTERNS`에 `/^Instagram(의|에서)/i` 추가 (`metadata.ts` + `ai.ts` 동기화). 한국어 link-preview 응답에서도 generic 판정되어 caption-우선 분기로 진입
 - 트레이드오프: facebookexternalhit UA 흉내내기는 외부 서비스 UA를 사칭하는 회색 영역. Instagram이 차후 응답 구조(shortcode-caption 인접성)를 바꾸면 다시 fallback으로 떨어진다(자동으로 안전). 첫 베타까지는 캡션을 얻는 사용자 가치가 회색 영역 비용보다 크다는 판단. 장기적으로는 Edge Function + Graph API access_token 방식으로 이전
 - 검증: 실 URL `instagram.com/reel/DZXAMZRq3aa/`의 fb 응답에서 BWD 거리 50/100/200/400/800 모두 정확한 캡션(`"캡컷으로 모자이크 쉽게 하는 법 .. ★ 🎩 ..."`)을 추출. 200자로 고정하여 같은 객체 sibling 거리만 허용
+> 참고: 이후 038에서 일부 릴스의 실제 콘텐츠 caption은 `code` 뒤에 위치하는 구조도 확인되어, 현재 media 객체 안 `code → caption` 매칭을 추가함
+
+---
+
+## 037. Instagram 릴스 통계/깨진 캡션 fallback 차단 (2026-06-18)
+
+**결정**: Instagram link-preview fallback에서 `조회/좋아요/댓글` 통계 문구와 깨진 캡션 문자열을 콘텐츠 제목/내용으로 저장하지 않는다. 캡션이 정상적으로 추출되지 않으면 `Instagram 릴스`/`Instagram 게시물` fallback 제목만 사용한다.
+
+**배경**: 일부 릴스는 facebookexternalhit 응답에서 shortcode 인접 caption JSON이 누락되고 Slackbot `og:description`만 제공된다. 이 값은 `조회 346K회, 좋아요 ...: "캡션"`처럼 통계 prefix가 붙거나 닫는 따옴표 없이 잘리며, Unicode replacement character(`�`)가 포함될 수 있다. 기존 로직은 캡션 추출 실패 시 description 전체를 title/description으로 승격해 화면에 통계 문구와 깨진 글자가 노출됐다.
+
+**결과**:
+- 닫는 따옴표 없이 잘린 Slackbot caption은 콜론 뒤 인용부만 후보로 추출
+- 후보에 `�`가 포함되면 깨진 문자열로 보고 버림
+- Instagram description이 조회수/좋아요/댓글 통계 문구일 때는 title/description fallback 소스로 사용하지 않음
+- 정상 caption JSON 또는 정상 Slackbot caption이 없으면 안전한 generic fallback만 저장
+- 기존 저장 항목은 Content Detail 진입 시 오염된 Instagram metadata면 refresh를 실행하고, title/description을 새 metadata로 교체하거나 비움
+
+**교훈**: 외부 플랫폼 메타데이터는 “있는 값”보다 “사용자에게 보여도 되는 값”인지가 더 중요하다. 특히 link-preview bot 응답은 통계/잘림/인코딩 실패가 섞일 수 있어, 캡션 추출 실패 시 원문 description 전체를 그대로 승격하면 화면 품질이 급격히 떨어진다.
+
+---
+
+## 038. Instagram 릴스 현재 media 객체 caption 매칭 보강 (2026-06-18)
+
+**결정**: Instagram HTML의 `caption.text` 추출에서 기존 `caption → code` 근접 매칭에 더해, 현재 media 객체 안의 `__isXIGPolarisMedia → code(shortcode) → caption.text` 구조도 우선 매칭한다.
+
+**배경**: `DYxDOPISH7H`, `DZPwcggPDM4` 릴스는 facebookexternalhit 응답에 캡션 전문이 존재하지만, 실제 콘텐츠 caption이 `code` 뒤 약 1,200자 부근에 위치했다. 기존 파서는 `caption.text` 뒤 200자 안에 shortcode가 있는 구조만 허용해 두 URL 모두 캡션을 놓치고 `Instagram 릴스` fallback으로 저장됐다.
+
+**결과**:
+- `extractInstagramCaptionFromHtml`이 현재 media 객체 marker(`__isXIGPolarisMedia`)와 URL shortcode를 먼저 확인한 뒤 같은 객체의 caption을 추출
+- 기존 `caption → code` fallback은 유지하되 허용 거리를 1,500자로 확대
+- 기존 저장 항목의 title이 `Instagram 릴스`/`Instagram 게시물` placeholder면 Content Detail refresh에서 새 caption title로 교체
+- 검증 URL:
+  - `DYxDOPISH7H` → 제목 `📍저희는 결혼 얘기 나오자마자 이것 부터 했어요`
+  - `DZPwcggPDM4` → 제목 `매번 녹음하다가 현타온 적 나만 있냐`
+
+**교훈**: Instagram logged-out HTML은 같은 계정의 추천 timeline과 현재 media payload가 한 응답에 섞인다. 캡션 위치보다 “현재 URL shortcode가 붙은 media 객체인지”를 먼저 확인해야 안전하다.

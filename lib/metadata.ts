@@ -18,11 +18,12 @@ function instagramFallbackTitle(url: string) {
 
 const DEFAULT_FETCH_UA = 'Nook/1.0 (+https://nook.app)';
 
-// Instagram은 일반 브라우저 UA에는 빈 og 메타를 주지만, link-preview bot UA에는 응답 안에
-// `"caption":{"text":"..."}` JSON으로 캡션 전문이 포함된다.
-// Slackbot은 og:description으로 짧은 캡션을, facebookexternalhit은 응답 HTML 안에 풍부한 caption JSON을 준다.
-// 응답에 추천 게시물 캡션도 함께 들어오므로 추출 시 shortcode 컨텍스트로 현재 콘텐츠를 식별해야 한다.
-const INSTAGRAM_FETCH_UA = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+// Instagram은 link-preview bot UA에 따라 다른 메타데이터를 노출한다.
+// - facebookexternalhit: 응답 HTML 안에 `"caption":{"text":"..."}` JSON으로 캡션 전문(있는 경우)
+// - Slackbot: og:description에 짧은 캡션 인용 (모든 게시물에서 비교적 일관되게 제공)
+// fb는 풍부하지만 일부 게시물에서 caption JSON이 누락 → 1차로 시도 후 실패 시 Slackbot으로 폴백.
+const INSTAGRAM_FETCH_UA_PRIMARY = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+const INSTAGRAM_FETCH_UA_FALLBACK = 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)';
 
 function extractInstagramShortcode(url: string): string | undefined {
   return url.match(/\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/)?.[1];
@@ -48,44 +49,54 @@ function isYouTubeUrl(url: string) {
   }
 }
 
-export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
-  const normalizedUrl = normalizeUrl(url);
-  const domain = getDomain(normalizedUrl);
-
+async function fetchHtmlWithUA(url: string, userAgent: string): Promise<string | undefined> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
   try {
-    const isInsta = isInstagramUrl(normalizedUrl);
-
-    // Instagram 공개 oEmbed는 2020년부터 access_token 필수로 변경되어 토큰 없이는 항상 실패.
-    // HTML 파싱(og:description / embedded JSON)으로 캡션 추출을 시도하고, 실패 시 generic fallback.
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
-
-    const userAgent = isInsta ? INSTAGRAM_FETCH_UA : DEFAULT_FETCH_UA;
-
-    const response = await fetch(normalizedUrl, {
+    const response = await fetch(url, {
       signal: controller.signal,
       headers: {
         Accept: 'text/html,application/xhtml+xml',
         'User-Agent': userAgent,
       },
     });
-
+    if (!response.ok) return undefined;
+    return await response.text();
+  } catch {
+    return undefined;
+  } finally {
     clearTimeout(timeout);
+  }
+}
 
-    if (!response.ok) {
-      return isInsta && INSTAGRAM_POST_RE.test(normalizedUrl)
+export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+  const normalizedUrl = normalizeUrl(url);
+  const domain = getDomain(normalizedUrl);
+  const isInsta = isInstagramUrl(normalizedUrl);
+
+  try {
+    if (isInsta) {
+      // 1차: facebookexternalhit — 응답 HTML 안의 caption.text JSON에서 풍부한 캡션 시도
+      const primaryHtml = await fetchHtmlWithUA(normalizedUrl, INSTAGRAM_FETCH_UA_PRIMARY);
+      if (primaryHtml) {
+        const captionFromHtml = extractInstagramCaptionFromHtml(primaryHtml, normalizedUrl);
+        if (captionFromHtml) {
+          return { domain, ...parseMetadata(primaryHtml, normalizedUrl) };
+        }
+      }
+      // 2차: Slackbot — og:description 짧은 캡션 인용 (모든 게시물에서 비교적 일관)
+      const fallbackHtml = await fetchHtmlWithUA(normalizedUrl, INSTAGRAM_FETCH_UA_FALLBACK);
+      if (fallbackHtml) {
+        return { domain, ...parseMetadata(fallbackHtml, normalizedUrl) };
+      }
+      return INSTAGRAM_POST_RE.test(normalizedUrl)
         ? { domain, title: instagramFallbackTitle(normalizedUrl) }
         : { domain };
     }
 
-    const html = await response.text();
-    const metadata = parseMetadata(html, normalizedUrl);
-
-    return {
-      domain,
-      ...metadata,
-    };
+    const html = await fetchHtmlWithUA(normalizedUrl, DEFAULT_FETCH_UA);
+    if (!html) return { domain };
+    return { domain, ...parseMetadata(html, normalizedUrl) };
   } catch {
     return INSTAGRAM_POST_RE.test(normalizedUrl)
       ? { domain: getDomain(normalizedUrl), title: instagramFallbackTitle(normalizedUrl) }
@@ -143,7 +154,9 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
 
   // 제네릭 제목이면 캡션 또는 description에서 의미 있는 제목 추출
   let title = rawTitle;
-  if ((!title || isGenericTitle(title)) && (caption || description)) {
+  const shouldUseDescriptionAsTitle =
+    description && !(isInstagramUrl(baseUrl) && isBadInstagramMetadataText(description));
+  if ((!title || isGenericTitle(title)) && (caption || shouldUseDescriptionAsTitle)) {
     const source = caption || description!;
     // "1. 우선..." 같은 번호 매김의 첫 토큰('1') 등 의미 없는 짧은 조각은 skip
     const firstLine = source
@@ -162,7 +175,9 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
 
   return {
     title: cleanText(title),
-    description: cleanMultilineText(caption || fullDescription || description),
+    description: cleanMultilineText(
+      caption || fullDescription || (isInstagramUrl(baseUrl) && isBadInstagramMetadataText(description) ? undefined : description),
+    ),
     thumbnail_url: thumbnail ? absolutizeUrl(thumbnail, baseUrl) : undefined,
   };
 }
@@ -192,19 +207,25 @@ function extractInstagramCaption(description?: string, html?: string): string | 
   // 1. og:description에서 인용된 캡션 추출
   if (description) {
     // "... on Instagram: "캡션 내용"" 패턴
-    const quotedMatch = description.match(/on Instagram:\s*["""](.+?)["""]\s*$/s);
+    const quotedMatch = description.match(/on Instagram:\s*["“”](.+?)["“”]\s*$/s);
     if (quotedMatch?.[1]?.trim()) {
-      return decodeJsonString(quotedMatch[1]) ?? quotedMatch[1].trim();
+      return cleanInstagramCaptionCandidate(quotedMatch[1]);
     }
     // Slackbot UA 응답 형식: "N views, M likes: "캡션"" — 마지막 콜론 뒤 인용된 텍스트
-    const trailingQuoted = description.match(/[:：]\s*["""]([\s\S]+?)["""]\s*$/);
+    const trailingQuoted = description.match(/[:：]\s*["“”]([\s\S]+?)["“”]\s*$/);
     if (trailingQuoted?.[1]?.trim()) {
-      return decodeJsonString(trailingQuoted[1]) ?? trailingQuoted[1].trim();
+      return cleanInstagramCaptionCandidate(trailingQuoted[1]);
+    }
+    // Instagram이 캡션을 자르며 닫는 따옴표를 생략하는 경우:
+    // `조회 346K회, 좋아요 5,021개: "실제 캡션...`
+    const trailingOpenQuote = description.match(/[:：]\s*["“”]([\s\S]+)$/);
+    if (trailingOpenQuote?.[1]?.trim()) {
+      return cleanInstagramCaptionCandidate(trailingOpenQuote[1]);
     }
     // "... on Instagram: 캡션 내용" (따옴표 없는 경우)
     const colonMatch = description.match(/on Instagram:\s*(.+)$/s);
     if (colonMatch?.[1]?.trim() && colonMatch[1].trim().length > 10) {
-      return decodeJsonString(colonMatch[1]) ?? colonMatch[1].trim();
+      return cleanInstagramCaptionCandidate(colonMatch[1]);
     }
   }
 
@@ -214,20 +235,42 @@ function extractInstagramCaption(description?: string, html?: string): string | 
   return undefined;
 }
 
+function cleanInstagramCaptionCandidate(raw: string) {
+  const candidate = (decodeJsonString(raw) ?? raw.trim()).trim();
+  if (!candidate || candidate.includes('\uFFFD')) return undefined;
+  return candidate;
+}
+
+export function isBadInstagramMetadataText(value?: string | null) {
+  if (!value) return false;
+  return value.includes('\uFFFD') ||
+    /(?:views?|조회)\s*[\d,.KM만천]+|(?:likes?|좋아요)\s*[\d,.KM만천]+|(?:comments?|댓글)\s*[\d,.KM만천]+/i
+      .test(value);
+}
+
 /** baseUrl의 shortcode와 같은 객체 블록에 속한 caption.text를 추출. 추천 게시물 캡션 오염 방지. */
 function extractInstagramCaptionFromHtml(html: string, baseUrl: string): string | undefined {
   const shortcode = extractInstagramShortcode(baseUrl);
   if (!shortcode) return undefined;
   const esc = escapeRegex(shortcode);
 
-  // Instagram fb 응답에는 추천 게시물 caption도 함께 들어오므로 위치만으로 분기.
-  // 우리 콘텐츠는 항상 `"text":"..."}, "code":"<shortcode>"` 형태(text 객체 직후 shortcode)로 인접한다.
-  // 200자는 같은 부모 객체 안 sibling 거리 정도라 보수적이면서 충분.
-  // 반대 방향(shortcode → caption)은 timeline 추천 노드의 첫 caption을 잘못 잡는 케이스가 확인되어 사용하지 않는다.
+  // Instagram fb 응답에는 추천 게시물 caption도 함께 들어온다.
+  // 현재 콘텐츠 객체는 응답 구조에 따라 code 앞/뒤에 caption이 올 수 있으므로,
+  // 반드시 URL shortcode와 같은 media 객체 안의 caption만 매치한다.
   const fields = ['code', 'shortcode'];
   for (const field of fields) {
     const m = html.match(new RegExp(
-      `"caption"\\s*:\\s*\\{[^}]*?"text"\\s*:\\s*"((?:[^"\\\\]|\\\\.)+?)"[\\s\\S]{0,200}?"${field}"\\s*:\\s*"${esc}"`,
+      `"__isXIGPolarisMedia"\\s*:\\s*"[^"]+"[\\s\\S]{0,300}?"${field}"\\s*:\\s*"${esc}"[\\s\\S]{0,2500}?"caption"\\s*:\\s*\\{[^}]*?"text"\\s*:\\s*"((?:[^"\\\\]|\\\\.)+?)"`,
+    ));
+    if (m?.[1]) {
+      const decoded = decodeJsonString(m[1]);
+      if (decoded) return decoded;
+    }
+  }
+
+  for (const field of fields) {
+    const m = html.match(new RegExp(
+      `"caption"\\s*:\\s*\\{[^}]*?"text"\\s*:\\s*"((?:[^"\\\\]|\\\\.)+?)"[\\s\\S]{0,1500}?"${field}"\\s*:\\s*"${esc}"`,
     ));
     if (m?.[1]) {
       const decoded = decodeJsonString(m[1]);

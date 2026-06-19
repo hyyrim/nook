@@ -182,8 +182,11 @@
 | 죽은 Instagram oEmbed 호출 제거 (`fetchInstagramOEmbed`) — token 필수로 사실상 항상 실패 | ✅ |
 | HTML 파싱 경로로 캡션 추출 일원화 (`extractInstagramCaption`은 유지) | ✅ |
 | 캡션 추출 실패 시 `Instagram 릴스`/`Instagram 게시물` fallback은 그대로 — 추측 생성 금지 원칙 유지 | ✅ |
-| 릴스 캡션 추출: Instagram fetch UA를 facebookexternalhit으로 교체. 응답 HTML embedded JSON `"caption":{"text":"..."}` 패턴으로 캡션 전문 추출 (Slackbot 시도는 og 짧은 인용만 줘서 폐기) | ✅ |
-| `extractInstagramCaptionFromHtml` 추가 — URL shortcode와 caption.text가 200자 이내로 인접한 경우만 매치하여 추천 게시물 오염 방지 | ✅ |
+| 릴스 캡션 추출: Instagram fetch를 두 단계로 — 1차 facebookexternalhit(응답 HTML `"caption":{"text":"..."}` JSON 전문), 2차 Slackbot(og:description 짧은 인용 폴백) | ✅ |
+| `extractInstagramCaptionFromHtml` — 현재 media 객체 marker(`__isXIGPolarisMedia`) + URL shortcode 우선 매칭. fallback으로 `caption → code` 1500자 매칭 유지. 추천 게시물 오염 방지 (→ 결정 038) | ✅ |
+| 통계/깨진 캡션 fallback 차단 — `isBadInstagramMetadataText`로 `조회/views/좋아요/likes/댓글/comments` 통계 문구나 `�` 깨진 문자 포함 시 title/description 승격하지 않음 (→ 결정 037) | ✅ |
+| 닫는 따옴표 없이 잘린 Slackbot caption도 추출하되 깨진 문자 포함 시 버림 | ✅ |
+| 기존 저장 레코드 자동 정리: Content Detail 진입 시 placeholder(`Instagram 릴스`) 또는 오염된 metadata면 `refreshContentMetadata`로 새 caption 교체 | ✅ |
 | `GENERIC_TITLE_PATTERNS`에 한국어 패턴(`^Instagram(의|에서)`) 추가 — link-preview bot 응답이 `"Instagram의 ..."` 형식일 때도 generic 판정되어 caption 추출 분기로 진입 | ✅ |
 | 원문 바로가기 Instagram 경로 하이브리드: 앱 설치 시 Universal Link (`Linking.openURL(https)`) → 미설치 시 SFSafariViewController fallback | ✅ |
 | 다른 사이트(YouTube/X/Naver/TikTok 등)의 앱 scheme 동작은 결정 020 그대로 유지 | ✅ |
