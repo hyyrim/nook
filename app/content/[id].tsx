@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatSource, placeholderColor, openInAppOrBrowser } from '@/lib/utils';
-import { isBadInstagramMetadataText } from '@/lib/metadata';
+import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -42,22 +42,16 @@ function shouldRefreshMetadata(content: ContentWithCategory) {
     !content.title ||
     content.title === content.url ||
     shouldRefreshDescription(content) ||
-    isPollutedInstagramMetadata(content),
+    isPollutedMetadata(content),
   );
 }
 
-function isPollutedInstagramMetadata(content: ContentWithCategory) {
-  if (!isInstagramContent(content)) return false;
-  return isBadInstagramMetadataText(content.title) || isBadInstagramMetadataText(content.description);
-}
-
-function isInstagramContent(content: ContentWithCategory) {
-  if (content.domain?.toLowerCase().includes('instagram.com')) return true;
-  try {
-    return new URL(content.url).hostname.replace(/^www\./, '') === 'instagram.com';
-  } catch {
-    return false;
-  }
+function isPollutedMetadata(content: ContentWithCategory) {
+  return (
+    isBadMetadataText(content.title) ||
+    isBadMetadataText(content.description) ||
+    isGenericPlatformTitle(content.title)
+  );
 }
 
 function RelatedCard({

@@ -733,3 +733,50 @@
   - `DZPwcggPDM4` → 제목 `매번 녹음하다가 현타온 적 나만 있냐`
 
 **교훈**: Instagram logged-out HTML은 같은 계정의 추천 timeline과 현재 media payload가 한 응답에 섞인다. 캡션 위치보다 “현재 URL shortcode가 붙은 media 객체인지”를 먼저 확인해야 안전하다.
+
+---
+
+## 039. 다른 플랫폼 메타데이터 추출 일반화 — Phase 1 (2026-06-20)
+
+**결정**: Instagram에만 적용되어 있던 "오염 메타 차단 + platform fallback title" 패턴을 모든 플랫폼으로 일반화한다. 본문 복구(UA 분기/플랫폼 API)는 Phase 2 별건 백로그로 분리한다.
+
+**배경**: 9개 플랫폼(X, Threads, TikTok, LinkedIn, Medium, Velog, Naver Blog, YouTube, Brunch)에 대해 4개 UA(default, facebookexternalhit, Slackbot, Twitterbot)로 og 응답을 비교한 결과:
+- **YouTube, Brunch**: 모든 UA에서 정상 추출 (변경 불필요)
+- **X**: 모든 UA에서 3,651 bytes `<title>X / ?</title>` 차단 응답. Twitterbot UA는 0 bytes
+- **Threads**: 모든 UA에서 `"Threads • Log in"` + `"Join Threads to share ideas..."` generic 응답
+- **TikTok**: default/slack에서 빈 og + `<title>TikTok - Make Your Day</title>`, fb/twitterbot에서 `"Visit TikTok to discover videos!"` generic
+- **LinkedIn**: 모든 UA에서 빈 og + `<title>LinkedIn</title>` (또는 오래된 URL의 generic)
+- **Medium**: default/fb/twitterbot에서 Cloudflare `"Just a moment..."` challenge
+- **Velog**: 모든 UA에서 CSR React 번들만 — og:title/description 비어있음
+- **Naver Blog**: 실제 콘텐츠가 iframe(PostFrame.naver) 안에 위치, 외부에서는 블로거 계정 title만 노출
+
+Instagram처럼 UA 분기로 해결되는 케이스는 없고, 대부분이 차단/게이트/CSR로 같은 패턴을 보였다. 본문 복구는 플랫폼별 개별 작업이 필요한 반면, "오염된 메타가 콘텐츠 제목/본문으로 승격되는 사고"는 일반화된 가드 하나로 막을 수 있었다.
+
+**결과**:
+- `lib/metadata.ts`:
+  - `isBadInstagramMetadataText` → `isBadMetadataText`로 일반화. 기존 통계 텍스트(`조회/views/좋아요/likes/댓글/comments`)와 `�` 검사에 더해, 21종의 플랫폼별 generic title 패턴 추가 (`Threads • Log in`, `Just a moment...`, `X / ?`, `TikTok - Make Your Day`, `Visit TikTok…`, `Watch, follow, and discover`, `Join Threads…`, `Top Career Content from LinkedIn`, `네이버 블로그`, `블로그 :: 네이버`, 단독 플랫폼명 등)
+  - `instagramFallbackTitle` → `platformFallbackTitle(url)`로 일반화. 호스트별 한국어 fallback: X 게시물 / Threads 게시물 / TikTok 영상 / LinkedIn 게시물 / Medium 글 / Velog 글 / 네이버 블로그 글 / 브런치 글 / Instagram 릴스/게시물
+  - `parseMetadata`의 description-as-title 강등과 description 오염 차단 분기를 모든 플랫폼으로 확장 (이전엔 `isInstagramUrl(baseUrl) && isBadInstagram...` 조건이었음)
+- `lib/api.ts`:
+  - `isInstagramMetadataPolluted` → `isMetadataPolluted` (도메인 가드 제거 — 어떤 플랫폼이든 title/description이 bad면 오염)
+  - `isInstagramPlaceholderTitle` → `isPlaceholderTitle` — title === `platformFallbackTitle(url)` 일치 검사로 모든 플랫폼 placeholder 감지
+  - `refreshContentMetadata`의 자동 정리가 모든 플랫폼의 오염 레코드에 동작
+- `app/content/[id].tsx`:
+  - `isPollutedInstagramMetadata` → `isPollutedMetadata` (도메인 가드 제거). Content Detail 진입 시 모든 플랫폼 오염 레코드 자동 refresh
+- 시뮬레이션 검증: 9개 플랫폼 e2e fetch에서 YouTube/Brunch는 그대로 정상 추출되고, Threads/X/TikTok/LinkedIn/Medium/Velog는 generic 응답이 `"X 게시물"` 같은 깔끔한 한국어 fallback으로 강등됨
+
+**Phase 2 (백로그)**: 본문 복구는 플랫폼별 개별 작업이라 노력 대비 효용이 다르다 — 별건으로 분리.
+- Naver Blog: PostView 응답의 iframe(`PostFrame.naver`) 재fetch → 본문 추출 가능성 높음
+- X: `syndication.twitter.com` 또는 nitter 미러 (정책 위험)
+- Velog: `velog.io/api/v3` GraphQL 호출 (공개 가능 여부 확인 필요)
+- Medium: Cloudflare 우회 (실효성 낮음)
+- Threads: facebookexternalhit / Slackbot UA로 본문 캡션 노출 시도 (Instagram처럼 응답 분기 가능성 있음 — 가장 가벼운 첫 단계)
+- TikTok/LinkedIn: 우회 경로 없음 — placeholder 유지
+
+**실기기 보강 (2026-06-20 ~ 2026-06-21)**: 시뮬레이션은 통과했지만 실기기 테스트에서 세 차례 추가 보완이 필요했다.
+
+- **Phase 1.1 — 계정명 generic + TikTok 단축 도메인**: Threads `"Threads의 …(@handle)님"` / X `"X에서 …(@handle) 님"` 패턴이 정규식에 없어 통과 → `GENERIC_TITLE_PATTERNS`에 Threads/X/TikTok 형태와 공통 꼬리 `\(@handle\)\s*님$` 추가. TikTok `vt.tiktok.com` / `vm.tiktok.com` 단축 도메인이 fallback 매칭에서 누락 → `endsWith('.tiktok.com')`로 확장.
+- **Phase 1.2 — generic description-as-title 누수**: Threads/X가 `og:title`과 `og:description`에 동일한 generic 텍스트를 함께 내려보내는 케이스 발견. description-as-title 폴백이 같은 쓰레기 텍스트를 그대로 흘려보냄 → `parseMetadata`에 `isGenericDesc` 분기 추가. description이 `isGenericTitle` 패턴과 일치하면 title 폴백 후보에서도 제외하고, 저장 description에도 사용하지 않음. `lib/ai.ts`에 중복된 `isGenericTitle` 인라인 로직 제거하고 `isGenericPlatformTitle` import로 단일 진실 소스화.
+- **Phase 1.3 — 한글 로그인 게이트 + `threads.com` 도메인**: 실기기에서 Threads URL 저장 시 `"Threads • 로그인"`(한글) 게이트 텍스트가 그대로 통과. 기존 패턴은 영문 `Log in`만 매칭 → `/^Threads\s*[•·]\s*로그인$/i` / `/^로그인\s*[•·]\s*Threads$/i` 추가. 동시에 `threads.com` 도메인이 `PLATFORM_FALLBACK_TITLES`에 누락(`threads.net`만 등록)되어 폴백 자체가 작동 안 함 → `threads.com` 추가.
+
+**교훈**: 플랫폼 메타데이터 문제는 "본문을 가져오기"보다 "쓰레기를 안 보여주기"가 훨씬 가치 대비 효율이 높다. 12개 플랫폼 각각의 본문 복구는 1주일도 걸릴 수 있지만, 일반화된 차단 가드 하나는 모든 플랫폼에 즉시 효과가 있다. 또한 Instagram 작업으로 만든 패턴(`isBadXxxMetadataText` + `xxxFallbackTitle` + `refreshContentMetadata` 자동 정리)이 거의 그대로 일반화에 재사용된 점도 의미 있다 — 도메인 가드만 제거하면 됐다.

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isGenericPlatformTitle } from './metadata';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
@@ -34,7 +35,7 @@ export async function classifyContent(content: {
   const categoryNames = (categories ?? []).map(c => c.name);
   if (categoryNames.length === 0) return null;
 
-  const titleIsGeneric = !content.title || isGenericTitle(content.title);
+  const titleIsGeneric = !content.title || isGenericPlatformTitle(content.title);
   const prompt = buildPrompt({
     url: content.url,
     title: content.title ?? '',
@@ -106,19 +107,6 @@ Rules:
 
 Response format:
 {"tags": ["tag1", "tag2"], "category": "CategoryName or null", "suggested_title": "Title or null"}`;
-}
-
-// 제네릭 제목 패턴 (Instagram 등 본문 캡션이 title에 안 들어오는 사이트)
-// metadata.ts의 GENERIC_TITLE_PATTERNS와 동기화 유지
-const GENERIC_TITLE_PATTERNS = [
-  /instagram\s+(사진|동영상|photos?|videos?|reels?|릴스)/i,
-  /on\s+instagram/i,
-  /\(@[\w.]+\)\s*[·•]\s*Instagram/i,
-  /^Instagram(의|에서)/i,
-];
-
-function isGenericTitle(title: string) {
-  return GENERIC_TITLE_PATTERNS.some(p => p.test(title));
 }
 
 function parseClassifyResponse(

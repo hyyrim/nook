@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { classifyContent } from './ai';
 import { emit, markClassified, markClassifying } from './events';
-import { fetchLinkMetadata, isBadInstagramMetadataText, normalizeUrl } from './metadata';
+import { fetchLinkMetadata, isBadMetadataText, isGenericPlatformTitle, normalizeUrl, platformFallbackTitle } from './metadata';
 import type { Category, Content } from '@/types';
 
 async function requireUserId() {
@@ -286,8 +286,8 @@ export async function refreshContentMetadata(
   if (
     (!content.title ||
       content.title === content.url ||
-      isInstagramPlaceholderTitle(content) ||
-      isInstagramMetadataPolluted(content)) &&
+      isPlaceholderTitle(content) ||
+      isMetadataPolluted(content)) &&
     metadata.title
   ) {
     updates.title = metadata.title;
@@ -295,7 +295,7 @@ export async function refreshContentMetadata(
 
   if (shouldPreferDescriptionUpdate(content.description, metadata.description)) {
     updates.description = metadata.description;
-  } else if (isInstagramMetadataPolluted(content) && isBadInstagramMetadataText(content.description)) {
+  } else if (isMetadataPolluted(content) && isBadMetadataText(content.description)) {
     updates.description = metadata.description ?? null;
   }
 
@@ -325,23 +325,17 @@ export async function refreshContentMetadata(
   return data as Content & { categories: { name: string } | null };
 }
 
-function isInstagramMetadataPolluted(content: Content) {
-  if (!isInstagramContent(content)) return false;
-  return isBadInstagramMetadataText(content.title) || isBadInstagramMetadataText(content.description);
+function isMetadataPolluted(content: Content) {
+  return (
+    isBadMetadataText(content.title) ||
+    isBadMetadataText(content.description) ||
+    isGenericPlatformTitle(content.title)
+  );
 }
 
-function isInstagramPlaceholderTitle(content: Content) {
-  if (!isInstagramContent(content)) return false;
-  return content.title === 'Instagram 릴스' || content.title === 'Instagram 게시물';
-}
-
-function isInstagramContent(content: Content) {
-  if (content.domain?.toLowerCase().includes('instagram.com')) return true;
-  try {
-    return new URL(content.url).hostname.replace(/^www\./, '') === 'instagram.com';
-  } catch {
-    return false;
-  }
+function isPlaceholderTitle(content: Content) {
+  if (!content.title) return false;
+  return content.title === platformFallbackTitle(content.url);
 }
 
 export async function updateContent(id: string, updates: {

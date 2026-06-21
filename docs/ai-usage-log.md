@@ -78,3 +78,9 @@
 | Claude Code | Instagram 릴스: 죽은 oEmbed 호출 제거 + 원문 바로가기 SFSafariViewController 라우팅 (→ 결정 036) |
 | Codex | Instagram 릴스 통계/깨진 캡션 fallback 차단 (→ 결정 037) |
 | Codex | Instagram 릴스 현재 media 객체 caption 매칭 보강 (→ 결정 038) |
+
+## 2026-06-20
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Claude Code | 9개 플랫폼 × 4개 UA 응답 desk research 후 Instagram 패턴을 모든 플랫폼으로 일반화 (`isBadMetadataText`, `platformFallbackTitle`, 오염 레코드 자동 정리). 본문 복구는 Phase 2 백로그로 분리 (→ 결정 039) |

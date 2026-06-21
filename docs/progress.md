@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-18 (14차 — Instagram 릴스 메타데이터 + 원문 바로가기 처리)
+최종 업데이트: 2026-06-20 (15차 — 다른 플랫폼 메타데이터 추출 일반화)
 
 ---
 
@@ -191,6 +191,24 @@
 | 원문 바로가기 Instagram 경로 하이브리드: 앱 설치 시 Universal Link (`Linking.openURL(https)`) → 미설치 시 SFSafariViewController fallback | ✅ |
 | 다른 사이트(YouTube/X/Naver/TikTok 등)의 앱 scheme 동작은 결정 020 그대로 유지 | ✅ |
 
+## 완료 (15차 — 다른 플랫폼 메타데이터 추출 일반화)
+
+| 항목 | 상태 |
+|------|------|
+| 데스크 리서치 — X/Threads/TikTok/LinkedIn/Medium/Velog/Naver Blog/YouTube/Brunch 9개 플랫폼에 대해 4개 UA(default/fb/slack/twitterbot)로 og 응답 비교 | ✅ |
+| 발견: YouTube/Brunch만 정상 추출, 나머지는 봇 차단(X)·로그인 게이트(Threads/LinkedIn)·Cloudflare(Medium)·CSR(Velog)·iframe(Naver Blog) 등으로 빈 값/generic 응답 | ✅ |
+| `isBadInstagramMetadataText` → `isBadMetadataText`로 일반화 + 플랫폼별 generic title 패턴 21종 추가 (`Threads • Log in`, `Just a moment...`, `X / ?`, `TikTok - Make Your Day`, `Visit TikTok…`, `Join Threads…`, `Top Career Content from LinkedIn`, `네이버 블로그`, 단독 플랫폼명 등) | ✅ |
+| `instagramFallbackTitle` → `platformFallbackTitle(url)`로 일반화. 호스트별 한국어 fallback 매핑 (X 게시물 / Threads 게시물 / TikTok 영상 / LinkedIn 게시물 / Medium 글 / Velog 글 / 네이버 블로그 글 / 브런치 글) | ✅ |
+| `parseMetadata`의 description as title 분기를 모든 플랫폼으로 확장 (이전엔 Instagram 전용). title이 generic/오염이면 caption → description → platformFallbackTitle 순으로 강등 | ✅ |
+| `parseMetadata`의 description 오염 차단도 모든 플랫폼으로 확장 (이전엔 Instagram 전용) | ✅ |
+| `lib/api.ts`의 `isInstagramMetadataPolluted` → `isMetadataPolluted`, `isInstagramPlaceholderTitle` → `isPlaceholderTitle` (도메인 무관, `platformFallbackTitle` 일치 검사). 모든 플랫폼의 오염된 기존 레코드 자동 정리 | ✅ |
+| `app/content/[id].tsx`의 `isPollutedInstagramMetadata` → `isPollutedMetadata`. Content Detail 진입 시 모든 플랫폼 오염 레코드를 `refreshContentMetadata`로 재시도 | ✅ |
+| 시뮬레이션 검증 — 9개 플랫폼 e2e fetch에서 YouTube/Brunch는 그대로 정상, Threads/X/TikTok/LinkedIn/Medium/Velog는 "X 게시물" 같은 깔끔한 fallback으로 강등됨을 확인 | ✅ |
+| **실기기 1차 검증 후 보강**: Threads "Threads의 …(@handle)님" / X "X에서 …(@handle) 님" 형식 계정명 generic이 통과 → `GENERIC_TITLE_PATTERNS`에 Threads/X/TikTok 패턴 + 공통 꼬리 `(@handle) 님` 추가. TikTok `vt.tiktok.com`/`vm.tiktok.com` 단축 도메인은 fallback 매칭에 누락 → `endsWith('.tiktok.com')`로 확장 | ✅ |
+| **실기기 2차 검증 후 보강 (Phase 1.2)**: Threads/X가 og:title과 og:description에 동일한 generic 텍스트를 함께 내려보내 description-as-title 폴백이 같은 쓰레기 텍스트를 흘려보냄 → `parseMetadata`에 `isGenericDesc` 분기 추가해 generic description도 차단. `lib/ai.ts`의 inline `isGenericTitle` 중복 제거하고 `isGenericPlatformTitle`로 단일화 | ✅ |
+| **실기기 3차 검증 후 보강**: Threads 한글 로그인 게이트 `Threads • 로그인` 패턴이 영문(`Log in`)만 매칭되어 누락 → `BAD_METADATA_GENERIC_PATTERNS`에 한글 패턴 추가. `threads.com` 도메인이 `PLATFORM_FALLBACK_TITLES`에 누락(`threads.net`만 등록)되어 폴백 미적용 → `threads.com` 추가 | ✅ |
+| Phase 2(본문 복구 — Naver iframe / X syndication / Velog API / Threads 봇 UA 시도)는 노력 대비 효용 별건으로 분리 — 백로그 유지 | ✅ |
+
 ## 미완료 (Apple Developer 승인 후)
 
 | 항목 | 비고 |
@@ -207,6 +225,7 @@
 |------|------|
 | 카테고리 정렬 순서 변경 | 사용자가 카테고리 순서를 변경 가능. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
 | 카테고리 폴더 컬러칩 | 각 카테고리에 컬러 지정해 폴더 카드/Content Detail에서 시각 구분. DB 스키마 `categories.color` 컬럼 필요 |
+| 다른 플랫폼 본문 복구 (Phase 2) | 15차에서 generic title fallback은 완료. 본문 복구는 별건 — Threads 봇 UA 패치(facebookexternalhit → Slackbot 폴백)부터 가장 가볍게 시작 가능. 이어서 Naver Blog iframe(PostFrame) 재fetch, X syndication.twitter.com, Velog 공개 API 등 플랫폼별 개별 작업 필요. 노력 대비 효용 평가 후 진행 |
 
 ## 보류 / 시도 기록
 
