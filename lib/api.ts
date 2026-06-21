@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { classifyContent } from './ai';
 import { emit, markClassified, markClassifying } from './events';
 import { fetchLinkMetadata, isBadMetadataText, isGenericPlatformTitle, normalizeUrl, platformFallbackTitle } from './metadata';
+import { analytics, type EntrySource, type FailureReason } from './analytics';
 import type { Category, Content } from '@/types';
 
 async function requireUserId() {
@@ -228,34 +229,60 @@ export async function getContentById(id: string) {
   return data as Content & { categories: { name: string } | null };
 }
 
-export async function saveContent(input: {
-  url: string;
-  title?: string;
-  thumbnail_url?: string;
-  domain?: string;
-}) {
-  const userId = await requireUserId();
+function classifyFailureReason(error: unknown): FailureReason {
+  if (isDuplicateContentUrlError(error)) return 'duplicate_url';
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/invalid url|malformed|cannot parse url/i.test(message)) return 'invalid_url';
+  if (/network|fetch|timeout|abort|ECONN|ENOTFOUND/i.test(message)) return 'network_error';
+  if (
+    (typeof error === 'object' && error !== null && 'code' in error) ||
+    /5\d\d|server|database|postgres/i.test(message)
+  ) return 'server_error';
+  return 'unknown';
+}
 
-  const normalizedUrl = normalizeUrl(input.url);
-  const metadata = await fetchLinkMetadata(normalizedUrl);
-  const contentInput = {
-    ...input,
-    url: normalizedUrl,
-    title: input.title ?? metadata.title,
-    description: metadata.description ?? null,
-    thumbnail_url: input.thumbnail_url ?? metadata.thumbnail_url,
-    domain: input.domain ?? metadata.domain,
-  };
-  const metaDescription = metadata.description;
+export async function saveContent(
+  input: {
+    url: string;
+    title?: string;
+    thumbnail_url?: string;
+    domain?: string;
+  },
+  options?: { entry_source?: EntrySource },
+) {
+  const entrySource = options?.entry_source ?? 'direct';
+  void analytics.saveAttempted(entrySource);
 
-  const { data, error } = await supabase
-    .from('contents')
-    .insert({ user_id: userId, ...contentInput })
-    .select()
-    .single();
-  if (error) throw error;
+  let saved: Content;
+  let metaDescription: string | undefined;
 
-  const saved = data as Content;
+  try {
+    const userId = await requireUserId();
+
+    const normalizedUrl = normalizeUrl(input.url);
+    const metadata = await fetchLinkMetadata(normalizedUrl);
+    const contentInput = {
+      ...input,
+      url: normalizedUrl,
+      title: input.title ?? metadata.title,
+      description: metadata.description ?? null,
+      thumbnail_url: input.thumbnail_url ?? metadata.thumbnail_url,
+      domain: input.domain ?? metadata.domain,
+    };
+    metaDescription = metadata.description;
+
+    const { data, error } = await supabase
+      .from('contents')
+      .insert({ user_id: userId, ...contentInput })
+      .select()
+      .single();
+    if (error) throw error;
+
+    saved = data as Content;
+  } catch (err) {
+    void analytics.saveFailed(classifyFailureReason(err), entrySource);
+    throw err;
+  }
 
   // 비동기 AI 분류 (저장 UX와 분리, 실패해도 저장은 유지).
   // markClassifying은 saveContent return 전에 동기로 수행되어

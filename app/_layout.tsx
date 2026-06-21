@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { AppState, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useShareIntent } from 'expo-share-intent';
 import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
+import { onAppActive, onAppBackground } from '@/lib/analytics';
 import { Toast } from '@/components/Toast';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -47,6 +48,22 @@ function RootNavigator() {
     }
   }, [session, isLoading, segments]);
 
+  // 세션 활성 + AppState 변화 → app_opened 발화 (analytics §12.2)
+  // onAppActive 내부에서 30초 background 룰로 dedup하므로 중복 호출 안전.
+  useEffect(() => {
+    if (!session) return;
+
+    const detectSource = () => (hasShareIntent ? 'share_sheet' : 'direct');
+    onAppActive(detectSource());
+
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') onAppActive(detectSource());
+      else if (status === 'background') onAppBackground();
+    });
+
+    return () => subscription.remove();
+  }, [session, hasShareIntent]);
+
   // Share Intent 처리: 공유된 URL 자동 저장
   useEffect(() => {
     if (!hasShareIntent || !session || savingRef.current) return;
@@ -60,7 +77,7 @@ function RootNavigator() {
     savingRef.current = true;
 
     // share intent meta는 불완전할 수 있으므로, fetchLinkMetadata에 위임
-    saveContent({ url })
+    saveContent({ url }, { entry_source: 'share_sheet' })
       .then(() => {
         emit('content-saved');
         setToast({ visible: true, message: '저장 완료!', type: 'success' });

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Colors } from '@/constants';
 import { createInitialCategories } from '@/lib/api';
+import { analytics } from '@/lib/analytics';
 
 const CATEGORIES = [
   'AI', '테크', '경제', '비즈니스', '커리어', '디자인',
@@ -32,6 +33,7 @@ export default function ChooseInterestsScreen() {
     setSaving(true);
     try {
       await createInitialCategories(selected);
+      void analytics.onboardingCompleted();
       router.replace('/(tabs)');
     } catch (e: any) {
       Alert.alert('Error', e.message);
