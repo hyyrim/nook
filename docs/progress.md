@@ -221,7 +221,7 @@
 | `lib/api.ts` `saveContent` — `save_attempted`/`save_failed` 발화, 에러 → failure_reason 분류 헬퍼 추가 | ✅ |
 | `app/(tabs)/index.tsx` — Rediscover 가로 ScrollView → FlatList horizontal + onViewableItemsChanged로 viewport 진입 감지 (§12.4) | ✅ |
 | `app/content/[id].tsx` — `content_opened` 마운트 시 발화, source 파라미터 type-safe 정규화 + 'direct' 폴백 (§12.5) | ✅ |
-| Content Detail 진입부 5곳 source 명시: Home recent='recent', Home Rediscover='rediscover', recent-saved='recent', Category Detail='category', Search='library', Related='library' | ✅ |
+| Content Detail 진입부 6곳 source 명시: Home recent='recent', Home Rediscover='rediscover', recent-saved='recent', Category Detail='category', Search='search', Related='related' (검색과 관련 콘텐츠는 행동 의미가 달라 `library` 단일 묶음에서 분리) | ✅ |
 | `docs/analytics-queries/` — H1/H2/H3 + 운영 지표 4종(저장 성공률/중복/재방문/진입 경로) SQL 7개 + README | ✅ |
 | 실기기 검증 — 6개 이벤트 발화 확인, RLS 검증 | 미완료 (실기기 테스트 필요) |
 

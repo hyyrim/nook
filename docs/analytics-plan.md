@@ -97,10 +97,11 @@ Rediscover를 통한 content_opened 이벤트 수
 
 ### `content_opened.source`
 
-- `rediscover`
-- `library`
-- `recent`
-- `category`
+- `rediscover` — Home Rediscover 카드에서 진입
+- `recent` — 최근 저장 리스트(Home 최근 저장 카드 또는 Recent Saved 화면)에서 진입
+- `category` — Category Detail에서 진입
+- `search` — 검색 결과에서 진입
+- `related` — Content Detail의 "관련 콘텐츠"에서 진입
 - `direct` — 딥링크/외부 공유 등 위 경로에 해당하지 않거나 source가 누락된 경우 폴백 (§12.5 참조)
 
 ### `failure_reason`
@@ -246,10 +247,66 @@ MVP 베타 단계에서는 별도 BI 도구 없이 Supabase 직결로 통계를 
 **결정**:
 - `lib/analytics.ts`에 `ContentOpenedSource` union type을 정의해 컴파일 타임에 source 누락을 차단한다.
   ```ts
-  export type ContentOpenedSource = 'rediscover' | 'library' | 'recent' | 'category' | 'direct';
+  export type ContentOpenedSource = 'rediscover' | 'recent' | 'category' | 'search' | 'related' | 'direct';
   ```
-- §5의 4개 값에 더해 `direct` 폴백을 추가한다. 딥링크/외부 공유 링크 등으로 진입한 케이스를 잡는다.
+- §5의 5개 값(rediscover/recent/category/search/related)에 더해 `direct` 폴백을 추가한다. 딥링크/외부 공유 링크 등으로 진입한 케이스를 잡는다. 검색과 관련 콘텐츠 진입은 분석 시 행동 의미가 달라서 `library` 단일 묶음을 `search` / `related`로 분리한다.
 - Expo Router 진입부 `router.push({ pathname: '/content/[id]', params: { id, source } })`에서 source를 명시적으로 전달한다. `app/content/[id].tsx` mount 시 `useLocalSearchParams`로 받아 누락이면 `'direct'`로 폴백한다.
 
 **근거**: H3 클릭률 계산은 `source='rediscover'` 식별에 의존한다. source가 누락된 이벤트가 섞이면 H3가 과소 측정된다. 타입 시스템으로 누락을 IDE 단계에서 차단하는 것이 가장 저렴하다.
+
+## 13. 검증용 모니터 쿼리
+
+개발/실기기 테스트 단계에서 본인 user_id의 이벤트가 실제로 들어오는지 확인할 때 쓰는 쿼리. 집계가 아닌 raw stream 모니터링용이므로 §11 집계 쿼리와 별도로 둔다.
+
+**주의**: Supabase Dashboard SQL Editor는 `postgres` 권한으로 실행돼 `auth.uid()`가 NULL을 반환한다. 따라서 본인 user_id를 직접 박아 필터해야 한다.
+
+### 13.1 본인 user_id 확인
+
+```sql
+select id, email from auth.users where email = 'YOUR_EMAIL';
+```
+
+### 13.2 본인 이벤트 최신순 (시나리오 검증 메인 쿼리)
+
+```sql
+select
+  occurred_at at time zone 'Asia/Seoul' as kst_time,
+  event_name,
+  properties,
+  content_id,
+  app_version
+from analytics_events
+where user_id = 'YOUR_USER_ID'
+order by occurred_at desc
+limit 50;
+```
+
+### 13.3 세션별 이벤트 묶음 보기
+
+```sql
+select
+  properties ->> 'session_id' as session_id,
+  count(*) as event_count,
+  min(occurred_at) at time zone 'Asia/Seoul' as session_start_kst,
+  array_agg(event_name order by occurred_at) as events
+from analytics_events
+where user_id = 'YOUR_USER_ID'
+group by properties ->> 'session_id'
+order by session_start_kst desc;
+```
+
+### 13.4 RLS 검증 (다른 사용자 격리 확인)
+
+```sql
+-- RLS는 client에서만 강제됨. SQL Editor에서는 모든 row가 보임 — 정상.
+-- 실제 검증은 앱 client에서 supabase.from('analytics_events').select() 호출했을 때
+-- 본인 row만 나오는지로 확인한다.
+select user_id, count(*)
+from analytics_events
+group by user_id;
+```
+
+### 13.5 본인 UUID 박힌 사본은 gitignore
+
+매번 UUID 복붙하기 귀찮으면 `docs/analytics-queries/local-monitor.sql`에 본인 UUID 박힌 사본을 두고 쓰면 된다. 이 패턴(`docs/analytics-queries/local-*.sql`)은 `.gitignore`로 차단해 개인 UUID가 저장소에 새지 않게 한다.
 

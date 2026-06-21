@@ -16,7 +16,7 @@ import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
 import { analytics, type ContentOpenedSource } from '@/lib/analytics';
 
 const CONTENT_OPENED_SOURCES: ReadonlySet<ContentOpenedSource> = new Set([
-  'rediscover', 'library', 'recent', 'category', 'direct',
+  'rediscover', 'recent', 'category', 'search', 'related', 'direct',
 ]);
 
 function normalizeSource(raw: string | string[] | undefined): ContentOpenedSource {
@@ -303,7 +303,7 @@ export default function ContentDetailScreen() {
                     thumb={placeholderColor(r.id)}
                     onPress={() => router.push({
                       pathname: '/content/[id]',
-                      params: { id: r.id, source: 'library' },
+                      params: { id: r.id, source: 'related' },
                     })}
                   />
                 ))}

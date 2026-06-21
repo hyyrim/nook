@@ -39,6 +39,9 @@ yarn-error.*
 .env
 .env*.local
 
+# 개인 UUID 박힌 분석 모니터 쿼리 사본 (docs/analytics-plan.md §13.5)
+docs/analytics-queries/local-*.sql
+
 # typescript
 *.tsbuildinfo
 

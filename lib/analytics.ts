@@ -10,9 +10,10 @@ const SESSION_TIMEOUT_MS = 30 * 1000; // §12.2: background 30초 이상 → 새
 export type EntrySource = 'direct' | 'share_sheet';
 export type ContentOpenedSource =
   | 'rediscover'
-  | 'library'
   | 'recent'
   | 'category'
+  | 'search'
+  | 'related'
   | 'direct';
 export type FailureReason =
   | 'duplicate_url'

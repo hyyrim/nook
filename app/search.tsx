@@ -132,7 +132,7 @@ export default function SearchScreen() {
                 isClassifying={isClassifying(item.id)}
                 onPress={() => router.push({
                   pathname: '/content/[id]',
-                  params: { id: item.id, source: 'library' },
+                  params: { id: item.id, source: 'search' },
                 })}
               />
             ))
