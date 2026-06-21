@@ -101,7 +101,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
     setSaving(true);
     try {
       const domain = new URL(trimmed).hostname;
-      await saveContent({ url: trimmed, domain });
+      await saveContent({ url: trimmed, domain }, { entry_source: 'direct' });
       setSaved(true);
       onSaved?.();
       emit('content-saved');

@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-20 (15차 — 다른 플랫폼 메타데이터 추출 일반화)
+최종 업데이트: 2026-06-21 (16차 — Analytics 측정 명세 + 이벤트 수집 구현)
 
 ---
 
@@ -208,6 +208,22 @@
 | **실기기 2차 검증 후 보강 (Phase 1.2)**: Threads/X가 og:title과 og:description에 동일한 generic 텍스트를 함께 내려보내 description-as-title 폴백이 같은 쓰레기 텍스트를 흘려보냄 → `parseMetadata`에 `isGenericDesc` 분기 추가해 generic description도 차단. `lib/ai.ts`의 inline `isGenericTitle` 중복 제거하고 `isGenericPlatformTitle`로 단일화 | ✅ |
 | **실기기 3차 검증 후 보강**: Threads 한글 로그인 게이트 `Threads • 로그인` 패턴이 영문(`Log in`)만 매칭되어 누락 → `BAD_METADATA_GENERIC_PATTERNS`에 한글 패턴 추가. `threads.com` 도메인이 `PLATFORM_FALLBACK_TITLES`에 누락(`threads.net`만 등록)되어 폴백 미적용 → `threads.com` 추가 | ✅ |
 | Phase 2(본문 복구 — Naver iframe / X syndication / Velog API / Threads 봇 UA 시도)는 노력 대비 효용 별건으로 분리 — 백로그 유지 | ✅ |
+
+## 완료 (16차 — Analytics 측정 명세 + 이벤트 수집)
+
+| 항목 | 상태 |
+|------|------|
+| `docs/analytics-plan.md` 측정 명세서 — 가설(H1/H2/H3), 운영 지표, 이벤트 사전, 데이터 확인 방법(§11), 구현 결정 사항(§12) | ✅ |
+| `supabase/migrations/003_analytics_events.sql` — analytics_events 테이블 + RLS + 인덱스 | ✅ |
+| `lib/analytics.ts` — 트래커 모듈. user_id/occurred_at/app_version/event_version/session_id 자동 주입, silent fail, 세션 30초 룰, rediscover_impression 세션당 사용자당 dedup | ✅ |
+| `app/choose-interests.tsx` — `onboarding_completed` 카테고리 생성 직후 발화 (§12.1) | ✅ |
+| `app/_layout.tsx` — `app_opened` AppState 리스너 + share intent 감지 기반 entry_source 분기 (§12.2) | ✅ |
+| `lib/api.ts` `saveContent` — `save_attempted`/`save_failed` 발화, 에러 → failure_reason 분류 헬퍼 추가 | ✅ |
+| `app/(tabs)/index.tsx` — Rediscover 가로 ScrollView → FlatList horizontal + onViewableItemsChanged로 viewport 진입 감지 (§12.4) | ✅ |
+| `app/content/[id].tsx` — `content_opened` 마운트 시 발화, source 파라미터 type-safe 정규화 + 'direct' 폴백 (§12.5) | ✅ |
+| Content Detail 진입부 6곳 source 명시: Home recent='recent', Home Rediscover='rediscover', recent-saved='recent', Category Detail='category', Search='search', Related='related' (검색과 관련 콘텐츠는 행동 의미가 달라 `library` 단일 묶음에서 분리) | ✅ |
+| `docs/analytics-queries/` — H1/H2/H3 + 운영 지표 4종(저장 성공률/중복/재방문/진입 경로) SQL 7개 + README | ✅ |
+| 실기기 검증 — 6개 이벤트 발화 확인, RLS 검증 | 미완료 (실기기 테스트 필요) |
 
 ## 미완료 (Apple Developer 승인 후)
 

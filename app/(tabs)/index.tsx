@@ -1,7 +1,7 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, FlatList, StyleSheet, Pressable, ActivityIndicator, Image, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
+import { analytics } from '@/lib/analytics';
 import { formatRelativeTime, formatSource, placeholderColor, rediscoverColor } from '@/lib/utils';
 import type { Content } from '@/types';
 
@@ -25,6 +26,14 @@ export default function HomeScreen() {
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // §12.4 Rediscover impression — viewport 진입 시 발화. 세션당 같은 content_id는 1회만(라이브러리 dedup).
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    for (const v of viewableItems) {
+      if (v.isViewable && v.item?.id) void analytics.rediscoverImpression(v.item.id);
+    }
+  }).current;
 
   const loadData = useCallback(async () => {
     if (isAuthLoading) return;
@@ -146,7 +155,10 @@ export default function HomeScreen() {
                       thumbnailColor={placeholderColor(item.id)}
                       savedAt={formatRelativeTime(item.saved_at)}
                       isClassifying={isClassifying(item.id)}
-                      onPress={() => router.push(`/content/${item.id}`)}
+                      onPress={() => router.push({
+                        pathname: '/content/[id]',
+                        params: { id: item.id, source: 'recent' },
+                      })}
                     />
                   ))
                 ) : (
@@ -175,26 +187,28 @@ export default function HomeScreen() {
                     label="발견된 콘텐츠"
                     dot
                   />
-                  <ScrollView
+                  <FlatList
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.rediscoverScroll}
-                  >
-                    {rediscoverItems.map((item) => {
-                      const color = rediscoverColor(item.id);
-                      return (
-                        <RediscoverCard
-                          key={item.id}
-                          title={item.title ?? item.url}
-                          source={formatSource(item.domain)}
-                          hint={item.categories?.name ?? '미분류'}
-                          thumbnailUrl={item.thumbnail_url}
-                          gradientDark={color}
-                          onPress={() => router.push(`/content/${item.id}`)}
-                        />
-                      );
-                    })}
-                  </ScrollView>
+                    data={rediscoverItems}
+                    keyExtractor={(item) => item.id}
+                    viewabilityConfig={viewabilityConfig}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    renderItem={({ item }) => (
+                      <RediscoverCard
+                        title={item.title ?? item.url}
+                        source={formatSource(item.domain)}
+                        hint={item.categories?.name ?? '미분류'}
+                        thumbnailUrl={item.thumbnail_url}
+                        gradientDark={rediscoverColor(item.id)}
+                        onPress={() => router.push({
+                          pathname: '/content/[id]',
+                          params: { id: item.id, source: 'rediscover' },
+                        })}
+                      />
+                    )}
+                  />
                 </View>
               ) : recentItems.length > 0 ? (
                 <View style={styles.rediscoverPlaceholder}>

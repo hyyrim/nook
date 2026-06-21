@@ -130,7 +130,10 @@ export default function SearchScreen() {
                 thumbnailColor={placeholderColor(item.id)}
                 savedAt={formatRelativeTime(item.saved_at)}
                 isClassifying={isClassifying(item.id)}
-                onPress={() => router.push(`/content/${item.id}`)}
+                onPress={() => router.push({
+                  pathname: '/content/[id]',
+                  params: { id: item.id, source: 'search' },
+                })}
               />
             ))
           ) : (

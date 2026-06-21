@@ -310,7 +310,12 @@ export default function CategoryDetailScreen() {
                 selectionMode={selectionMode}
                 selected={selectedIds.has(a.id)}
                 onPress={() =>
-                  selectionMode ? toggleSelect(a.id) : router.push(`/content/${a.id}`)
+                  selectionMode
+                    ? toggleSelect(a.id)
+                    : router.push({
+                        pathname: '/content/[id]',
+                        params: { id: a.id, source: 'category' },
+                      })
                 }
               />
             ))

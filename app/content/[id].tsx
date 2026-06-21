@@ -13,6 +13,18 @@ import { getContentById, markContentViewed, deleteContent, getRelatedContents, r
 import { useAuth } from '@/lib/AuthProvider';
 import { formatSource, placeholderColor, openInAppOrBrowser } from '@/lib/utils';
 import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
+import { analytics, type ContentOpenedSource } from '@/lib/analytics';
+
+const CONTENT_OPENED_SOURCES: ReadonlySet<ContentOpenedSource> = new Set([
+  'rediscover', 'recent', 'category', 'search', 'related', 'direct',
+]);
+
+function normalizeSource(raw: string | string[] | undefined): ContentOpenedSource {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value && CONTENT_OPENED_SOURCES.has(value as ContentOpenedSource)
+    ? (value as ContentOpenedSource)
+    : 'direct';
+}
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -84,7 +96,8 @@ function RelatedCard({
 
 export default function ContentDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, source: rawSource } = useLocalSearchParams<{ id: string; source?: string }>();
+  const source = normalizeSource(rawSource);
   const { session, isLoading: isAuthLoading } = useAuth();
   const [showSheet, setShowSheet] = useState(false);
   const [showMoveSheet, setShowMoveSheet] = useState(false);
@@ -123,8 +136,9 @@ export default function ContentDetailScreen() {
           const relatedItems = await getRelatedContents(content, 2);
           if (!cancelled) setRelated(relatedItems);
 
-          // viewed_at 업데이트
+          // viewed_at 업데이트 + content_opened 발화 (analytics §12.5)
           markContentViewed(id).catch(() => {});
+          void analytics.contentOpened(id, source);
         } catch (e) {
           console.error('Content load error:', e);
         } finally {
@@ -132,7 +146,7 @@ export default function ContentDetailScreen() {
         }
       })();
       return () => { cancelled = true; };
-    }, [id, session, isAuthLoading])
+    }, [id, source, session, isAuthLoading])
   );
 
   const handleMoveCategory = async (categoryId: string | null) => {
@@ -287,7 +301,10 @@ export default function ContentDetailScreen() {
                     source={formatSource(r.domain)}
                     thumbnailUrl={r.thumbnail_url}
                     thumb={placeholderColor(r.id)}
-                    onPress={() => router.push(`/content/${r.id}`)}
+                    onPress={() => router.push({
+                      pathname: '/content/[id]',
+                      params: { id: r.id, source: 'related' },
+                    })}
                   />
                 ))}
               </View>
