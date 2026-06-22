@@ -41,7 +41,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:ios:prod": "dotenv -- eas build -p ios --profile production",
-    "submit:ios": "dotenv -- eas submit -p ios --latest"
+    "submit:ios": "dotenv -- bash -c 'eas submit -p ios --latest --apple-id \"$EXPO_APPLE_ID\"'"
   },
   "private": true
 }
