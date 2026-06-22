@@ -4,17 +4,15 @@ import * as WebBrowser from 'expo-web-browser';
 // Instagram은 게시물 deep-link용 공개 scheme이 없어(`instagram://app/reel/…`은 앱 홈으로 빠짐),
 // SFSafariViewController(인앱 브라우저)로 라우팅한다.
 const INSTAGRAM_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
+const X_HOSTS = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com']);
+const NOTION_APP_HOSTS = new Set(['notion.so', 'www.notion.so', 'notion.com', 'www.notion.com']);
+const NOTION_SITE_RE = /(^|\.)notion\.site$/i;
 
 const APP_SCHEMES: { match: (host: string) => boolean; toAppUrl: (url: URL) => string; scheme: string }[] = [
   {
     match: (h) => ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(h),
     toAppUrl: (url) => `youtube://${url.pathname}${url.search}`,
     scheme: 'youtube',
-  },
-  {
-    match: (h) => ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com'].includes(h),
-    toAppUrl: (url) => `twitter://open${url.pathname}`,
-    scheme: 'twitter',
   },
   {
     match: (h) => ['blog.naver.com', 'm.blog.naver.com'].includes(h),
@@ -60,6 +58,53 @@ export async function openInAppOrBrowser(urlString: string) {
       }
     } catch {}
     // 미설치: SFSafariViewController 인앱 브라우저로 — Safari 외부 이탈 방지
+    try {
+      await WebBrowser.openBrowserAsync(urlString);
+      return;
+    } catch {}
+  }
+
+  if (X_HOSTS.has(host)) {
+    // twitter://open{path} can open the app without preserving the exact post.
+    // Hand the HTTPS URL to iOS so X's Universal Link handler can route to the post.
+    try {
+      await Linking.openURL(urlString);
+      return;
+    } catch {}
+
+    try {
+      await WebBrowser.openBrowserAsync(urlString);
+      return;
+    } catch {}
+  }
+
+  if (NOTION_SITE_RE.test(host)) {
+    // Public notion.site pages often bounce from the Notion app back to Safari.
+    // Keep them in an in-app browser instead of forcing the app scheme.
+    try {
+      await WebBrowser.openBrowserAsync(urlString);
+      return;
+    } catch {}
+
+    try {
+      await Linking.openURL(urlString);
+      return;
+    } catch {}
+  }
+
+  if (NOTION_APP_HOSTS.has(host)) {
+    try {
+      const parsed = new URL(urlString);
+      const notionUrl = `notion://www.notion.so${parsed.pathname}${parsed.search}`;
+      await Linking.openURL(notionUrl);
+      return;
+    } catch {}
+
+    try {
+      await Linking.openURL(urlString);
+      return;
+    } catch {}
+
     try {
       await WebBrowser.openBrowserAsync(urlString);
       return;
@@ -146,8 +191,13 @@ const DOMAIN_LABELS: Record<string, string> = {
   'www.linkedin.com': 'LinkedIn',
   'tiktok.com': 'TikTok',
   'www.tiktok.com': 'TikTok',
+  'm.tiktok.com': 'TikTok',
+  'vt.tiktok.com': 'TikTok',
+  'vm.tiktok.com': 'TikTok',
   'threads.net': 'Threads',
   'www.threads.net': 'Threads',
+  'threads.com': 'Threads',
+  'www.threads.com': 'Threads',
   'velog.io': 'Velog',
   'brunch.co.kr': 'Brunch',
   'naver.com': 'Naver',
@@ -155,11 +205,17 @@ const DOMAIN_LABELS: Record<string, string> = {
   'm.blog.naver.com': 'Naver Blog',
   'news.naver.com': 'Naver News',
   'n.news.naver.com': 'Naver News',
+  'notion.so': 'Notion',
+  'www.notion.so': 'Notion',
+  'notion.com': 'Notion',
+  'www.notion.com': 'Notion',
 };
 
 export function formatSource(domain?: string): string {
   if (!domain) return 'Unknown';
-  return DOMAIN_LABELS[domain.toLowerCase()] ?? domain.replace(/^www\./, '');
+  const host = domain.toLowerCase();
+  if (host === 'notion.site' || host.endsWith('.notion.site')) return 'Notion';
+  return DOMAIN_LABELS[host] ?? domain.replace(/^www\./, '');
 }
 
 export function rediscoverColor(id: string): string {
