@@ -32,10 +32,10 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Brand section — 소셜 로그인 버튼 위 영역의 정중앙 */}
+        {/* Brand section — NOOK 워드마크 + 슬로건 */}
         <View style={styles.brandSection}>
-          <Image source={require('@/assets/icon.png')} style={styles.appIcon} resizeMode="contain" />
-          <Text style={styles.sloganAccent}>every nook and cranny!</Text>
+          <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.slogan}>every nook and cranny</Text>
         </View>
 
         {/* Bottom section */}
@@ -103,17 +103,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 16,
   },
-  appIcon: {
-    height: 230,
-    width: 230,
-    borderRadius: 46,
+  logo: {
+    width: 220,
+    height: 72,
   },
-  sloganAccent: {
-    fontSize: 17,
-    color: Colors.accent,
-    fontWeight: '700',
+  slogan: {
+    fontSize: 14,
+    color: Colors.tertiary,
+    fontWeight: '400',
   },
   bottomSection: {
     justifyContent: 'flex-end',
