@@ -69,6 +69,47 @@ function isYouTubeUrl(url: string) {
   }
 }
 
+/**
+ * iOS Safari share extension은 페이지 head의 메타 태그를 JavaScript preprocessing으로 추출해
+ * `ShareIntent.meta`에 전달한다(클라이언트 렌더 후 상태 포함).
+ * 이 객체를 기존 `parseMetadata` 파이프라인이 이해할 수 있는 가짜 HTML로 변환한다.
+ * → generic/bad title 차단, <title> description 폴백 등 모든 가드를 그대로 재사용.
+ *
+ * meta.title 키는 Safari preprocessing 결과의 페이지 title(<title> 태그)이므로
+ * `<title>` 요소로 변환한다. 나머지 og:* / twitter:* / name=* 키는 그대로 메타 태그로.
+ */
+export function shareIntentMetaToHtml(meta: Record<string, string | undefined> | null | undefined): string {
+  if (!meta) return '';
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const parts: string[] = [];
+  // title 키는 별도로 <title> 요소로 변환 (parseMetadata가 findTitle에서 활용)
+  const titleValue = meta.title;
+  if (typeof titleValue === 'string' && titleValue.length > 0) {
+    parts.push(`<title>${escape(titleValue)}</title>`);
+  }
+  for (const [k, v] of Object.entries(meta)) {
+    if (k === 'title') continue;
+    if (typeof v !== 'string' || v.length === 0) continue;
+    const attr = k.startsWith('og:') || k.startsWith('al:') || k.startsWith('fb:') ? 'property' : 'name';
+    parts.push(`<meta ${attr}="${escape(k)}" content="${escape(v)}" />`);
+  }
+  return `<html><head>${parts.join('\n')}</head></html>`;
+}
+
+/** share intent meta가 OG 핵심 키를 하나라도 들고 있는지 — fetch 생략 판단 기준. */
+function hasUsefulShareIntentMeta(meta: Record<string, string | undefined> | null | undefined): boolean {
+  if (!meta) return false;
+  return !!(
+    meta['og:title'] ||
+    meta['og:description'] ||
+    meta['twitter:title'] ||
+    meta['twitter:description'] ||
+    meta.title
+  );
+}
+
 async function fetchHtmlWithUA(url: string, userAgent: string): Promise<string | undefined> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
@@ -89,9 +130,21 @@ async function fetchHtmlWithUA(url: string, userAgent: string): Promise<string |
   }
 }
 
-export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+export async function fetchLinkMetadata(
+  url: string,
+  options?: { shareIntentMeta?: Record<string, string | undefined> | null },
+): Promise<LinkMetadata> {
   const normalizedUrl = normalizeUrl(url);
   const domain = getDomain(normalizedUrl);
+
+  // Safari 공유 시 share extension이 클라이언트 렌더 후 head meta를 함께 전달한다.
+  // 풍부한 OG가 있으면 fetch 생략하고 그 정보로 LinkMetadata 구성 — 서버 SSR이 누락하는
+  // dynamic-injected meta(og:description 등)까지 살릴 수 있다.
+  if (options?.shareIntentMeta && hasUsefulShareIntentMeta(options.shareIntentMeta)) {
+    const fakeHtml = shareIntentMetaToHtml(options.shareIntentMeta);
+    return { domain, ...parseMetadata(fakeHtml, normalizedUrl) };
+  }
+
   const isInsta = isInstagramUrl(normalizedUrl);
 
   try {
@@ -180,12 +233,27 @@ export function isGenericPlatformTitle(value?: string | null) {
 }
 
 function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domain'> {
-  const rawTitle =
-    findMetaContent(html, ['og:title', 'twitter:title']) ??
-    decodeHtml(findTitle(html) ?? '');
+  const ogTitle = findMetaContent(html, ['og:title', 'twitter:title']);
+  const titleTag = decodeHtml(findTitle(html) ?? '');
+  const rawTitle = ogTitle ?? titleTag;
 
-  const description =
+  const ogDescription =
     findMetaContent(html, ['og:description', 'twitter:description', 'description']);
+
+  // Threads는 og:title이 항상 작성자 generic("X의 …(@handle)님")이고,
+  // <title> 태그에 게시물 본문을 통째로 담는다.
+  // <title>이 og:title과 다르고 generic/bad가 아니면 description 후보로 활용 →
+  // 기존 description-as-title 폴백이 첫 줄을 title로, 전체를 description으로 처리한다.
+  // 일반 사이트는 보통 <title> === og:title이므로 영향 없음.
+  const titleTagUseful =
+    !!titleTag &&
+    titleTag !== ogTitle &&
+    !isGenericTitle(titleTag) &&
+    !isBadMetadataText(titleTag);
+  const description =
+    titleTagUseful && (!ogDescription || titleTag.length > ogDescription.length)
+      ? titleTag
+      : ogDescription;
 
   // Instagram 캡션 추출 시도: 1) 응답 HTML embedded JSON(shortcode 컨텍스트), 2) og:description 인용 패턴
   let caption: string | undefined;
