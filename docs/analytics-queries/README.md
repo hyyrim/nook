@@ -11,6 +11,41 @@
    - `:end_date`   — 측정 종료일 (KST 자정 기준, exclusive), 예: `'2026-07-04'`
 4. 결과는 `docs/analytics-results/<YYYY-WW>.md`에 명세 §9 양식 그대로 기록
 
+## 실기기 검증 순서
+
+베타 집계 전에 테스트 계정으로 raw event가 제대로 쌓이는지 먼저 확인한다.
+
+1. Supabase SQL Editor에서 테스트 계정 UUID 확인
+   ```sql
+   select id, email from auth.users order by created_at desc limit 20;
+   ```
+2. `local-monitor.sql`의 `user_id`를 테스트 계정 UUID로 바꿔 최신 이벤트 50개를 모니터링한다.
+3. 앱을 완전히 종료한 뒤 아이콘으로 실행한다.
+   - 기대 이벤트: `app_opened`
+   - 기대 속성: `properties.entry_source = 'direct'`
+4. iOS Share Sheet에서 Nook으로 URL을 저장한다.
+   - 기대 이벤트: `app_opened` with `entry_source='share_sheet'`
+   - 기대 이벤트: `save_attempted` with `entry_source='share_sheet'`
+   - 성공 기준: `contents` row 생성. 별도 `save_succeeded` 이벤트는 없음
+5. 같은 URL을 다시 저장한다.
+   - 기대 이벤트: `save_attempted`
+   - 기대 이벤트: `save_failed` with `failure_reason='duplicate_url'`
+6. 잘못된 URL을 Save Bottom Sheet에서 입력한다.
+   - 기대 이벤트: `save_attempted`
+   - 기대 이벤트: `save_failed` with `failure_reason='invalid_url'`
+7. Content Detail을 각 진입 경로에서 연다.
+   - Home 최근 저장: `content_opened.source='recent'`
+   - 폴더 상세: `content_opened.source='category'`
+   - 검색 결과: `content_opened.source='search'`
+   - 관련 콘텐츠: `content_opened.source='related'`
+8. Rediscover 카드가 보이는 계정에서 홈을 열고 카드를 탭한다.
+   - 기대 이벤트: `rediscover_impression`
+   - 기대 이벤트: `content_opened.source='rediscover'`
+   - 같은 세션에서 같은 content_id impression은 1회만 기록
+9. 신규 계정으로 온보딩을 완료한다.
+   - 기대 이벤트: `onboarding_completed`
+10. 테스트가 끝나면 `ops_*` 쿼리 중 저장 성공률/중복/진입 경로를 같은 날짜 범위로 실행해 raw event와 집계가 일치하는지 확인한다.
+
 ## 쿼리 목록
 
 | 파일 | 측정 |

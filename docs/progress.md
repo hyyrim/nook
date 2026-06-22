@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-21 (16차 — Analytics 측정 명세 + 이벤트 수집 구현)
+최종 업데이트: 2026-06-22 (17차 — 플랫폼 링크 저장 실기기 검증 + X/Notion 보강)
 
 ---
 
@@ -225,13 +225,48 @@
 | `docs/analytics-queries/` — H1/H2/H3 + 운영 지표 4종(저장 성공률/중복/재방문/진입 경로) SQL 7개 + README | ✅ |
 | 실기기 검증 — 6개 이벤트 발화 확인, RLS 검증 | 미완료 (실기기 테스트 필요) |
 
+## 완료 (17차 — 플랫폼 링크 저장 실기기 검증 + X/Notion 보강)
+
+| 항목 | 상태 |
+|------|------|
+| 실기기 링크 저장 검증: Instagram / YouTube / X / Threads / Notion / Naver Blog / Medium / Velog | ✅ |
+| X 게시물 본문 추출 — `<title>`의 `작성자 on X: "본문" / X` 래퍼 제거 | ✅ |
+| X 앱 공유 generic meta가 서버 fetch를 막는 문제 수정 — meta가 generic/fallback뿐이면 fetch 계속 진행 | ✅ |
+| X iOS/RN fetch 실패 대비 `publish.twitter.com/oembed` fallback 추가 | ✅ |
+| X 원문 바로가기 — `twitter://open...` 제거, HTTPS Universal Link 우선 | ✅ |
+| Notion 공유 링크 저장 — page ID 기반 `loadPageChunk`로 title/description 추출 | ✅ |
+| Notion generic OG metadata 차단 + URL slug fallback (`Notion 페이지` / `My Project Plan` 등) | ✅ |
+| Notion cover/thumbnail 없을 때 UI 문서 placeholder 표시 (리스트, Rediscover, Content Detail) | ✅ |
+| Notion 원문 바로가기 — `*.notion.site`는 앱 scheme 강제 없이 인앱 브라우저로 열어 Safari bounce 방지 | ✅ |
+| `docs/decisions.md` 결정 042~045 기록 + `docs/ai-usage-log.md` 2026-06-22 작업 로그 반영 | ✅ |
+
+## 다음 우선순위 체크리스트
+
+| 순서 | 항목 | 상태 |
+|------|------|------|
+| 1 | Analytics 실기기 검증: `app_opened`, `save_attempted`, `save_failed`, `rediscover_impression`, `content_opened`, `onboarding_completed` Supabase 적재 확인 | 절차 문서화 완료 / 실기기 실행 미완료 |
+| 2 | Auth / Onboarding 회귀 테스트: 신규 유저, 기존 유저, 로그아웃 후 재진입, 카테고리 0개 유저, 계정 삭제 후 재가입 | 미완료 |
+| 3 | 저장 품질 최종 회귀: 저장 → AI 분류 → 폴더 반영 → Content Detail → 원문 바로가기 | 미완료 |
+| 4 | iOS 배포 준비: Apple Developer 승인 이후 capability, EAS submit 정보, TestFlight 준비 | `docs/release-readiness.md` 작성 완료 / 계정 정보 대기 |
+| 5 | `docs/mvp-backlog.md` 현행화: 태그 수정/다중 편집/플랫폼 저장 보강 등 이미 완료된 항목 반영 | 완료 |
+
+## 이번 주 배포 준비 계획
+
+목표: 2026-06-24(수)까지 TestFlight 제출이 가능한 상태로 만든다.
+
+| 날짜 | 작업 | 산출물 |
+|------|------|------|
+| 2026-06-22(월) | 릴리즈 체크리스트 고정, Analytics 실기기 검증 절차 정리, backlog 현행화, TypeScript/Expo Doctor 확인 | `docs/release-readiness.md`, `docs/analytics-queries/README.md`, `docs/mvp-backlog.md`, `tsc`/`expo-doctor` 통과 |
+| 2026-06-23(화) | Auth / Onboarding / 저장 / 원문 이동 실기기 회귀 테스트 | blocker 목록 또는 통과 기록 |
+| 2026-06-24(수) | TypeScript/Expo doctor/EAS production build/TestFlight 제출 준비 | production build 또는 제출 전 blocker 정리 |
+
 ## 미완료 (Apple Developer 승인 후)
 
 | 항목 | 비고 |
 |------|------|
 | App ID에 Sign In with Apple capability 활성화 | Apple Developer 승인 대기 중 |
 | Apple 로그인 실기기 테스트 | Development Build 필요 |
-| Share Intent 실기기 테스트 | Development Build 필요 |
+| Share Intent 배포 회귀 테스트 | 주요 플랫폼 저장 검증 완료. TestFlight/배포 빌드에서 최종 회귀 필요 |
 | eas.json submit 정보 채우기 (appleId, ascAppId, appleTeamId) | App Store Connect 앱 생성 후 |
 | EAS Build → TestFlight → App Store 제출 | 최종 배포 |
 
@@ -241,7 +276,7 @@
 |------|------|
 | 카테고리 정렬 순서 변경 | 사용자가 카테고리 순서를 변경 가능. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
 | 카테고리 폴더 컬러칩 | 각 카테고리에 컬러 지정해 폴더 카드/Content Detail에서 시각 구분. DB 스키마 `categories.color` 컬럼 필요 |
-| 다른 플랫폼 본문 복구 (Phase 2) | 15차에서 generic title fallback은 완료. 본문 복구는 별건 — Threads 봇 UA 패치(facebookexternalhit → Slackbot 폴백)부터 가장 가볍게 시작 가능. 이어서 Naver Blog iframe(PostFrame) 재fetch, X syndication.twitter.com, Velog 공개 API 등 플랫폼별 개별 작업 필요. 노력 대비 효용 평가 후 진행 |
+| 다른 플랫폼 본문 복구 (Phase 2) | X는 oEmbed fallback, Notion은 public page API로 보강 완료. Naver Blog / Medium / Velog는 저장 검증 완료했으나 본문 복구 고도화는 필요 시 별도 평가 |
 
 ## 보류 / 시도 기록
 
