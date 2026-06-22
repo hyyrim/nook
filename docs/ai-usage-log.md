@@ -99,3 +99,4 @@
 | Codex | Analytics 실기기 검증 순서를 `analytics-queries/README.md`에 문서화 |
 | Codex | 수요일까지 TestFlight 준비를 목표로 release readiness 체크리스트와 backlog를 현행화 (→ 결정 046) |
 | Codex | 배포 전 TypeScript 검사와 Expo Doctor 21개 항목 통과 여부 확인 |
+| Codex | Analytics 실기기 검증 전 invalid URL 이벤트와 Share Sheet app_opened 누락 가능성을 보강 (→ 결정 047) |
