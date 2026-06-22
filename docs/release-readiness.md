@@ -16,7 +16,7 @@
 | 순서 | 작업 | 완료 기준 | 상태 |
 |---|---|---|---|
 | 1 | TypeScript / Expo 설정 확인 | `npm exec tsc -- --noEmit` 통과, `npx expo-doctor` 21/21 통과, SDK 56 버전대 확인 | 완료 |
-| 2 | Analytics 실기기 검증 | 6개 이벤트가 Supabase에 적재되고 운영 쿼리와 raw event가 맞음 | 대기 |
+| 2 | Analytics 실기기 검증 | 6개 이벤트가 Supabase에 적재되고 운영 쿼리와 raw event가 맞음 | 코드 보강 완료 / 실기기 실행 대기 |
 | 3 | Auth / Onboarding 회귀 테스트 | 신규/기존/로그아웃/카테고리 0개/계정 삭제 후 재가입 흐름 확인 | 대기 |
 | 4 | 저장 품질 최종 회귀 | 주요 플랫폼 저장, 중복 저장, invalid URL, AI 분류, Detail, 원문 이동 확인 | 일부 완료 |
 | 5 | iOS 배포 정보 확인 | Apple Team, App Store Connect 앱, bundle id, Sign in with Apple capability 확인 | 대기 |

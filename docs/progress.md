@@ -244,7 +244,7 @@
 
 | 순서 | 항목 | 상태 |
 |------|------|------|
-| 1 | Analytics 실기기 검증: `app_opened`, `save_attempted`, `save_failed`, `rediscover_impression`, `content_opened`, `onboarding_completed` Supabase 적재 확인 | 절차 문서화 완료 / 실기기 실행 미완료 |
+| 1 | Analytics 실기기 검증: `app_opened`, `save_attempted`, `save_failed`, `rediscover_impression`, `content_opened`, `onboarding_completed` Supabase 적재 확인 | invalid URL / Share Sheet 진입 이벤트 보강 완료 / 실기기 실행 미완료 |
 | 2 | Auth / Onboarding 회귀 테스트: 신규 유저, 기존 유저, 로그아웃 후 재진입, 카테고리 0개 유저, 계정 삭제 후 재가입 | 미완료 |
 | 3 | 저장 품질 최종 회귀: 저장 → AI 분류 → 폴더 반영 → Content Detail → 원문 바로가기 | 미완료 |
 | 4 | iOS 배포 준비: Apple Developer 승인 이후 capability, EAS submit 정보, TestFlight 준비 | `docs/release-readiness.md` 작성 완료 / 계정 정보 대기 |

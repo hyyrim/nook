@@ -25,6 +25,7 @@ export type FailureReason =
 // --- 세션 상태 (앱 프로세스 단위 싱글톤) ---
 let sessionId: string | null = null;
 let backgroundAt: number | null = null;
+const appOpenedSourcesBySession = new Set<EntrySource>();
 // §12.4: rediscover_impression 세션당 사용자당 content_id 1회 dedup
 const rediscoverImpressionSet = new Set<string>();
 
@@ -38,9 +39,15 @@ function randomId(): string {
 function ensureSession(): string {
   if (!sessionId) {
     sessionId = randomId();
+    appOpenedSourcesBySession.clear();
     rediscoverImpressionSet.clear();
   }
   return sessionId;
+}
+
+function trackAppOpened(entrySource: EntrySource): void {
+  appOpenedSourcesBySession.add(entrySource);
+  void track('app_opened', { properties: { entry_source: entrySource } });
 }
 
 /**
@@ -57,9 +64,18 @@ export function onAppActive(entrySource: EntrySource): boolean {
 
   if (isFirstActive || isResumedAfterTimeout) {
     sessionId = randomId();
+    appOpenedSourcesBySession.clear();
     rediscoverImpressionSet.clear();
     backgroundAt = null;
-    void track('app_opened', { properties: { entry_source: entrySource } });
+    trackAppOpened(entrySource);
+    return true;
+  }
+
+  // Share Intent payload가 AppState active보다 늦게 도착하면 첫 app_opened가
+  // direct로 기록될 수 있다. 같은 세션에서 share_sheet 진입은 한 번 보정 기록한다.
+  if (entrySource === 'share_sheet' && !appOpenedSourcesBySession.has('share_sheet')) {
+    backgroundAt = null;
+    trackAppOpened('share_sheet');
     return true;
   }
 

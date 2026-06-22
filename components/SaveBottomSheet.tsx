@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { isDuplicateContentUrlError, saveContent } from '@/lib/api';
+import { analytics } from '@/lib/analytics';
 import { emit } from '@/lib/events';
 
 type SaveBottomSheetProps = {
@@ -96,6 +97,8 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
     if (!trimmed) return;
     if (!isValidUrl(trimmed)) {
       setUrlError('올바른 URL을 입력해 주세요');
+      void analytics.saveAttempted('direct');
+      void analytics.saveFailed('invalid_url', 'direct');
       return;
     }
     setSaving(true);
