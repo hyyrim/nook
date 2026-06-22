@@ -95,3 +95,7 @@
 | Codex | X 앱 공유 generic meta / iOS fetch 실패 대비 oEmbed fallback 수정 (→ 결정 043) |
 | Codex | X 원문 바로가기 Universal Link 방식으로 수정 (→ 결정 044) |
 | Codex | Notion 링크 public API 추출 + 썸네일 placeholder + 앱 열기 보강 (→ 결정 045) |
+| Codex | 플랫폼 링크 저장 검증 결과와 다음 안정화 우선순위를 `progress.md`에 현행화 |
+| Codex | Analytics 실기기 검증 순서를 `analytics-queries/README.md`에 문서화 |
+| Codex | 수요일까지 TestFlight 준비를 목표로 release readiness 체크리스트와 backlog를 현행화 (→ 결정 046) |
+| Codex | 배포 전 TypeScript 검사와 Expo Doctor 21개 항목 통과 여부 확인 |
