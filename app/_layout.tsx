@@ -68,6 +68,12 @@ function RootNavigator() {
   useEffect(() => {
     if (!hasShareIntent || !session || savingRef.current) return;
 
+    // §040: Threads 등 일부 플랫폼은 서버 사이드 OG로 본문 캡션을 노출하지 않는다.
+    // meta.title 등 share intent 페이로드에 본문이 들어오는지 실기기 진단용.
+    if (__DEV__) {
+      console.log('[ShareIntent payload]', JSON.stringify(shareIntent, null, 2));
+    }
+
     const url = shareIntent?.webUrl || shareIntent?.text;
     if (!url) {
       resetShareIntent();
