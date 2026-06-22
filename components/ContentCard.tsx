@@ -16,6 +16,8 @@ type ContentCardProps = {
 };
 
 export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, isClassifying = false, selectionMode = false, selected = false, onPress }: ContentCardProps) {
+  const isNotion = source === 'Notion';
+
   return (
     <Pressable
       onPress={onPress}
@@ -28,6 +30,10 @@ export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailC
       )}
       {thumbnailUrl ? (
         <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+      ) : isNotion ? (
+        <View style={[styles.thumbnail, styles.notionThumbnail]}>
+          <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
+        </View>
       ) : (
         <View style={[styles.thumbnail, { backgroundColor: thumbnailColor }]} />
       )}
@@ -91,6 +97,13 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 8,
     backgroundColor: Colors.border,
+  },
+  notionThumbnail: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   textContainer: {
     flex: 1,

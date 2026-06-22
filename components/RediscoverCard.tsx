@@ -12,6 +12,8 @@ type RediscoverCardProps = {
 };
 
 export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark = '#1E1C2A', onPress }: RediscoverCardProps) {
+  const isNotion = source === 'Notion';
+
   return (
     <Pressable
       onPress={onPress}
@@ -20,6 +22,11 @@ export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark
       <View style={[styles.thumbnail, !thumbnailUrl && { backgroundColor: gradientDark }]}>
         {thumbnailUrl && (
           <Image source={{ uri: thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        )}
+        {!thumbnailUrl && isNotion && (
+          <View style={styles.notionMark}>
+            <Ionicons name="document-text-outline" size={28} color="rgba(255,255,255,0.9)" />
+          </View>
         )}
         <View style={styles.sourcePill}>
           <Text style={styles.sourceText}>{source}</Text>
@@ -55,6 +62,15 @@ const styles = StyleSheet.create({
     height: 104,
     justifyContent: 'flex-end',
     padding: 10,
+  },
+  notionMark: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sourcePill: {
     alignSelf: 'flex-start',

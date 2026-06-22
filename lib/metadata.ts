@@ -6,11 +6,14 @@ export type LinkMetadata = {
 };
 
 const META_TIMEOUT_MS = 8000;
+const OEMBED_TIMEOUT_MS = 6000;
 
 const INSTAGRAM_HOST_RE = /^(www\.)?instagram\.com$/i;
 const INSTAGRAM_POST_RE = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv)\//i;
 const INSTAGRAM_REEL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|reels)\//i;
 const YOUTUBE_HOST_RE = /^(www\.)?(youtube\.com|youtu\.be)$/i;
+const X_HOST_RE = /^(www\.)?(x\.com|twitter\.com)$/i;
+const NOTION_HOST_RE = /(^|\.)notion\.(so|site|com)$/i;
 
 // 봇 차단/로그인 게이트 상황에서 플랫폼별로 generic title fallback.
 // 호스트 매칭은 normalizeHost(hostname.replace(/^www\./, '').toLowerCase()) 기준.
@@ -24,12 +27,16 @@ const PLATFORM_FALLBACK_TITLES: { match: (host: string, url: string) => boolean;
   { match: (h) => h === 'velog.io', title: 'Velog 글' },
   { match: (h) => h === 'brunch.co.kr', title: '브런치 글' },
   { match: (h) => h === 'blog.naver.com' || h === 'm.blog.naver.com', title: '네이버 블로그 글' },
+  { match: (h) => h === 'notion.so' || h.endsWith('.notion.so') || h === 'notion.site' || h.endsWith('.notion.site') || h === 'notion.com' || h.endsWith('.notion.com'), title: 'Notion 페이지' },
 ];
 
 export function platformFallbackTitle(url: string): string | undefined {
   try {
     const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
     if (INSTAGRAM_REEL_RE.test(url)) return 'Instagram 릴스';
+    if (NOTION_HOST_RE.test(host)) {
+      return titleFromNotionUrl(url) ?? 'Notion 페이지';
+    }
     return PLATFORM_FALLBACK_TITLES.find((p) => p.match(host, url))?.title;
   } catch {
     return undefined;
@@ -69,6 +76,71 @@ function isYouTubeUrl(url: string) {
   }
 }
 
+function isXUrl(url: string) {
+  try {
+    return X_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isNotionUrl(url: string) {
+  try {
+    return NOTION_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function extractXStatusId(url: string): string | undefined {
+  try {
+    return new URL(url).pathname.match(/\/(?:i\/)?status(?:es)?\/(\d+)/)?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * iOS Safari share extension은 페이지 head의 메타 태그를 JavaScript preprocessing으로 추출해
+ * `ShareIntent.meta`에 전달한다(클라이언트 렌더 후 상태 포함).
+ * 이 객체를 기존 `parseMetadata` 파이프라인이 이해할 수 있는 가짜 HTML로 변환한다.
+ * → generic/bad title 차단, <title> description 폴백 등 모든 가드를 그대로 재사용.
+ *
+ * meta.title 키는 Safari preprocessing 결과의 페이지 title(<title> 태그)이므로
+ * `<title>` 요소로 변환한다. 나머지 og:* / twitter:* / name=* 키는 그대로 메타 태그로.
+ */
+export function shareIntentMetaToHtml(meta: Record<string, string | undefined> | null | undefined): string {
+  if (!meta) return '';
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const parts: string[] = [];
+  // title 키는 별도로 <title> 요소로 변환 (parseMetadata가 findTitle에서 활용)
+  const titleValue = meta.title;
+  if (typeof titleValue === 'string' && titleValue.length > 0) {
+    parts.push(`<title>${escape(titleValue)}</title>`);
+  }
+  for (const [k, v] of Object.entries(meta)) {
+    if (k === 'title') continue;
+    if (typeof v !== 'string' || v.length === 0) continue;
+    const attr = k.startsWith('og:') || k.startsWith('al:') || k.startsWith('fb:') ? 'property' : 'name';
+    parts.push(`<meta ${attr}="${escape(k)}" content="${escape(v)}" />`);
+  }
+  return `<html><head>${parts.join('\n')}</head></html>`;
+}
+
+/** share intent meta가 OG 핵심 키를 하나라도 들고 있는지 — fetch 생략 판단 기준. */
+function hasUsefulShareIntentMeta(meta: Record<string, string | undefined> | null | undefined): boolean {
+  if (!meta) return false;
+  return !!(
+    meta['og:title'] ||
+    meta['og:description'] ||
+    meta['twitter:title'] ||
+    meta['twitter:description'] ||
+    meta.title
+  );
+}
+
 async function fetchHtmlWithUA(url: string, userAgent: string): Promise<string | undefined> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
@@ -89,12 +161,36 @@ async function fetchHtmlWithUA(url: string, userAgent: string): Promise<string |
   }
 }
 
-export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
+export async function fetchLinkMetadata(
+  url: string,
+  options?: { shareIntentMeta?: Record<string, string | undefined> | null },
+): Promise<LinkMetadata> {
   const normalizedUrl = normalizeUrl(url);
   const domain = getDomain(normalizedUrl);
+
+  // Safari 공유 시 share extension이 클라이언트 렌더 후 head meta를 함께 전달한다.
+  // 풍부한 OG가 있으면 fetch 생략하고 그 정보로 LinkMetadata 구성 — 서버 SSR이 누락하는
+  // dynamic-injected meta(og:description 등)까지 살릴 수 있다.
+  if (options?.shareIntentMeta && hasUsefulShareIntentMeta(options.shareIntentMeta)) {
+    const fakeHtml = shareIntentMetaToHtml(options.shareIntentMeta);
+    const parsed = parseMetadata(fakeHtml, normalizedUrl);
+    if (isUsefulParsedMetadata(parsed, normalizedUrl)) {
+      return { domain, ...parsed };
+    }
+  }
+
   const isInsta = isInstagramUrl(normalizedUrl);
+  const isX = isXUrl(normalizedUrl);
+  const isNotion = isNotionUrl(normalizedUrl);
 
   try {
+    if (isNotion) {
+      const notionMetadata = await fetchNotionPageMetadata(normalizedUrl);
+      if (notionMetadata?.title) {
+        return { domain, ...notionMetadata };
+      }
+    }
+
     if (isInsta) {
       // 1차: facebookexternalhit — 응답 HTML 안의 caption.text JSON에서 풍부한 캡션 시도
       const primaryHtml = await fetchHtmlWithUA(normalizedUrl, INSTAGRAM_FETCH_UA_PRIMARY);
@@ -116,16 +212,226 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
 
     const html = await fetchHtmlWithUA(normalizedUrl, DEFAULT_FETCH_UA);
     if (!html) {
+      if (isX) {
+        const xMetadata = await fetchXPostMetadata(normalizedUrl);
+        if (xMetadata) return { domain, ...xMetadata };
+      }
       const fallback = platformFallbackTitle(normalizedUrl);
       return fallback ? { domain, title: fallback } : { domain };
     }
-    return { domain, ...parseMetadata(html, normalizedUrl) };
+    const parsed = parseMetadata(html, normalizedUrl);
+    if (isX && !isUsefulParsedMetadata(parsed, normalizedUrl)) {
+      const xMetadata = await fetchXPostMetadata(normalizedUrl);
+      if (xMetadata) {
+        return {
+          domain,
+          ...xMetadata,
+          thumbnail_url: parsed.thumbnail_url ?? xMetadata.thumbnail_url,
+        };
+      }
+    }
+    return { domain, ...parsed };
   } catch {
+    if (isX) {
+      const xMetadata = await fetchXPostMetadata(normalizedUrl);
+      if (xMetadata) return { domain: getDomain(normalizedUrl), ...xMetadata };
+    }
     const fallback = platformFallbackTitle(normalizedUrl);
     return fallback
       ? { domain: getDomain(normalizedUrl), title: fallback }
       : { domain: getDomain(normalizedUrl) };
   }
+}
+
+async function fetchNotionPageMetadata(url: string): Promise<Omit<LinkMetadata, 'domain'> | undefined> {
+  const pageId = extractNotionPageId(url);
+  if (!pageId) return undefined;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), META_TIMEOUT_MS);
+  try {
+    const response = await fetch('https://www.notion.so/api/v3/loadPageChunk', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': DEFAULT_FETCH_UA,
+      },
+      body: JSON.stringify({
+        pageId,
+        limit: 100,
+        cursor: { stack: [] },
+        chunkNumber: 0,
+        verticalColumns: false,
+      }),
+    });
+    if (!response.ok) return undefined;
+
+    const data = await response.json();
+    const blocks = getNotionBlocks(data);
+    const page = blocks[pageId];
+    if (!page) return undefined;
+
+    const title = extractNotionPlainText(page.properties?.title) ?? titleFromNotionUrl(url);
+    const description = extractNotionDescription(page, blocks);
+    const cover = typeof page.format?.page_cover === 'string'
+      ? absolutizeUrl(page.format.page_cover, 'https://www.notion.so')
+      : undefined;
+
+    return {
+      title: cleanText(title),
+      description: cleanMultilineText(description),
+      thumbnail_url: cover,
+    };
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchXPostMetadata(url: string): Promise<Omit<LinkMetadata, 'domain'> | undefined> {
+  const id = extractXStatusId(url);
+  if (!id) return undefined;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OEMBED_TIMEOUT_MS);
+  try {
+    const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(`https://x.com/i/status/${id}`)}&omit_script=true`;
+    const response = await fetch(oembedUrl, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': DEFAULT_FETCH_UA,
+      },
+    });
+    if (!response.ok) return undefined;
+
+    const data = await response.json();
+    const html = typeof data?.html === 'string' ? data.html : '';
+    const text = extractTextFromXEmbedHtml(html);
+    if (!text) return undefined;
+
+    const firstLine = text
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => line.length >= 3);
+
+    return {
+      title: firstLine ? cleanText(firstLine.length > 100 ? firstLine.slice(0, 100) + '…' : firstLine) : undefined,
+      description: cleanMultilineText(text),
+    };
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+type NotionBlock = {
+  id?: string;
+  type?: string;
+  properties?: Record<string, unknown>;
+  content?: string[];
+  format?: { page_cover?: string };
+};
+
+function getNotionBlocks(data: unknown): Record<string, NotionBlock> {
+  const recordMap = (data as { recordMap?: { block?: Record<string, unknown> } })?.recordMap;
+  const rawBlocks = recordMap?.block ?? {};
+  const blocks: Record<string, NotionBlock> = {};
+
+  for (const [id, record] of Object.entries(rawBlocks)) {
+    const value = unwrapNotionRecord(record);
+    if (value) blocks[id] = value;
+  }
+
+  return blocks;
+}
+
+function unwrapNotionRecord(record: unknown): NotionBlock | undefined {
+  const first = (record as { value?: unknown })?.value;
+  const second = (first as { value?: unknown })?.value;
+  const candidate = (second ?? first) as NotionBlock | undefined;
+  return candidate && typeof candidate === 'object' ? candidate : undefined;
+}
+
+function extractNotionDescription(page: NotionBlock, blocks: Record<string, NotionBlock>) {
+  const lines: string[] = [];
+  const visit = (ids?: string[]) => {
+    if (!ids || lines.join('\n').length > 1800) return;
+
+    for (const id of ids) {
+      const block = blocks[id];
+      if (!block) continue;
+
+      const text = extractNotionBlockText(block);
+      if (text) lines.push(text);
+
+      if (block.content && block.type !== 'page') {
+        visit(block.content);
+      }
+
+      if (lines.join('\n').length > 1800) break;
+    }
+  };
+
+  visit(page.content);
+  return lines.join('\n');
+}
+
+function extractNotionBlockText(block: NotionBlock) {
+  if (!block.type || ['page', 'column', 'column_list', 'divider', 'breadcrumb'].includes(block.type)) {
+    return undefined;
+  }
+
+  const title = extractNotionPlainText(block.properties?.title);
+  if (!title) return undefined;
+
+  if (block.type === 'bulleted_list') return `• ${title}`;
+  if (block.type === 'numbered_list') return `- ${title}`;
+  if (block.type === 'to_do') return `□ ${title}`;
+  return title;
+}
+
+function extractNotionPlainText(property: unknown): string | undefined {
+  if (!Array.isArray(property)) return undefined;
+
+  const text = property
+    .map((part) => {
+      if (typeof part === 'string') return part;
+      if (Array.isArray(part)) return typeof part[0] === 'string' ? part[0] : '';
+      return '';
+    })
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return text || undefined;
+}
+
+function extractTextFromXEmbedHtml(html: string): string | undefined {
+  const paragraph = html.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i)?.[1];
+  if (!paragraph) return undefined;
+
+  const withLineBreaks = paragraph
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p\b[^>]*>/gi, '\n\n');
+  const withoutTags = withLineBreaks.replace(/<[^>]+>/g, '');
+  return cleanMultilineText(decodeHtml(withoutTags));
+}
+
+function isUsefulParsedMetadata(metadata: Omit<LinkMetadata, 'domain'>, url: string) {
+  if (metadata.description) return true;
+
+  const fallback = platformFallbackTitle(url);
+  return Boolean(
+    metadata.title &&
+    metadata.title !== fallback &&
+    !isBadMetadataText(metadata.title) &&
+    !isGenericPlatformTitle(metadata.title)
+  );
 }
 
 export function normalizeUrl(url: string) {
@@ -180,12 +486,31 @@ export function isGenericPlatformTitle(value?: string | null) {
 }
 
 function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domain'> {
-  const rawTitle =
-    findMetaContent(html, ['og:title', 'twitter:title']) ??
-    decodeHtml(findTitle(html) ?? '');
+  const ogTitle = findMetaContent(html, ['og:title', 'twitter:title']);
+  const titleTag = decodeHtml(findTitle(html) ?? '');
+  const rawTitle = ogTitle ?? titleTag;
 
-  const description =
+  const ogDescription =
     findMetaContent(html, ['og:description', 'twitter:description', 'description']);
+  const xPostText = isXUrl(baseUrl) ? extractXPostTextFromTitle(titleTag) : undefined;
+  const notionTitle = isNotionUrl(baseUrl) ? titleFromNotionUrl(baseUrl) : undefined;
+
+  // Threads는 og:title이 항상 작성자 generic("X의 …(@handle)님")이고,
+  // <title> 태그에 게시물 본문을 통째로 담는다.
+  // <title>이 og:title과 다르고 generic/bad가 아니면 description 후보로 활용 →
+  // 기존 description-as-title 폴백이 첫 줄을 title로, 전체를 description으로 처리한다.
+  // 일반 사이트는 보통 <title> === og:title이므로 영향 없음.
+  const titleTagUseful =
+    !!titleTag &&
+    !xPostText &&
+    titleTag !== ogTitle &&
+    !isGenericTitle(titleTag) &&
+    !isBadMetadataText(titleTag);
+  const description =
+    xPostText ??
+    (titleTagUseful && (!ogDescription || titleTag.length > ogDescription.length)
+      ? titleTag
+      : ogDescription);
 
   // Instagram 캡션 추출 시도: 1) 응답 HTML embedded JSON(shortcode 컨텍스트), 2) og:description 인용 패턴
   let caption: string | undefined;
@@ -205,11 +530,13 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
   // X/Threads는 og:title과 og:description이 동일한 generic 텍스트를 함께 내려보내기 때문.
   const isGenericDesc = !!description && isGenericTitle(description);
   const canUseDescription = description && !isBadDesc && !isGenericDesc;
+  const isBadNotionMetadata = isNotionUrl(baseUrl) && isBadTitle;
+  const canUseDescriptionForTitle = canUseDescription && !isBadNotionMetadata;
 
   // 제네릭/오염 제목이면 caption 또는 description에서 의미 있는 제목 추출
   let title = rawTitle;
-  if ((!title || isGenericTitle(title) || isBadTitle) && (caption || canUseDescription)) {
-    const source = caption || description!;
+  if ((!title || isGenericTitle(title) || isBadTitle) && (caption || xPostText || canUseDescriptionForTitle)) {
+    const source = caption || xPostText || description!;
     // "1. 우선..." 같은 번호 매김의 첫 토큰('1') 등 의미 없는 짧은 조각은 skip,
     // 그리고 첫 줄 자체가 generic 패턴(`X에서 …`, `Threads의 …`)이면 skip
     const firstLine = source
@@ -227,13 +554,20 @@ function parseMetadata(html: string, baseUrl: string): Omit<LinkMetadata, 'domai
     title = fallback;
   }
 
+  if ((!title || isGenericTitle(title) || isBadTitle || title === 'Notion 페이지') && notionTitle) {
+    title = notionTitle;
+  }
+
   const thumbnail =
     findMetaContent(html, ['og:image', 'og:image:url', 'twitter:image', 'twitter:image:src']);
 
   return {
     title: cleanText(title),
     description: cleanMultilineText(
-      caption || fullDescription || (isBadDesc || isGenericDesc ? undefined : description),
+      caption ||
+      fullDescription ||
+      xPostText ||
+      (isBadNotionMetadata ? undefined : (isBadDesc || isGenericDesc ? undefined : description)),
     ),
     thumbnail_url: thumbnail ? absolutizeUrl(thumbnail, baseUrl) : undefined,
   };
@@ -253,6 +587,71 @@ function extractYouTubeDescription(html: string): string | undefined {
   }
 
   return undefined;
+}
+
+function extractXPostTextFromTitle(title: string): string | undefined {
+  const match = title.match(/\bon\s+X:\s*["“”]([\s\S]+?)["“”]\s*\/\s*X\s*$/i);
+  const candidate = match?.[1]?.trim();
+  if (!candidate || candidate.includes('\uFFFD') || isGenericTitle(candidate)) return undefined;
+  return candidate;
+}
+
+function titleFromNotionUrl(url: string): string | undefined {
+  let pathname = '';
+  try {
+    pathname = decodeURIComponent(new URL(url).pathname);
+  } catch {
+    return undefined;
+  }
+
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length === 0) return undefined;
+
+  const ignored = new Set([
+    'desktop',
+    'download',
+    'help',
+    'login',
+    'mobile',
+    'product',
+    'templates',
+  ]);
+
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const raw = segments[i];
+    if (ignored.has(raw.toLowerCase())) continue;
+
+    const withoutQueryish = raw.split('?')[0].split('#')[0];
+    const withoutUuid = withoutQueryish
+      .replace(/[-_]?([0-9a-f]{32})$/i, '')
+      .replace(/[-_]?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i, '');
+
+    const title = withoutUuid
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (title && !/^[0-9a-f-]{16,}$/i.test(title)) {
+      return title;
+    }
+  }
+
+  return undefined;
+}
+
+function extractNotionPageId(url: string): string | undefined {
+  let pathname = '';
+  try {
+    pathname = decodeURIComponent(new URL(url).pathname);
+  } catch {
+    return undefined;
+  }
+
+  const match = pathname.match(/([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+  if (!match?.[1]) return undefined;
+
+  const raw = match[1].replace(/-/g, '').toLowerCase();
+  return raw.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
 }
 
 /**
@@ -313,6 +712,9 @@ const BAD_METADATA_GENERIC_PATTERNS: RegExp[] = [
   /^LinkedIn$/i,
   /^Instagram$/i,
   /^Medium$/i,
+  /^Notion$/i,
+  /^Notion\s*\|/i,
+  /^Page\s*not\s*found$/i,
   /^Twitter$/i,
   /^X\s*\/\s*\?$/i,
   /^네이버\s*블로그$/i,
@@ -323,6 +725,9 @@ const BAD_METADATA_GENERIC_PATTERNS: RegExp[] = [
   /^Join\s*Threads\s*to\s*share/i,
   /^Top\s*Career\s*Content\s*from\s*LinkedIn/i,
   /^Explore\s*top\s*LinkedIn/i,
+  /^A\s*collaborative\s*AI\s*workspace/i,
+  /^Notion\s*[–—-]\s*The\s*AI\s*workspace/i,
+  /^The\s*AI\s*workspace\s*that\s*works\s*for\s*you\.?\s*\|\s*Notion$/i,
 ];
 
 const BAD_METADATA_NONANCHORED_PATTERNS: RegExp[] = [
@@ -442,12 +847,18 @@ function decodeJsonString(raw: string): string | undefined {
 }
 
 function decodeHtml(value: string) {
-  return value
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  let decoded = value;
+  for (let i = 0; i < 3; i++) {
+    const next = decoded
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    if (next === decoded) break;
+    decoded = next;
+  }
+  return decoded;
 }

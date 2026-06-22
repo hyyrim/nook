@@ -68,6 +68,12 @@ function RootNavigator() {
   useEffect(() => {
     if (!hasShareIntent || !session || savingRef.current) return;
 
+    // §040: Threads 등 일부 플랫폼은 서버 사이드 OG로 본문 캡션을 노출하지 않는다.
+    // meta.title 등 share intent 페이로드에 본문이 들어오는지 실기기 진단용.
+    if (__DEV__) {
+      console.log('[ShareIntent payload]', JSON.stringify(shareIntent, null, 2));
+    }
+
     const url = shareIntent?.webUrl || shareIntent?.text;
     if (!url) {
       resetShareIntent();
@@ -76,8 +82,15 @@ function RootNavigator() {
 
     savingRef.current = true;
 
-    // share intent meta는 불완전할 수 있으므로, fetchLinkMetadata에 위임
-    saveContent({ url }, { entry_source: 'share_sheet' })
+    // Safari 공유 시 share extension이 페이지 head meta(클라이언트 렌더 후)를 전달한다.
+    // 일부 플랫폼(Threads 등)은 SSR에 누락된 정보가 여기에 들어있어 saveContent에 위임.
+    saveContent(
+      { url },
+      {
+        entry_source: 'share_sheet',
+        shareIntentMeta: shareIntent?.meta ?? null,
+      },
+    )
       .then(() => {
         emit('content-saved');
         setToast({ visible: true, message: '저장 완료!', type: 'success' });

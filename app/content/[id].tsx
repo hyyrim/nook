@@ -58,6 +58,12 @@ function shouldRefreshMetadata(content: ContentWithCategory) {
   );
 }
 
+function isNotionDomain(domain?: string | null) {
+  if (!domain) return false;
+  const host = domain.toLowerCase();
+  return host === 'notion.so' || host === 'notion.com' || host.endsWith('.notion.site');
+}
+
 function isPollutedMetadata(content: ContentWithCategory) {
   return (
     isBadMetadataText(content.title) ||
@@ -215,6 +221,7 @@ export default function ContentDetailScreen() {
 
   const description = item.description ? formatDescription(item.description) : '';
   const isLongDescription = description.length > 220 || description.split('\n').length > DESCRIPTION_COLLAPSED_LINES;
+  const isNotion = isNotionDomain(item.domain);
 
   return (
     <View style={styles.container}>
@@ -235,6 +242,11 @@ export default function ContentDetailScreen() {
           <View style={styles.headerCard}>
             {item.thumbnail_url ? (
               <Image source={{ uri: item.thumbnail_url }} style={styles.heroImage} resizeMode="cover" />
+            ) : isNotion ? (
+              <View style={[styles.heroImage, styles.notionHeroImage]}>
+                <Ionicons name="document-text-outline" size={46} color={Colors.primary} />
+                <Text style={styles.notionHeroText}>Notion</Text>
+              </View>
             ) : (
               <View style={[styles.heroImage, { backgroundColor: placeholderColor(item.id) }]} />
             )}
@@ -394,6 +406,19 @@ const styles = StyleSheet.create({
   heroImage: {
     height: 200,
     width: '100%',
+  },
+  notionHeroImage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  notionHeroText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   headerMeta: {
     padding: 14,

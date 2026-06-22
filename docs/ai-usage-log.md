@@ -84,3 +84,14 @@
 | AI 도구 | 작업 내용 |
 |---------|----------|
 | Claude Code | 9개 플랫폼 × 4개 UA 응답 desk research 후 Instagram 패턴을 모든 플랫폼으로 일반화 (`isBadMetadataText`, `platformFallbackTitle`, 오염 레코드 자동 정리). 본문 복구는 Phase 2 백로그로 분리 (→ 결정 039) |
+
+## 2026-06-22
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Claude Code | Threads 본문 추출 검증 — fb/Slackbot UA 분기 폐기 + share intent meta 경로 조사 (→ 결정 040) |
+| Claude Code | Threads 본문 추출 구현 — `<title>` 태그 활용 + share intent meta 우선 (→ 결정 041) |
+| Codex | X 게시물 `<title>` 래퍼 제거로 fallback 저장 문제 수정 (→ 결정 042) |
+| Codex | X 앱 공유 generic meta / iOS fetch 실패 대비 oEmbed fallback 수정 (→ 결정 043) |
+| Codex | X 원문 바로가기 Universal Link 방식으로 수정 (→ 결정 044) |
+| Codex | Notion 링크 public API 추출 + 썸네일 placeholder + 앱 열기 보강 (→ 결정 045) |

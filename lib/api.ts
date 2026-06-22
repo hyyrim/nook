@@ -248,7 +248,11 @@ export async function saveContent(
     thumbnail_url?: string;
     domain?: string;
   },
-  options?: { entry_source?: EntrySource },
+  options?: {
+    entry_source?: EntrySource;
+    /** Safari 공유 시 share extension이 전달한 페이지 head meta. fetchLinkMetadata에 위임. */
+    shareIntentMeta?: Record<string, string | undefined> | null;
+  },
 ) {
   const entrySource = options?.entry_source ?? 'direct';
   void analytics.saveAttempted(entrySource);
@@ -260,7 +264,9 @@ export async function saveContent(
     const userId = await requireUserId();
 
     const normalizedUrl = normalizeUrl(input.url);
-    const metadata = await fetchLinkMetadata(normalizedUrl);
+    const metadata = await fetchLinkMetadata(normalizedUrl, {
+      shareIntentMeta: options?.shareIntentMeta,
+    });
     const contentInput = {
       ...input,
       url: normalizedUrl,
