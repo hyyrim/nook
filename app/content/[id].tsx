@@ -11,7 +11,7 @@ import { TagsSheet } from '@/components/TagsSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatSource, placeholderColor, openInAppOrBrowser } from '@/lib/utils';
+import { formatSource, THUMBNAIL_PLACEHOLDER, openInAppOrBrowser } from '@/lib/utils';
 import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
 import { analytics, type ContentOpenedSource } from '@/lib/analytics';
 
@@ -248,7 +248,7 @@ export default function ContentDetailScreen() {
                 <Text style={styles.notionHeroText}>Notion</Text>
               </View>
             ) : (
-              <View style={[styles.heroImage, { backgroundColor: placeholderColor(item.id) }]} />
+              <View style={[styles.heroImage, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
             )}
             <View style={styles.headerMeta}>
               <View style={styles.categoryRow}>
@@ -312,7 +312,7 @@ export default function ContentDetailScreen() {
                     title={r.title ?? r.url}
                     source={formatSource(r.domain)}
                     thumbnailUrl={r.thumbnail_url}
-                    thumb={placeholderColor(r.id)}
+                    thumb={THUMBNAIL_PLACEHOLDER}
                     onPress={() => router.push({
                       pathname: '/content/[id]',
                       params: { id: r.id, source: 'related' },

@@ -14,7 +14,7 @@ import { getRecentContents, getRediscoverContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { analytics } from '@/lib/analytics';
-import { formatRelativeTime, formatSource, placeholderColor, rediscoverColor } from '@/lib/utils';
+import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -152,7 +152,7 @@ export default function HomeScreen() {
                       source={formatSource(item.domain)}
                       tags={item.tags}
                       thumbnailUrl={item.thumbnail_url}
-                      thumbnailColor={placeholderColor(item.id)}
+                      thumbnailColor={THUMBNAIL_PLACEHOLDER}
                       savedAt={formatRelativeTime(item.saved_at)}
                       isClassifying={isClassifying(item.id)}
                       onPress={() => router.push({
@@ -201,7 +201,7 @@ export default function HomeScreen() {
                         source={formatSource(item.domain)}
                         hint={item.categories?.name ?? '미분류'}
                         thumbnailUrl={item.thumbnail_url}
-                        gradientDark={rediscoverColor(item.id)}
+                        placeholderColor={THUMBNAIL_PLACEHOLDER}
                         onPress={() => router.push({
                           pathname: '/content/[id]',
                           params: { id: item.id, source: 'rediscover' },
