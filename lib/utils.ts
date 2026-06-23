@@ -1,9 +1,32 @@
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
-// Instagram은 게시물 deep-link용 공개 scheme이 없어(`instagram://app/reel/…`은 앱 홈으로 빠짐),
-// SFSafariViewController(인앱 브라우저)로 라우팅한다.
+// Instagram은 공개 deep-link scheme이 빈약하다. 게시물용 비공식 스킴 `instagram://media?id=<numeric>`은
+// shortcode(`/p|reel|tv|reels/<shortcode>`)를 64진수 디코딩해 얻는 media ID로 호출해야 한다.
+// 비공식이지만 다년간 안정적이며, 인스타 앱이 강제종료된 상태에서 Universal Link로 진입했을 때
+// 앱이 URL을 잃어버리고 홈 피드로 빠지는 cold-start 버그를 우회할 수 있다.
 const INSTAGRAM_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
+const INSTAGRAM_SHORTCODE_RE = /^\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/;
+const INSTAGRAM_SHORTCODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+function instagramMediaIdFromUrl(url: string): string | undefined {
+  let shortcode: string | undefined;
+  try {
+    const m = new URL(url).pathname.match(INSTAGRAM_SHORTCODE_RE);
+    shortcode = m?.[1];
+  } catch {
+    return undefined;
+  }
+  if (!shortcode) return undefined;
+
+  let id = 0n;
+  for (const ch of shortcode) {
+    const idx = INSTAGRAM_SHORTCODE_ALPHABET.indexOf(ch);
+    if (idx < 0) return undefined;
+    id = id * 64n + BigInt(idx);
+  }
+  return id.toString();
+}
 const X_HOSTS = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com']);
 // notion.so / notion.com 본진과 모든 서브도메인 (`app.notion.com` 포함)
 // — Notion이 공유 링크 형식을 늘려가면서 호스트가 다양해지는 걸 한 번에 흡수.
@@ -50,16 +73,26 @@ export async function openInAppOrBrowser(urlString: string) {
   } catch {}
 
   if (INSTAGRAM_HOSTS.has(host)) {
-    // 앱 설치 시: https URL을 그대로 던져 iOS Universal Link로 Instagram 앱이 잡게 함
-    // (instagram://app{path}는 path를 무시하고 홈으로 빠지므로 사용 X)
     try {
       const hasApp = await Linking.canOpenURL('instagram://app');
       if (hasApp) {
-        await Linking.openURL(urlString);
-        return;
+        // 1순위: instagram://media?id=<numeric> — shortcode를 64진수 디코딩한 media ID로 직접 호출.
+        // 강제종료 직후 cold start 케이스에서도 게시물을 잃지 않고 정확히 진입.
+        const mediaId = instagramMediaIdFromUrl(urlString);
+        if (mediaId) {
+          try {
+            await Linking.openURL(`instagram://media?id=${mediaId}`);
+            return;
+          } catch {}
+        }
+        // 2순위: https URL → iOS Universal Link (앱이 warm일 때만 안정적)
+        try {
+          await Linking.openURL(urlString);
+          return;
+        } catch {}
       }
     } catch {}
-    // 미설치: SFSafariViewController 인앱 브라우저로 — Safari 외부 이탈 방지
+    // 미설치 또는 모든 in-app 경로 실패: SFSafariViewController 인앱 브라우저로 — Safari 외부 이탈 방지
     try {
       await WebBrowser.openBrowserAsync(urlString);
       return;
