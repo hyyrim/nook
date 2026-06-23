@@ -434,12 +434,46 @@ function isUsefulParsedMetadata(metadata: Omit<LinkMetadata, 'domain'>, url: str
   );
 }
 
+// 콘텐츠 식별과 무관한 추적/공유 파라미터.
+// 보존: v(YouTube 영상 ID), t(타임스탬프), list(플레이리스트), id 등 콘텐츠 식별자.
+// 화이트리스트 대신 명시적 블랙리스트 — 알 수 없는 파라미터로 서로 다른 콘텐츠를
+// 같은 것으로 오인해 데이터가 사라지는 사고를 막는다.
+const TRACKING_PARAMS = new Set([
+  'si',          // YouTube share ID — 공유 때마다 변경되어 중복 저장 유발
+  'feature',     // YouTube 공유 출처
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'fbclid',      // Facebook click ID
+  'gclid',       // Google click ID
+  'igshid',      // Instagram share ID
+  's',           // X(Twitter) 공유 source (예: ?s=46)
+]);
+
 export function normalizeUrl(url: string) {
   const trimmed = url.trim();
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(withScheme);
+    let mutated = false;
+    for (const key of Array.from(parsed.searchParams.keys())) {
+      if (TRACKING_PARAMS.has(key)) {
+        parsed.searchParams.delete(key);
+        mutated = true;
+      }
+    }
+    if (!mutated) return withScheme;
+
+    // searchParams.toString()은 빈 검색 결과여도 '?'를 남기는 경우가 있어 수동 정리.
+    const search = parsed.searchParams.toString();
+    parsed.search = search ? `?${search}` : '';
+    return parsed.toString();
+  } catch {
+    return withScheme;
   }
-  return `https://${trimmed}`;
 }
 
 function getDomain(url: string) {
