@@ -1,4 +1,4 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Alert, ActivityIndicator, Keyboard } from 'react-native';
+import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, ActivityIndicator, Keyboard } from 'react-native';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { analytics } from '@/lib/analytics';
 import { emit } from '@/lib/events';
+import { useToast } from '@/lib/toast';
 
 type SaveBottomSheetProps = {
   visible: boolean;
@@ -16,10 +17,10 @@ type SaveBottomSheetProps = {
 
 export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetProps) {
   const [url, setUrl] = useState('');
-  const [saved, setSaved] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(360)).current;
+  const toast = useToast();
 
   const keyboard = useAnimatedKeyboard();
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
@@ -34,7 +35,6 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
   useEffect(() => {
     if (!visible) {
       setUrl('');
-      setSaved(false);
       setUrlError('');
     }
   }, [visible]);
@@ -105,23 +105,18 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
     try {
       const domain = new URL(trimmed).hostname;
       await saveContent({ url: trimmed, domain }, { entry_source: 'direct' });
-      setSaved(true);
       onSaved?.();
       emit('content-saved');
       Keyboard.dismiss();
-      setTimeout(() => onClose(), 1600);
+      onClose();
+      toast.show('저장 완료!', 'success');
     } catch (e: unknown) {
-      if (isDuplicateContentUrlError(e)) {
-        Alert.alert(
-          '이미 저장된 링크예요',
-          '검색으로 저장한 콘텐츠를 찾아볼 수 있어요.', [
-            { text: '확인', style: 'default' },
-          ]
-        );
-        return;
-      }
-
-      Alert.alert('저장에 실패했어요', '잠시 후 다시 시도해 주세요.');
+      Keyboard.dismiss();
+      onClose();
+      const msg = isDuplicateContentUrlError(e)
+        ? '이미 저장된 링크예요'
+        : '저장에 실패했어요';
+      toast.show(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -153,49 +148,40 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
               </Pressable>
             </View>
 
-            {saved ? (
-              <View style={styles.successContainer}>
-                <View style={styles.successCircle}>
-                  <Ionicons name="checkmark" size={24} color={Colors.success} />
-                </View>
-                <Text style={styles.successTitle}>저장 완료!</Text>
+            <View style={styles.form}>
+              <View>
+                <Text style={styles.label}>URL</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="https://example.com/article"
+                  placeholderTextColor={Colors.tertiary}
+                  value={url}
+                  onChangeText={handleUrlChange}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+                {urlError ? <Text style={Typography.errorText}>{urlError}</Text> : null}
               </View>
-            ) : (
-              <View style={styles.form}>
-                <View>
-                  <Text style={styles.label}>URL</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="https://example.com/article"
-                    placeholderTextColor={Colors.tertiary}
-                    value={url}
-                    onChangeText={handleUrlChange}
-                    autoCapitalize="none"
-                    keyboardType="url"
-                  />
-                  {urlError ? <Text style={Typography.errorText}>{urlError}</Text> : null}
-                </View>
 
-                <Pressable
-                  style={({ pressed }) => [styles.pasteButton, pressed && { opacity: 0.7 }]}
-                  onPress={handlePaste}
-                >
-                  <Ionicons name="clipboard-outline" size={14} color={Colors.secondary} />
-                  <Text style={styles.pasteText}>클립보드에서 붙여넣기</Text>
-                </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.pasteButton, pressed && { opacity: 0.7 }]}
+                onPress={handlePaste}
+              >
+                <Ionicons name="clipboard-outline" size={14} color={Colors.secondary} />
+                <Text style={styles.pasteText}>클립보드에서 붙여넣기</Text>
+              </Pressable>
 
-                <Pressable
-                  onPress={handleSave}
-                  style={[styles.saveButton, !url.trim() && styles.saveButtonDisabled]}
-                >
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>저장</Text>
-                  )}
-                </Pressable>
-              </View>
-            )}
+              <Pressable
+                onPress={handleSave}
+                style={[styles.saveButton, !url.trim() && styles.saveButtonDisabled]}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>저장</Text>
+                )}
+              </Pressable>
+            </View>
           </Reanimated.View>
         </Animated.View>
       </Pressable>
@@ -299,24 +285,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  successContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  successCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: `${Colors.success}22`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  successTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 5,
   },
 });
