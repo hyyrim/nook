@@ -5,7 +5,9 @@ import * as WebBrowser from 'expo-web-browser';
 // SFSafariViewController(인앱 브라우저)로 라우팅한다.
 const INSTAGRAM_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 const X_HOSTS = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com']);
-const NOTION_APP_HOSTS = new Set(['notion.so', 'www.notion.so', 'notion.com', 'www.notion.com']);
+// notion.so / notion.com 본진과 모든 서브도메인 (`app.notion.com` 포함)
+// — Notion이 공유 링크 형식을 늘려가면서 호스트가 다양해지는 걸 한 번에 흡수.
+const NOTION_APP_RE = /(^|\.)notion\.(so|com)$/i;
 const NOTION_SITE_RE = /(^|\.)notion\.site$/i;
 
 const APP_SCHEMES: { match: (host: string) => boolean; toAppUrl: (url: URL) => string; scheme: string }[] = [
@@ -92,7 +94,7 @@ export async function openInAppOrBrowser(urlString: string) {
     } catch {}
   }
 
-  if (NOTION_APP_HOSTS.has(host)) {
+  if (NOTION_APP_RE.test(host)) {
     try {
       const parsed = new URL(urlString);
       const notionUrl = `notion://www.notion.so${parsed.pathname}${parsed.search}`;
@@ -205,16 +207,13 @@ const DOMAIN_LABELS: Record<string, string> = {
   'm.blog.naver.com': 'Naver Blog',
   'news.naver.com': 'Naver News',
   'n.news.naver.com': 'Naver News',
-  'notion.so': 'Notion',
-  'www.notion.so': 'Notion',
-  'notion.com': 'Notion',
-  'www.notion.com': 'Notion',
 };
 
 export function formatSource(domain?: string): string {
   if (!domain) return 'Unknown';
   const host = domain.toLowerCase();
-  if (host === 'notion.site' || host.endsWith('.notion.site')) return 'Notion';
+  // notion.so / notion.com / notion.site의 모든 서브도메인(app.notion.com 등)을 "Notion"으로 통일
+  if (NOTION_APP_RE.test(host) || NOTION_SITE_RE.test(host)) return 'Notion';
   return DOMAIN_LABELS[host] ?? domain.replace(/^www\./, '');
 }
 
