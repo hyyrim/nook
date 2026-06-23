@@ -7,11 +7,11 @@ type RediscoverCardProps = {
   source: string;
   hint: string;
   thumbnailUrl?: string | null;
-  gradientDark?: string;
+  placeholderColor?: string;
   onPress?: () => void;
 };
 
-export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark = '#1E1C2A', onPress }: RediscoverCardProps) {
+export function RediscoverCard({ title, source, hint, thumbnailUrl, placeholderColor = '#DDD7CE', onPress }: RediscoverCardProps) {
   const isNotion = source === 'Notion';
 
   return (
@@ -19,13 +19,13 @@ export function RediscoverCard({ title, source, hint, thumbnailUrl, gradientDark
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
-      <View style={[styles.thumbnail, !thumbnailUrl && { backgroundColor: gradientDark }]}>
+      <View style={[styles.thumbnail, !thumbnailUrl && { backgroundColor: placeholderColor }]}>
         {thumbnailUrl && (
           <Image source={{ uri: thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         )}
         {!thumbnailUrl && isNotion && (
           <View style={styles.notionMark}>
-            <Ionicons name="document-text-outline" size={28} color="rgba(255,255,255,0.9)" />
+            <Ionicons name="document-text-outline" size={28} color={Colors.secondary} />
           </View>
         )}
         <View style={styles.sourcePill}>
@@ -74,17 +74,16 @@ const styles = StyleSheet.create({
   },
   sourcePill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.13)',
+    // 흰 배경 + 다크 글자 — 연한 placeholder/임의 색상의 썸네일 모두에서 읽힘
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 100,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.18)',
   },
   sourceText: {
     fontSize: 10,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.88)',
+    color: Colors.secondary,
   },
   textContent: {
     padding: 11,

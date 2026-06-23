@@ -185,27 +185,10 @@ export function formatRelativeTime(dateStr: string): string {
   return `${months}개월 전`;
 }
 
-const PLACEHOLDER_COLORS = [
-  '#DDD7CE', '#CAD8D4', '#D4CFE0', '#D0CEDB',
-  '#CCDBD8', '#DDD9D0', '#DCCCD4', '#D4E0CC',
-  '#CCE0D8', '#CCD8DC', '#D8D4CC', '#CDD4DC',
-];
-
-export function placeholderColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  }
-  return PLACEHOLDER_COLORS[Math.abs(hash) % PLACEHOLDER_COLORS.length];
-}
-
-const DARK_COLORS = [
-  '#1E1C2A',
-  '#172128',
-  '#201E18',
-  '#1A2020',
-  '#221A22',
-];
+// 썸네일 없을 때 카드/히어로 자리에 들어가는 단일 placeholder 색.
+// 콘텐츠 ID별 무작위 색 대신 한 톤으로 통일해 화면 간 시각적 일관성을 유지한다.
+// Recent / Category / Search / Rediscover / Content Detail 모두 이 값을 사용.
+export const THUMBNAIL_PLACEHOLDER = '#DDD7CE';
 
 const DOMAIN_LABELS: Record<string, string> = {
   'instagram.com': 'Instagram',
@@ -250,10 +233,3 @@ export function formatSource(domain?: string): string {
   return DOMAIN_LABELS[host] ?? domain.replace(/^www\./, '');
 }
 
-export function rediscoverColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  }
-  return DARK_COLORS[Math.abs(hash) % DARK_COLORS.length];
-}

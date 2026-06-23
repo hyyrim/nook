@@ -25,7 +25,7 @@ import {
 } from '@/lib/api';
 import { isClassifying, on, emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
+import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Category, Content } from '@/types';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -304,7 +304,7 @@ export default function CategoryDetailScreen() {
                 source={formatSource(a.domain)}
                 tags={a.tags}
                 thumbnailUrl={a.thumbnail_url}
-                thumbnailColor={placeholderColor(a.id)}
+                thumbnailColor={THUMBNAIL_PLACEHOLDER}
                 savedAt={formatRelativeTime(a.saved_at)}
                 isClassifying={isClassifying(a.id)}
                 selectionMode={selectionMode}

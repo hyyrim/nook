@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatRelativeTime, formatSource, placeholderColor } from '@/lib/utils';
+import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -127,7 +127,7 @@ export default function SearchScreen() {
                 source={formatSource(item.domain)}
                 tags={item.tags}
                 thumbnailUrl={item.thumbnail_url}
-                thumbnailColor={placeholderColor(item.id)}
+                thumbnailColor={THUMBNAIL_PLACEHOLDER}
                 savedAt={formatRelativeTime(item.saved_at)}
                 isClassifying={isClassifying(item.id)}
                 onPress={() => router.push({
