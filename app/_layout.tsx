@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
 import { onAppActive, onAppBackground } from '@/lib/analytics';
-import { Toast } from '@/components/Toast';
+import { ToastProvider, useToast } from '@/lib/toast';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
@@ -17,9 +17,7 @@ function RootNavigator() {
   const router = useRouter();
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const savingRef = useRef(false);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
-    visible: false, message: '', type: 'success',
-  });
+  const toast = useToast();
 
   // Auth 라우팅 가드
   useEffect(() => {
@@ -93,13 +91,13 @@ function RootNavigator() {
     )
       .then(() => {
         emit('content-saved');
-        setToast({ visible: true, message: '저장 완료!', type: 'success' });
+        toast.show('저장 완료!', 'success');
       })
       .catch((e: unknown) => {
         const msg = isDuplicateContentUrlError(e)
           ? '이미 저장된 링크예요'
           : '저장에 실패했어요';
-        setToast({ visible: true, message: msg, type: 'error' });
+        toast.show(msg, 'error');
       })
       .finally(() => {
         savingRef.current = false;
@@ -118,12 +116,6 @@ function RootNavigator() {
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onHide={() => setToast(prev => ({ ...prev, visible: false }))}
-      />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -163,7 +155,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <AuthProvider>
-        <RootNavigator />
+        <ToastProvider>
+          <RootNavigator />
+        </ToastProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
