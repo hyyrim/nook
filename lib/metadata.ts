@@ -452,22 +452,61 @@ const TRACKING_PARAMS = new Set([
   's',           // X(Twitter) 공유 source (예: ?s=46)
 ]);
 
+// YouTube 영상 URL의 다양한 표기를 동일한 캐논 형태로 묶기 위한 도메인 집합.
+// (music.youtube.com은 별도 플레이어 경험이라 보존 — 향후 중복 빈도 보고 결정.)
+const YOUTUBE_VIDEO_HOSTS = new Set([
+  'youtu.be',
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+]);
+
+// 같은 영상이 youtu.be/<id>, www.youtube.com/watch?v=<id>, m.youtube.com/watch?v=<id>,
+// youtube.com/shorts/<id> 같은 여러 형태로 들어와도 동일 row로 모이도록
+// `https://www.youtube.com/watch?v=<id>` 캐논 폼으로 정규화한다.
+// v= 값이 YouTube 표준 11자(A-Za-z0-9_-)가 아니면 미인식 URL로 보고 변형하지 않는다.
+function canonicalizeYoutube(parsed: URL): URL | undefined {
+  const host = parsed.hostname.toLowerCase();
+  if (!YOUTUBE_VIDEO_HOSTS.has(host)) return undefined;
+
+  let videoId: string | undefined;
+  if (host === 'youtu.be') {
+    videoId = parsed.pathname.match(/^\/([A-Za-z0-9_-]{11})/)?.[1];
+  } else if (parsed.pathname === '/watch') {
+    videoId = parsed.searchParams.get('v') ?? undefined;
+  } else {
+    videoId = parsed.pathname.match(/^\/shorts\/([A-Za-z0-9_-]{11})/)?.[1];
+  }
+
+  if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return undefined;
+
+  const canonical = new URL('https://www.youtube.com/watch');
+  canonical.searchParams.set('v', videoId);
+  // v 외의 의미 있는 파라미터(t, list, index 등)는 보존
+  for (const [key, value] of parsed.searchParams) {
+    if (key === 'v') continue;
+    canonical.searchParams.set(key, value);
+  }
+  return canonical;
+}
+
 export function normalizeUrl(url: string) {
   const trimmed = url.trim();
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 
   try {
     const parsed = new URL(withScheme);
-    let mutated = false;
+
     for (const key of Array.from(parsed.searchParams.keys())) {
       if (TRACKING_PARAMS.has(key)) {
         parsed.searchParams.delete(key);
-        mutated = true;
       }
     }
-    if (!mutated) return withScheme;
 
-    // searchParams.toString()은 빈 검색 결과여도 '?'를 남기는 경우가 있어 수동 정리.
+    const youtubeCanonical = canonicalizeYoutube(parsed);
+    if (youtubeCanonical) return youtubeCanonical.toString();
+
+    // searchParams.toString()이 빈 결과여도 '?'를 남기는 경우가 있어 수동 정리.
     const search = parsed.searchParams.toString();
     parsed.search = search ? `?${search}` : '';
     return parsed.toString();
