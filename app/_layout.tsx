@@ -79,6 +79,7 @@ function RootNavigator() {
     }
 
     savingRef.current = true;
+    toast.show('저장 중...', 'loading', { duration: null });
 
     // Safari 공유 시 share extension이 페이지 head meta(클라이언트 렌더 후)를 전달한다.
     // 일부 플랫폼(Threads 등)은 SSR에 누락된 정보가 여기에 들어있어 saveContent에 위임.

@@ -1,15 +1,17 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, Text, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants';
+
+export type ToastType = 'success' | 'error' | 'loading';
 
 type ToastProps = {
   visible: boolean;
   message: string;
   onHide: () => void;
-  duration?: number;
-  type?: 'success' | 'error';
+  duration?: number | null;
+  type?: ToastType;
 };
 
 export function Toast({ visible, message, onHide, duration = 2000, type = 'success' }: ToastProps) {
@@ -23,6 +25,8 @@ export function Toast({ visible, message, onHide, duration = 2000, type = 'succe
         Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start();
+
+      if (duration === null) return;
 
       const timer = setTimeout(() => {
         Animated.parallel([
@@ -49,7 +53,11 @@ export function Toast({ visible, message, onHide, duration = 2000, type = 'succe
       pointerEvents="none"
     >
       <View style={styles.toast}>
-        <Ionicons name={icon} size={18} color={iconColor} />
+        {type === 'loading' ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Ionicons name={icon} size={18} color={iconColor} />
+        )}
         <Text style={styles.text}>{message}</Text>
       </View>
     </Animated.View>
