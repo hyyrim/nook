@@ -48,7 +48,7 @@ export default function HomeScreen() {
       const [recent, rediscover, forgotten] = await Promise.all([
         getRecentContents(3),
         getRediscoverContents(10),
-        getForgottenContents(10),
+        getForgottenContents(10, 14),
       ]);
       setRecentItems(recent);
       setRediscoverItems(rediscover);
