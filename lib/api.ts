@@ -522,6 +522,25 @@ export async function getRediscoverContents(limit = 5) {
   return result;
 }
 
+// 한 번이라도 열어봤지만 오랫동안 다시 보지 않은 콘텐츠.
+// Rediscover(viewed_at IS NULL, 한 번도 안 본 것)와 명확히 구분.
+export async function getForgottenContents(limit = 10, days = 30) {
+  const userId = await requireUserId();
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('contents')
+    .select('*, categories(name)')
+    .eq('user_id', userId)
+    .not('viewed_at', 'is', null)
+    .lt('viewed_at', since)
+    .order('viewed_at', { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+
+  return (data ?? []) as (Content & { categories: { name: string } | null })[];
+}
+
 // ─── AI Classification (비동기) ───
 
 async function classifyAndUpdate(content: Content, description?: string) {

@@ -16,7 +16,7 @@ import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
 import { analytics, type ContentOpenedSource } from '@/lib/analytics';
 
 const CONTENT_OPENED_SOURCES: ReadonlySet<ContentOpenedSource> = new Set([
-  'rediscover', 'recent', 'category', 'search', 'related', 'direct',
+  'rediscover', 'forgotten', 'recent', 'category', 'search', 'related', 'direct',
 ]);
 
 function normalizeSource(raw: string | string[] | undefined): ContentOpenedSource {
