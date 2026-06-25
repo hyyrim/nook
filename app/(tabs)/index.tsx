@@ -10,7 +10,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
-import { getRecentContents, getRediscoverContents } from '@/lib/api';
+import { getRecentContents, getRediscoverContents, getForgottenContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { analytics } from '@/lib/analytics';
@@ -24,6 +24,7 @@ export default function HomeScreen() {
   const { session, isLoading: isAuthLoading } = useAuth();
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
+  const [forgottenItems, setForgottenItems] = useState<ContentWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -44,12 +45,14 @@ export default function HomeScreen() {
 
     setLoadError(false);
     try {
-      const [recent, rediscover] = await Promise.all([
+      const [recent, rediscover, forgotten] = await Promise.all([
         getRecentContents(3),
         getRediscoverContents(10),
+        getForgottenContents(10),
       ]);
       setRecentItems(recent);
       setRediscoverItems(rediscover);
+      setForgottenItems(forgotten);
     } catch (e) {
       console.error('Home load error:', e);
       setLoadError(true);
@@ -97,7 +100,7 @@ export default function HomeScreen() {
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : loadError ? (
             <ErrorState onRetry={loadData} />
-          ) : recentItems.length === 0 && rediscoverItems.length === 0 ? (
+          ) : recentItems.length === 0 && rediscoverItems.length === 0 && forgottenItems.length === 0 ? (
             <View style={styles.welcomeCard}>
               <View style={styles.welcomeIconWrap}>
                 <Ionicons name="bookmark" size={28} color={Colors.primary} />
@@ -219,6 +222,33 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               ) : null}
+
+              {/* Forgotten — 30일 이상 다시 보지 않은 콘텐츠 */}
+              {forgottenItems.length > 0 && (
+                <View style={styles.section}>
+                  <SectionHeader icon="hourglass-outline" label="잊고 있던 콘텐츠" />
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.rediscoverScroll}
+                    data={forgottenItems}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <RediscoverCard
+                        title={item.title ?? item.url}
+                        source={formatSource(item.domain)}
+                        hint={item.categories?.name ?? '미분류'}
+                        thumbnailUrl={item.thumbnail_url}
+                        placeholderColor={THUMBNAIL_PLACEHOLDER}
+                        onPress={() => router.push({
+                          pathname: '/content/[id]',
+                          params: { id: item.id, source: 'forgotten' },
+                        })}
+                      />
+                    )}
+                  />
+                </View>
+              )}
             </>
           )}
         </View>
