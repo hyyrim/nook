@@ -1,7 +1,7 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -68,6 +68,7 @@ function deriveReportView(items: ReportItem[]): ReportView | null {
 }
 
 export default function ReportScreen() {
+  const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<ReportItem[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,7 +123,7 @@ export default function ReportScreen() {
             {view.isFallback && <FallbackBanner />}
 
             <View style={styles.section}>
-              <SectionHeader icon="folder-outline" label="많이 모은 카테고리" />
+              <SectionHeader icon="folder-outline" label="많이 저장한 카테고리" />
               <CategoryListCard stats={view.topCategories} />
             </View>
 
@@ -139,7 +140,10 @@ export default function ReportScreen() {
             )}
 
             {view.uncategorizedCount > 0 && (
-              <UncategorizedNotice count={view.uncategorizedCount} />
+              <UncategorizedNotice
+                count={view.uncategorizedCount}
+                onPressAction={() => router.push('/category/uncategorized')}
+              />
             )}
           </>
         )}
@@ -221,13 +225,21 @@ function FallbackBanner() {
   );
 }
 
-function UncategorizedNotice({ count }: { count: number }) {
+function UncategorizedNotice({ count, onPressAction }: { count: number; onPressAction: () => void }) {
   return (
     <View style={styles.notice}>
       <Text style={styles.noticeTitle}>분류되지 않은 콘텐츠가 {count}개 있어요</Text>
       <Text style={styles.noticeText}>
         콘텐츠를 분류하면 관심사 리포트가 더 정확해져요.
       </Text>
+      <Pressable
+        onPress={onPressAction}
+        style={({ pressed }) => [styles.noticeAction, pressed && styles.noticeActionPressed]}
+        hitSlop={8}
+      >
+        <Text style={styles.noticeActionText}>분류하러가기</Text>
+        <Ionicons name="chevron-forward" size={13} color={Colors.primary} />
+      </Pressable>
     </View>
   );
 }
@@ -270,11 +282,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: 32,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   card: {
     backgroundColor: Colors.surface,
@@ -412,6 +424,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.secondary,
     lineHeight: 17,
+  },
+  noticeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 2,
+    marginTop: 10,
+    paddingVertical: 6,
+  },
+  noticeActionPressed: {
+    opacity: 0.5,
+  },
+  noticeActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   insufficient: {
     alignItems: 'center',
