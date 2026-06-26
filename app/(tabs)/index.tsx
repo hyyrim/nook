@@ -223,7 +223,7 @@ export default function HomeScreen() {
                 </View>
               ) : null}
 
-              {/* Forgotten — 30일 이상 다시 보지 않은 콘텐츠 */}
+              {/* Forgotten — 14일 이상 다시 보지 않은 콘텐츠 (lib/api default 30, 호출부 14 명시; §055) */}
               {forgottenItems.length > 0 && (
                 <View style={styles.section}>
                   <SectionHeader icon="hourglass-outline" label="잊고 있던 콘텐츠" />

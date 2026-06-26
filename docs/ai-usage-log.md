@@ -124,3 +124,5 @@
 | Codex | 리포트 기간 라벨 가독성과 섹션 헤더 아이콘 정렬 개선 (→ 결정 059) |
 | Codex | 리포트 기간 기준을 `최근` 고정 텍스트 + 기간 드롭다운 선택 방식으로 변경 (→ 결정 060) |
 | Codex | 리포트 관심 분포 Top 카테고리 강조 테스트 원복 (→ 결정 061) |
+| Codex | Claude Code 공유용 현재 상태와 다음 우선순위 handoff 문서 작성 |
+| Claude Code | Codex handoff 검토 + 홈 Forgotten Content 일관성 점검 (주석 14일 통일, RLS/analytics 정상 확인) (→ 결정 062) |
