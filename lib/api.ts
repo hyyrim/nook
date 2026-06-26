@@ -548,7 +548,8 @@ export async function getRecentContentsForReport(days: number): Promise<ReportIt
 
 // 한 번이라도 열어봤지만 오랫동안 다시 보지 않은 콘텐츠.
 // Rediscover(viewed_at IS NULL, 한 번도 안 본 것)와 명확히 구분.
-export async function getForgottenContents(limit = 10, days = 30) {
+// 기간은 14일 — 사용 데이터가 충분히 쌓여 30일이 더 적절해지면 별도 결정으로 변경.
+export async function getForgottenContents(limit = 10, days = 14) {
   const userId = await requireUserId();
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();

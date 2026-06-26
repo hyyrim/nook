@@ -48,7 +48,7 @@ export default function HomeScreen() {
       const [recent, rediscover, forgotten] = await Promise.all([
         getRecentContents(3),
         getRediscoverContents(10),
-        getForgottenContents(10, 14),
+        getForgottenContents(10),
       ]);
       setRecentItems(recent);
       setRediscoverItems(rediscover);
@@ -223,7 +223,7 @@ export default function HomeScreen() {
                 </View>
               ) : null}
 
-              {/* Forgotten — 30일 이상 다시 보지 않은 콘텐츠 */}
+              {/* Forgotten — 14일 이상 다시 보지 않은 콘텐츠 (§055, §062) */}
               {forgottenItems.length > 0 && (
                 <View style={styles.section}>
                   <SectionHeader icon="hourglass-outline" label="잊고 있던 콘텐츠" />
