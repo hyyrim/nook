@@ -129,4 +129,4 @@
 | Codex | Rediscover 저장 직후 노출과 탭 후 즉시 사라짐 완화 (→ 결정 063) |
 | Codex | Forgotten Content에 카테고리당 최대 2개 다양성 제약 추가 (→ 결정 064) |
 | Codex | 홈 Rediscover/Forgotten 섹션 subtitle 추가 (→ 결정 065) |
-| Codex | 홈 데이터 상태별 밀도 조절 + dev 전용 케이스 preview 추가 (→ 결정 066) |
+| Codex | 홈 데이터 상태별 밀도 조절 + dev 전용 케이스 preview 검증 후 제거 (→ 결정 066) |

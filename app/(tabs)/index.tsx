@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, FlatList, StyleSheet, Pressable, ActivityIndicator, Image, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
@@ -18,90 +18,10 @@ import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/u
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
-type HomeDevCaseId = 'live' | 'empty' | 'recent-small' | 'recent-full' | 'rediscover-only' | 'forgotten-only' | 'all';
-
-const HOME_DEV_CASES: { id: HomeDevCaseId; label: string }[] = [
-  { id: 'live', label: 'Live' },
-  { id: 'empty', label: '빈 홈' },
-  { id: 'recent-small', label: '최근 적음' },
-  { id: 'recent-full', label: '최근 충분' },
-  { id: 'rediscover-only', label: '발견만' },
-  { id: 'forgotten-only', label: '잊음만' },
-  { id: 'all', label: '전체' },
-];
-
-function makeMockContent(
-  id: string,
-  title: string,
-  domain: string,
-  categoryName: string | null,
-  daysAgo: number,
-  viewed = false,
-): ContentWithCategory {
-  const timestamp = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
-  const categoryId = categoryName ? `dev-${categoryName}` : null;
-  return {
-    id,
-    user_id: 'dev-user',
-    category_id: categoryId,
-    url: `https://example.com/${id}`,
-    title,
-    description: null,
-    thumbnail_url: null,
-    domain,
-    tags: categoryName ? [categoryName] : [],
-    saved_at: timestamp,
-    viewed_at: viewed ? timestamp : null,
-    created_at: timestamp,
-    updated_at: timestamp,
-    categories: categoryName ? { name: categoryName } : null,
-  };
-}
-
-function makeHomeDevData(caseId: HomeDevCaseId) {
-  const recent = [
-    makeMockContent('dev-recent-1', '건강한 식습관을 위한 작은 루틴', 'Threads', null, 1),
-    makeMockContent('dev-recent-2', '채용 한파에 8년차 경력직 이직기', 'Velog', '커리어', 2),
-    makeMockContent('dev-recent-3', 'UI Design Direction 2026-2027', 'Medium', '디자인', 3),
-    makeMockContent('dev-recent-4', 'AI 에이전트 제품 설계 노트', 'Substack', 'AI', 4),
-    makeMockContent('dev-recent-5', '주말에 다시 가고 싶은 동네 식당', 'Instagram', '음식', 5),
-    makeMockContent('dev-recent-6', '작은 집을 넓게 쓰는 수납 아이디어', 'Pinterest', '인테리어', 6),
-  ];
-  const rediscover = [
-    makeMockContent('dev-rediscover-1', 'IKEA HACK: Side tab', 'Instagram', '디자인', 5),
-    makeMockContent('dev-rediscover-2', '읽어두면 좋은 커리어 회고', 'Velog', '커리어', 8),
-    makeMockContent('dev-rediscover-3', 'AI 워크플로우 자동화 사례', 'LinkedIn', 'AI', 10),
-    makeMockContent('dev-rediscover-4', '하체 스트레칭 루틴', 'Instagram', '운동', 11),
-  ];
-  const forgotten = [
-    makeMockContent('dev-forgotten-1', '다시 읽어볼 만한 제품 전략 글', 'Substack', '비즈니스', 26, true),
-    makeMockContent('dev-forgotten-2', '요즘 참고하는 모바일 UI 패턴', 'Medium', '디자인', 31, true),
-    makeMockContent('dev-forgotten-3', '여행 전 저장해둔 도쿄 카페 리스트', 'Notion', '여행', 40, true),
-  ];
-
-  switch (caseId) {
-    case 'empty':
-      return { recentItems: [], rediscoverItems: [], forgottenItems: [] };
-    case 'recent-small':
-      return { recentItems: recent.slice(0, 2), rediscoverItems: [], forgottenItems: [] };
-    case 'recent-full':
-      return { recentItems: recent, rediscoverItems: [], forgottenItems: [] };
-    case 'rediscover-only':
-      return { recentItems: recent.slice(0, 3), rediscoverItems: rediscover, forgottenItems: [] };
-    case 'forgotten-only':
-      return { recentItems: recent.slice(0, 3), rediscoverItems: [], forgottenItems: forgotten };
-    case 'all':
-      return { recentItems: recent.slice(0, 3), rediscoverItems: rediscover, forgottenItems: forgotten };
-    case 'live':
-    default:
-      return null;
-  }
-}
 
 export default function HomeScreen() {
   const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
-  const [homeDevCase, setHomeDevCase] = useState<HomeDevCaseId>('live');
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
   const [forgottenItems, setForgottenItems] = useState<ContentWithCategory[]>([]);
@@ -170,26 +90,16 @@ export default function HomeScreen() {
     };
   }, [session, loadData]);
 
-  const devData = useMemo(
-    () => (__DEV__ ? makeHomeDevData(homeDevCase) : null),
-    [homeDevCase]
-  );
-  const isDevPreview = Boolean(devData);
-  const activeRecentItems = devData?.recentItems ?? recentItems;
-  const activeRediscoverItems = devData?.rediscoverItems ?? rediscoverItems;
-  const activeForgottenItems = devData?.forgottenItems ?? forgottenItems;
   const secondarySectionCount =
-    (activeRediscoverItems.length > 0 ? 1 : 0) +
-    (activeForgottenItems.length > 0 ? 1 : 0);
+    (rediscoverItems.length > 0 ? 1 : 0) +
+    (forgottenItems.length > 0 ? 1 : 0);
   const visibleRecentLimit =
     secondarySectionCount === 0 ? 6 :
     secondarySectionCount === 1 ? 4 :
     3;
-  const visibleRecentItems = activeRecentItems.slice(0, visibleRecentLimit);
+  const visibleRecentItems = recentItems.slice(0, visibleRecentLimit);
   const shouldShowDensityHint =
-    activeRecentItems.length > 0 && visibleRecentItems.length < visibleRecentLimit;
-  const showLoading = loading && !isDevPreview;
-  const showLoadError = loadError && !isDevPreview;
+    recentItems.length > 0 && visibleRecentItems.length < visibleRecentLimit;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -210,34 +120,11 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <View style={styles.content}>
-          {__DEV__ && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.devCaseList}
-            >
-              {HOME_DEV_CASES.map((item) => {
-                const selected = homeDevCase === item.id;
-                return (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => setHomeDevCase(item.id)}
-                    style={[styles.devCaseChip, selected && styles.devCaseChipSelected]}
-                  >
-                    <Text style={[styles.devCaseText, selected && styles.devCaseTextSelected]}>
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
-
-          {showLoading ? (
+          {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
-          ) : showLoadError ? (
+          ) : loadError ? (
             <ErrorState onRetry={loadData} />
-          ) : activeRecentItems.length === 0 && activeRediscoverItems.length === 0 && activeForgottenItems.length === 0 ? (
+          ) : recentItems.length === 0 && rediscoverItems.length === 0 && forgottenItems.length === 0 ? (
             <View style={styles.welcomeCard}>
               <View style={styles.welcomeIconWrap}>
                 <Ionicons name="bookmark" size={28} color={Colors.primary} />
@@ -294,14 +181,11 @@ export default function HomeScreen() {
                       thumbnailUrl={item.thumbnail_url}
                       thumbnailColor={THUMBNAIL_PLACEHOLDER}
                       savedAt={formatRelativeTime(item.saved_at)}
-                      isClassifying={!isDevPreview && isClassifying(item.id)}
-                      onPress={() => {
-                        if (isDevPreview) return;
-                        router.push({
-                          pathname: '/content/[id]',
-                          params: { id: item.id, source: 'recent' },
-                        });
-                      }}
+                      isClassifying={isClassifying(item.id)}
+                      onPress={() => router.push({
+                        pathname: '/content/[id]',
+                        params: { id: item.id, source: 'recent' },
+                      })}
                     />
                   ))
                 ) : (
@@ -311,12 +195,9 @@ export default function HomeScreen() {
                     subtitle="공유하기로 링크를 빠르게 모을 수 있어요"
                   />
                 )}
-                {activeRecentItems.length > 0 && (
+                {recentItems.length > 0 && (
                   <Pressable
-                    onPress={() => {
-                      if (isDevPreview) return;
-                      router.push('/recent-saved');
-                    }}
+                    onPress={() => router.push('/recent-saved')}
                     style={styles.seeAllRow}
                   >
                     <Text style={styles.seeAllText}>전체 보기</Text>
@@ -326,10 +207,10 @@ export default function HomeScreen() {
               </View>
 
               {/* Rediscover */}
-              {activeRediscoverItems.length > 0 && (
+              {rediscoverItems.length > 0 && (
                 <View style={[
                   styles.discoverySection,
-                  activeForgottenItems.length > 0 && styles.discoverySectionWithNext,
+                  forgottenItems.length > 0 && styles.discoverySectionWithNext,
                 ]}>
                   <SectionHeader
                     icon="sparkles"
@@ -340,10 +221,10 @@ export default function HomeScreen() {
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.rediscoverScroll}
-                    data={activeRediscoverItems}
+                    data={rediscoverItems}
                     keyExtractor={(item) => item.id}
                     viewabilityConfig={viewabilityConfig}
-                    onViewableItemsChanged={isDevPreview ? undefined : onViewableItemsChanged}
+                    onViewableItemsChanged={onViewableItemsChanged}
                     renderItem={({ item }) => (
                       <RediscoverCard
                         title={item.title ?? item.url}
@@ -352,7 +233,6 @@ export default function HomeScreen() {
                         thumbnailUrl={item.thumbnail_url}
                         placeholderColor={THUMBNAIL_PLACEHOLDER}
                         onPress={() => {
-                          if (isDevPreview) return;
                           retainedRediscoverIdsRef.current.add(item.id);
                           router.push({
                             pathname: '/content/[id]',
@@ -366,7 +246,7 @@ export default function HomeScreen() {
               )}
 
               {/* Forgotten — 14일 이상 다시 보지 않은 콘텐츠 (§055, §062) */}
-              {activeForgottenItems.length > 0 && (
+              {forgottenItems.length > 0 && (
                 <View style={styles.discoverySection}>
                   <SectionHeader
                     icon="hourglass-outline"
@@ -377,7 +257,7 @@ export default function HomeScreen() {
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.rediscoverScroll}
-                    data={activeForgottenItems}
+                    data={forgottenItems}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                       <RediscoverCard
@@ -386,13 +266,10 @@ export default function HomeScreen() {
                         hint={item.categories?.name ?? '미분류'}
                         thumbnailUrl={item.thumbnail_url}
                         placeholderColor={THUMBNAIL_PLACEHOLDER}
-                        onPress={() => {
-                          if (isDevPreview) return;
-                          router.push({
-                            pathname: '/content/[id]',
-                            params: { id: item.id, source: 'forgotten' },
-                          });
-                        }}
+                        onPress={() => router.push({
+                          pathname: '/content/[id]',
+                          params: { id: item.id, source: 'forgotten' },
+                        })}
                       />
                     )}
                   />
@@ -460,34 +337,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 28,
   },
-  devCaseList: {
-    gap: 8,
-    paddingBottom: 16,
-  },
-  devCaseChip: {
-    height: 30,
-    paddingHorizontal: 12,
-    borderRadius: 15,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  devCaseChipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  devCaseText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.secondary,
-  },
-  devCaseTextSelected: {
-    color: Colors.surface,
-  },
   section: {
-    marginBottom: 30,
+    marginBottom: 28,
   },
   discoverySection: {
     marginBottom: 24,
