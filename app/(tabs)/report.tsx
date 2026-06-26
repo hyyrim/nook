@@ -1,66 +1,63 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+  Animated,
+  Easing,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants';
-import { SectionHeader } from '@/components/SectionHeader';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Colors, Typography } from '@/constants';
 import { ErrorState } from '@/components/ErrorState';
 import { useAuth } from '@/lib/AuthProvider';
 import { getRecentContentsForReport, type ReportItem } from '@/lib/api';
 import {
-  aggregateByCategory,
   computeDistribution,
   topTagsPerCategory,
   countCategorized,
   countUncategorized,
   filterWithinDays,
-  type CategoryStat,
   type DistributionStat,
   type SubjectStat,
 } from '@/lib/report';
 
-const PRIMARY_WINDOW_DAYS = 7;
-const FALLBACK_WINDOW_DAYS = 30;
+const REPORT_WINDOW_OPTIONS = [
+  { key: 'oneWeek', label: '일주일', days: 7 },
+  { key: 'twoWeeks', label: '14일', days: 14 },
+  { key: 'oneMonth', label: '한달', days: 30 },
+] as const;
+type ReportWindowOption = (typeof REPORT_WINDOW_OPTIONS)[number];
+type ReportWindowKey = ReportWindowOption['key'];
+
+const DEFAULT_WINDOW_KEY: ReportWindowKey = 'oneWeek';
+const MAX_WINDOW_DAYS = 30;
 const MIN_CATEGORIZED_FOR_REPORT = 3;
-const TOP_CATEGORY_LIMIT = 5;
 
 type ReportView = {
   windowDays: number;
-  isFallback: boolean;
-  topCategories: CategoryStat[];
   distribution: DistributionStat[];
   subjects: SubjectStat[];
   uncategorizedCount: number;
 };
 
-function deriveReportView(items: ReportItem[]): ReportView | null {
-  const within7 = filterWithinDays(items, PRIMARY_WINDOW_DAYS);
-  const within30 = filterWithinDays(items, FALLBACK_WINDOW_DAYS);
+function getReportWindowOption(key: ReportWindowKey): ReportWindowOption {
+  return REPORT_WINDOW_OPTIONS.find((option) => option.key === key) ?? REPORT_WINDOW_OPTIONS[0];
+}
 
-  const categorized7 = countCategorized(within7);
-  const categorized30 = countCategorized(within30);
-
-  let active: ReportItem[];
-  let windowDays: number;
-  let isFallback: boolean;
-
-  if (categorized7 >= MIN_CATEGORIZED_FOR_REPORT) {
-    active = within7;
-    windowDays = PRIMARY_WINDOW_DAYS;
-    isFallback = false;
-  } else if (categorized30 >= MIN_CATEGORIZED_FOR_REPORT) {
-    active = within30;
-    windowDays = FALLBACK_WINDOW_DAYS;
-    isFallback = true;
-  } else {
+function deriveReportView(items: ReportItem[], window: ReportWindowOption): ReportView | null {
+  const windowDays = window.days;
+  const active = filterWithinDays(items, windowDays);
+  if (countCategorized(active) < MIN_CATEGORIZED_FOR_REPORT) {
     return null;
   }
 
   return {
     windowDays,
-    isFallback,
-    topCategories: aggregateByCategory(active).slice(0, TOP_CATEGORY_LIMIT),
     distribution: computeDistribution(active),
     subjects: topTagsPerCategory(active),
     uncategorizedCount: countUncategorized(active),
@@ -68,10 +65,19 @@ function deriveReportView(items: ReportItem[]): ReportView | null {
 }
 
 export default function ReportScreen() {
+  const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<ReportItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [entryAnimationKey, setEntryAnimationKey] = useState(0);
+  const [selectedWindowKey, setSelectedWindowKey] = useState<ReportWindowKey>(DEFAULT_WINDOW_KEY);
+  const [isWindowMenuOpen, setIsWindowMenuOpen] = useState(false);
+
+  const selectedWindow = useMemo(
+    () => getReportWindowOption(selectedWindowKey),
+    [selectedWindowKey]
+  );
 
   const loadData = useCallback(async () => {
     if (isAuthLoading) return;
@@ -81,7 +87,7 @@ export default function ReportScreen() {
     }
     setLoadError(false);
     try {
-      const data = await getRecentContentsForReport(FALLBACK_WINDOW_DAYS);
+      const data = await getRecentContentsForReport(MAX_WINDOW_DAYS);
       setItems(data);
     } catch (e) {
       console.error('Report load error:', e);
@@ -89,57 +95,70 @@ export default function ReportScreen() {
     } finally {
       setLoading(false);
     }
-  }, [session, isAuthLoading]);
+  }, [isAuthLoading, session]);
 
   useFocusEffect(
     useCallback(() => {
+      setEntryAnimationKey((key) => key + 1);
       loadData();
     }, [loadData])
   );
 
-  const view = useMemo(() => (items ? deriveReportView(items) : null), [items]);
+  const view = useMemo(
+    () => (items ? deriveReportView(items, selectedWindow) : null),
+    [items, selectedWindow]
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>리포트</Text>
-        {view && (
-          <Text style={styles.periodLabel}>
-            {view.isFallback ? '최근 한 달 기준' : '최근 7일 기준'}
-          </Text>
-        )}
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ReportWindowDropdown
+          selectedWindow={selectedWindow}
+          isOpen={isWindowMenuOpen}
+          onToggle={() => setIsWindowMenuOpen((open) => !open)}
+          onSelect={(key) => {
+            setSelectedWindowKey(key);
+            setIsWindowMenuOpen(false);
+          }}
+        />
+
         {loading ? (
           <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
         ) : loadError ? (
           <ErrorState onRetry={loadData} />
         ) : !view ? (
-          <InsufficientCard />
+          <InsufficientCard window={selectedWindow} />
         ) : (
           <>
-            {view.isFallback && <FallbackBanner />}
-
             <View style={styles.section}>
-              <SectionHeader icon="folder-outline" label="많이 모은 카테고리" />
-              <CategoryListCard stats={view.topCategories} />
-            </View>
-
-            <View style={styles.section}>
-              <SectionHeader icon="pie-chart-outline" label="관심 분포" />
-              <DistributionCard stats={view.distribution} />
+              <ReportSectionHeader
+                icon="pie-chart-outline"
+                label="관심 분포"
+                description="저장한 관심사가 어떻게 나뉘는지 보여줘요."
+              />
+              <DistributionCard stats={view.distribution} animationKey={entryAnimationKey} />
             </View>
 
             {view.subjects.length > 0 && (
               <View style={styles.section}>
-                <SectionHeader icon="pricetags-outline" label="관련 주제" />
+                <ReportSectionHeader
+                  icon="shapes-outline"
+                  label="관련 주제"
+                  description="카테고리별로 자주 등장한 태그예요."
+                />
                 <SubjectsCard stats={view.subjects} />
               </View>
             )}
 
             {view.uncategorizedCount > 0 && (
-              <UncategorizedNotice count={view.uncategorizedCount} />
+              <UncategorizedNotice
+                count={view.uncategorizedCount}
+                onPressAction={() => router.push('/category/uncategorized')}
+              />
             )}
           </>
         )}
@@ -148,26 +167,97 @@ export default function ReportScreen() {
   );
 }
 
-function CategoryListCard({ stats }: { stats: CategoryStat[] }) {
+function ReportWindowDropdown({
+  selectedWindow,
+  isOpen,
+  onToggle,
+  onSelect,
+}: {
+  selectedWindow: ReportWindowOption;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (key: ReportWindowKey) => void;
+}) {
   return (
-    <View style={styles.card}>
-      {stats.map((s, i) => (
-        <View
-          key={s.categoryId}
-          style={[styles.rankRow, i < stats.length - 1 && styles.rowDivider]}
+    <View style={styles.windowDropdown}>
+      <Text style={styles.windowPrefix}>최근</Text>
+      <View style={styles.windowDropdownBody}>
+        <Pressable
+          onPress={onToggle}
+          style={({ pressed }) => [styles.windowButton, pressed && styles.windowButtonPressed]}
+          hitSlop={6}
         >
-          <View style={styles.rankLeft}>
-            <Text style={styles.rankIndex}>{i + 1}</Text>
-            <Text style={styles.rankName} numberOfLines={1}>{s.categoryName}</Text>
+          <Text style={styles.windowButtonText}>{selectedWindow.label}</Text>
+          <Ionicons
+            name={isOpen ? 'chevron-up' : 'chevron-down'}
+            size={17}
+            color={Colors.primary}
+          />
+        </Pressable>
+
+        {isOpen && (
+          <View style={styles.windowMenu}>
+            {REPORT_WINDOW_OPTIONS.map((option) => {
+              const isSelected = selectedWindow.key === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  onPress={() => onSelect(option.key)}
+                  style={({ pressed }) => [
+                    styles.windowMenuItem,
+                    pressed && styles.windowMenuItemPressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.windowMenuItemText,
+                      isSelected && styles.windowMenuItemTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={14} color={Colors.primary} />
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
-          <Text style={styles.rankCount}>{s.count}개</Text>
-        </View>
-      ))}
+        )}
+      </View>
     </View>
   );
 }
 
-function DistributionCard({ stats }: { stats: DistributionStat[] }) {
+function ReportSectionHeader({
+  icon,
+  label,
+  description,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  description: string;
+}) {
+  return (
+    <View style={styles.reportSectionHeader}>
+      <View style={styles.reportSectionTitleRow}>
+        <View style={styles.reportSectionIconBox}>
+          <Ionicons name={icon} size={16} color={Colors.primary} />
+        </View>
+        <Text style={styles.reportSectionTitle}>{label}</Text>
+      </View>
+      <Text style={styles.reportSectionDescription}>{description}</Text>
+    </View>
+  );
+}
+
+function DistributionCard({
+  stats,
+  animationKey,
+}: {
+  stats: DistributionStat[];
+  animationKey: number;
+}) {
   return (
     <View style={styles.card}>
       {stats.map((s, i) => (
@@ -180,12 +270,42 @@ function DistributionCard({ stats }: { stats: DistributionStat[] }) {
             <Text style={styles.distPct}>{s.percentage}%</Text>
           </View>
           <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: `${s.percentage}%` }]} />
+            <AnimatedProgressBar percentage={s.percentage} index={i} animationKey={animationKey} />
           </View>
         </View>
       ))}
     </View>
   );
+}
+
+function AnimatedProgressBar({
+  percentage,
+  index,
+  animationKey,
+}: {
+  percentage: number;
+  index: number;
+  animationKey: number;
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: percentage,
+      duration: 620,
+      delay: index * 70,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [animationKey, index, percentage, progress]);
+
+  const width = progress.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  return <Animated.View style={[styles.barFill, { width }]} />;
 }
 
 function SubjectsCard({ stats }: { stats: SubjectStat[] }) {
@@ -210,35 +330,34 @@ function SubjectsCard({ stats }: { stats: SubjectStat[] }) {
   );
 }
 
-function FallbackBanner() {
-  return (
-    <View style={styles.banner}>
-      <Ionicons name="information-circle-outline" size={16} color={Colors.secondary} />
-      <Text style={styles.bannerText}>
-        기록이 더 모이면 최근 7일 기준으로 보여드릴게요.
-      </Text>
-    </View>
-  );
-}
-
-function UncategorizedNotice({ count }: { count: number }) {
+function UncategorizedNotice({ count, onPressAction }: { count: number; onPressAction: () => void }) {
   return (
     <View style={styles.notice}>
-      <Text style={styles.noticeTitle}>분류되지 않은 콘텐츠가 {count}개 있어요</Text>
+      <Text style={styles.noticeTitle}>아직 폴더에 들어가지 않은 콘텐츠가 {count}개 있어요</Text>
       <Text style={styles.noticeText}>
-        콘텐츠를 분류하면 관심사 리포트가 더 정확해져요.
+        정리하면 관심사 리포트가 더 정확해져요.
       </Text>
+      <Pressable
+        onPress={onPressAction}
+        style={({ pressed }) => [styles.noticeAction, pressed && styles.noticeActionPressed]}
+        hitSlop={8}
+      >
+        <MaterialCommunityIcons name="broom" size={14} color={Colors.primary} />
+        <Text style={styles.noticeActionText}>정리하러가기</Text>
+        <Ionicons name="chevron-forward" size={13} color={Colors.primary} />
+      </Pressable>
     </View>
   );
 }
 
-function InsufficientCard() {
+function InsufficientCard({ window }: { window: ReportWindowOption }) {
   return (
     <View style={styles.insufficient}>
       <Ionicons name="bar-chart-outline" size={28} color={Colors.tertiary} />
-      <Text style={styles.insufficientTitle}>아직 리포트를 보여드리기엔 기록이 적어요</Text>
+      <Text style={styles.insufficientTitle}>최근 {window.label} 기준으로는 기록이 적어요</Text>
       <Text style={styles.insufficientText}>
-        조금 더 저장하면 요즘 어떤 주제에 관심이 모이는지 정리해서 보여드릴게요.
+        기간을 넓히거나 조금 더 저장하면{'\n'}
+        관심사 분포를 보여드릴게요.
       </Text>
     </View>
   );
@@ -252,18 +371,13 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 19,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: -0.5,
-  },
-  periodLabel: {
-    fontSize: 12,
-    color: Colors.tertiary,
-    marginTop: 4,
   },
   scroll: {
     flex: 1,
@@ -274,7 +388,99 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 30,
+  },
+  windowDropdown: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 5,
+    marginBottom: 16,
+    zIndex: 1,
+  },
+  windowPrefix: {
+    fontSize: 18,
+    lineHeight: 36,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  windowDropdownBody: {
+    position: 'relative',
+  },
+  windowButton: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 2,
+  },
+  windowButtonPressed: {
+    opacity: 0.65,
+  },
+  windowButtonText: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  windowMenu: {
+    position: 'absolute',
+    top: 38,
+    left: 0,
+    minWidth: 112,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingVertical: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  windowMenuItem: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: 12,
+  },
+  windowMenuItemPressed: {
+    backgroundColor: Colors.background,
+  },
+  windowMenuItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.secondary,
+  },
+  windowMenuItemTextSelected: {
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  reportSectionHeader: {
+    marginBottom: 12,
+  },
+  reportSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  reportSectionIconBox: {
+    width: 16,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportSectionTitle: {
+    ...Typography.subtitle,
+    color: Colors.primary,
+  },
+  reportSectionDescription: {
+    ...Typography.caption,
+    color: Colors.tertiary,
+    marginTop: 3,
+    marginLeft: 23,
   },
   card: {
     backgroundColor: Colors.surface,
@@ -290,35 +496,6 @@ const styles = StyleSheet.create({
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
-  },
-  rankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-  },
-  rankLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  rankIndex: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.tertiary,
-    width: 14,
-  },
-  rankName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.primary,
-    flex: 1,
-  },
-  rankCount: {
-    fontSize: 13,
-    color: Colors.secondary,
-    fontWeight: '500',
   },
   distRow: {
     paddingVertical: 12,
@@ -376,24 +553,6 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     fontWeight: '500',
   },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-  },
-  bannerText: {
-    fontSize: 12,
-    color: Colors.secondary,
-    flex: 1,
-    lineHeight: 17,
-  },
   notice: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -413,6 +572,22 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     lineHeight: 17,
   },
+  noticeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 6,
+  },
+  noticeActionPressed: {
+    opacity: 0.5,
+  },
+  noticeActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
   insufficient: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -430,7 +605,7 @@ const styles = StyleSheet.create({
   insufficientText: {
     fontSize: 12,
     color: Colors.tertiary,
-    lineHeight: 17,
+    lineHeight: 18,
     textAlign: 'center',
   },
 });
