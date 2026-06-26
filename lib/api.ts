@@ -522,6 +522,30 @@ export async function getRediscoverContents(limit = 5) {
   return result;
 }
 
+// Phase 2 리포트용 단일 fetch. 카테고리/분포/관련 주제를 클라이언트에서 derive.
+// 미분류(category_id IS NULL)도 포함해서 가져옴 — "분류되지 않은 콘텐츠 N개" 안내 위해.
+export type ReportItem = {
+  id: string;
+  category_id: string | null;
+  categories: { name: string } | null;
+  tags: string[];
+  saved_at: string;
+};
+
+export async function getRecentContentsForReport(days: number): Promise<ReportItem[]> {
+  const userId = await requireUserId();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('contents')
+    .select('id, category_id, categories(name), tags, saved_at')
+    .eq('user_id', userId)
+    .gte('saved_at', since);
+  if (error) throw error;
+  // supabase 자동 추론 타입은 categories를 array로 보지만, 단일 FK join은 single object.
+  // 기존 패턴(getRediscoverContents)과 동일하게 unknown 경유 캐스팅.
+  return (data ?? []) as unknown as ReportItem[];
+}
+
 // 한 번이라도 열어봤지만 오랫동안 다시 보지 않은 콘텐츠.
 // Rediscover(viewed_at IS NULL, 한 번도 안 본 것)와 명확히 구분.
 export async function getForgottenContents(limit = 10, days = 30) {
