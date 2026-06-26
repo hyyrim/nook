@@ -409,6 +409,7 @@ export async function deleteContent(id: string) {
     .eq('user_id', userId)
     .eq('id', id);
   if (error) throw error;
+  emit('content-deleted');
 }
 
 export async function moveContents(ids: string[], categoryId: string | null) {
@@ -446,6 +447,7 @@ export async function deleteContents(ids: string[]) {
     .eq('user_id', userId)
     .in('id', ids);
   if (error) throw error;
+  emit('content-deleted');
 }
 
 export async function markContentViewed(id: string) {
@@ -461,7 +463,7 @@ export async function markContentViewed(id: string) {
 
 // ─── Rediscover (저장 빈도 높은 카테고리의 안 본 콘텐츠 우선) ───
 
-export async function getRediscoverContents(limit = 5) {
+export async function getRediscoverContents(limit = 5, minAgeDays = 3, maxAgeDays = 14) {
   const userId = await requireUserId();
 
   // 1. 전체 콘텐츠로 카테고리별 조회율(관심도) 계산
@@ -486,14 +488,16 @@ export async function getRediscoverContents(limit = 5) {
     return s.total > 0 ? s.viewed / s.total : 0;
   };
 
-  // 2. 안 본 콘텐츠 가져오기 (최근 14일 이내 저장분)
-  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  // 2. 안 본 콘텐츠 가져오기 (저장 직후 Recent와 겹치지 않도록 최소 숙성 기간 적용)
+  const since = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+  const matureBefore = new Date(Date.now() - minAgeDays * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
     .eq('user_id', userId)
     .is('viewed_at', null)
-    .gte('saved_at', since);
+    .gte('saved_at', since)
+    .lte('saved_at', matureBefore);
   if (error) throw error;
 
   const items = data as (Content & { categories: { name: string } | null })[];
@@ -549,10 +553,11 @@ export async function getRecentContentsForReport(days: number): Promise<ReportIt
 // 한 번이라도 열어봤지만 오랫동안 다시 보지 않은 콘텐츠.
 // Rediscover(viewed_at IS NULL, 한 번도 안 본 것)와 명확히 구분.
 // 기간은 14일 — 사용 데이터가 충분히 쌓여 30일이 더 적절해지면 별도 결정으로 변경.
-export async function getForgottenContents(limit = 10, days = 14) {
+export async function getForgottenContents(limit = 10, days = 14, maxPerCategory = 2) {
   const userId = await requireUserId();
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const candidateLimit = Math.max(limit * maxPerCategory * 2, 40);
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
@@ -560,10 +565,22 @@ export async function getForgottenContents(limit = 10, days = 14) {
     .not('viewed_at', 'is', null)
     .lt('viewed_at', since)
     .order('viewed_at', { ascending: true })
-    .limit(limit);
+    .limit(candidateLimit);
   if (error) throw error;
 
-  return (data ?? []) as (Content & { categories: { name: string } | null })[];
+  const items = (data ?? []) as (Content & { categories: { name: string } | null })[];
+  const result: typeof items = [];
+  const catCount: Record<string, number> = {};
+
+  for (const item of items) {
+    const cid = item.category_id ?? '__uncategorized__';
+    catCount[cid] = (catCount[cid] ?? 0) + 1;
+    if (catCount[cid] > maxPerCategory) continue;
+    result.push(item);
+    if (result.length >= limit) break;
+  }
+
+  return result;
 }
 
 // ─── AI Classification (비동기) ───

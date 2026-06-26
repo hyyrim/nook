@@ -126,3 +126,7 @@
 | Codex | 리포트 관심 분포 Top 카테고리 강조 테스트 원복 (→ 결정 061) |
 | Codex | Claude Code 공유용 현재 상태와 다음 우선순위 handoff 문서 작성 |
 | Claude Code | Codex handoff 검토 + 홈 Forgotten Content 일관성 점검 (주석 14일 통일, RLS/analytics 정상 확인) (→ 결정 062) |
+| Codex | Rediscover 저장 직후 노출과 탭 후 즉시 사라짐 완화 (→ 결정 063) |
+| Codex | Forgotten Content에 카테고리당 최대 2개 다양성 제약 추가 (→ 결정 064) |
+| Codex | 홈 Rediscover/Forgotten 섹션 subtitle 추가 (→ 결정 065) |
+| Codex | 홈 데이터 상태별 밀도 조절 + dev 전용 케이스 preview 추가 (→ 결정 066) |
