@@ -4,6 +4,8 @@ Nook은 흩어진 콘텐츠를 빠르게 저장하고, AI가 자동으로 분류
 
 **슬로건**: every nook and cranny
 
+**현재 상태**: v1.0.0 MVP 정식 출시 완료 (2026-06-25). Phase 2 진입 — 1차 범위 동결 원칙은 해제되었고, Phase 2 작업 범위는 `docs/progress.md`의 "Phase 2 범위" 섹션 참조.
+
 ---
 
 ## 기술 스택
@@ -32,22 +34,26 @@ Nook은 흩어진 콘텐츠를 빠르게 저장하고, AI가 자동으로 분류
    · 카테고리는 해당 유저의 카테고리 중 분류
    · 매칭 없으면 미분류 (category_id = NULL)
 → 폴더 자동 분류
-→ Home Rediscover 섹션에서 재발견
+→ Home Rediscover(미열람) / Forgotten(오래 안 본) 섹션에서 재발견
+→ Report 탭에서 관심사 회고
 ```
 
 ---
 
-## 1차 MVP 화면 목록
+## 화면 목록
 
 ```jsx
 - Onboarding        관심 카테고리 선택 → 초기 카테고리 생성
-- Home              최근 저장 + Rediscover 섹션
+- Home              최근 저장 + Rediscover(미열람) + Forgotten(오래 안 본) 섹션
 - Recent Saved      전체 콘텐츠 최근 저장순 리스트
 - 폴더              카테고리별 폴더 그리드 (미분류 폴더 포함)
 - Category Detail   카테고리 내 콘텐츠 리스트
 - Content Detail    콘텐츠 상세 + 태그(수정) + 카테고리 이동 + 관련 콘텐츠
+- Report            관심사 회고 (관심 분포 + 관련 주제, 기간 선택)
 - 저장 Bottom Sheet  URL 직접 입력 저장
 - Profile           유저 정보 + 설정
+- Account Settings  이메일 / 로그인 방식 / 로그아웃 / 계정 삭제
+- Search            전체 콘텐츠 title/domain/tags 검색
 ```
 
 ---
@@ -108,10 +114,11 @@ contents
 - 사용자가 미분류 콘텐츠를 Content Detail에서 적절한 카테고리로 이동
 - (기록) 미분류 방치 방지 장치는 MVP 제외, 2차 검토
 
-**MVP 범위 절대 준수**
+**Phase 2 범위 (현재 진행 중)**
 
-- 아래 항목은 2차 범위다. 어떤 이유로도 1차에 추가하지 말 것
-- Forgotten Content, Interest Insight, Report, 푸시 알림, 소셜 공유, 태그 필터링, 카카오 로그인, AI 요약, 미분류 관리 장치
+- 1차 완료: Forgotten Content, Report 1차(관심사 회고)
+- 남은 후보: Interest Insight, 푸시 알림, 소셜 공유, 태그 필터링, 카카오 로그인, AI 요약, 미분류 관리 장치, Report 2차(주차별 흐름·AI 코멘트)
+- 우선순위와 세부 작업은 `docs/progress.md`의 "Phase 2 범위" 섹션을 단일 진실 소스로 사용
 
 **AI 단일 호출 원칙**
 
@@ -171,7 +178,7 @@ nook/
 │   ├── (tabs)/
 │   │   ├── index.tsx     # Home
 │   │   ├── library.tsx   # 폴더
-│   │   ├── report.tsx    # Report (2차)
+│   │   ├── report.tsx    # Report (관심사 회고)
 │   │   └── profile.tsx   # Profile
 │   ├── onboarding.tsx    # 온보딩 (관심 카테고리 선택)
 │   ├── content/[id].tsx  # Content Detail

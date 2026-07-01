@@ -1,6 +1,8 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-22 (17차 — 플랫폼 링크 저장 실기기 검증 + X/Notion 보강)
+최종 업데이트: 2026-06-29 (22차 — 온보딩 카테고리 직접 추가)
+
+> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
 
 ---
 
@@ -240,43 +242,182 @@
 | Notion 원문 바로가기 — `*.notion.site`는 앱 scheme 강제 없이 인앱 브라우저로 열어 Safari bounce 방지 | ✅ |
 | `docs/decisions.md` 결정 042~045 기록 + `docs/ai-usage-log.md` 2026-06-22 작업 로그 반영 | ✅ |
 
-## 다음 우선순위 체크리스트
+## 완료 (18차 — URL 정규화 + Toast 단일 채널 통일)
 
-| 순서 | 항목 | 상태 |
-|------|------|------|
-| 1 | Analytics 실기기 검증: `app_opened`, `save_attempted`, `save_failed`, `rediscover_impression`, `content_opened`, `onboarding_completed` Supabase 적재 확인 | invalid URL / Share Sheet 진입 이벤트 보강 완료 / 실기기 실행 미완료 |
-| 2 | Auth / Onboarding 회귀 테스트: 신규 유저, 기존 유저, 로그아웃 후 재진입, 카테고리 0개 유저, 계정 삭제 후 재가입 | 미완료 |
-| 3 | 저장 품질 최종 회귀: 저장 → AI 분류 → 폴더 반영 → Content Detail → 원문 바로가기 | 미완료 |
-| 4 | iOS 배포 준비: Apple Developer 승인 이후 capability, EAS submit 정보, TestFlight 준비 | `docs/release-readiness.md` 작성 완료 / 계정 정보 대기 |
-| 5 | `docs/mvp-backlog.md` 현행화: 태그 수정/다중 편집/플랫폼 저장 보강 등 이미 완료된 항목 반영 | 완료 |
+| 항목 | 상태 |
+|------|------|
+| `normalizeUrl` 추적 파라미터(si/utm_*/fbclid/gclid/igshid/s) 블랙리스트 제거 (→ 결정 048) | ✅ |
+| YouTube URL 캐논 정규화 — youtu.be / shorts / m.youtube.com → `youtube.com/watch?v=` 통합 (→ 결정 053) | ✅ |
+| Notion 호스트 정규식 일괄 매칭 (`app.notion.com` 등 서브도메인 포함) (→ 결정 049) | ✅ |
+| Instagram 원문 바로가기 cold-start 대응 — `instagram://media?id=` deep-link 1순위 (→ 결정 050) | ✅ |
+| 썸네일 placeholder 단일 색상(`#DDD7CE`)으로 통일 (→ 결정 051) | ✅ |
+| 저장 결과 Toast 단일 채널로 통일 — Save Bottom Sheet의 Alert/시트 내부 success UI 제거 (→ 결정 052) | ✅ |
+| Share Intent 저장 중 `저장 중...` 로딩 Toast 표시 (→ 결정 054) | ✅ |
 
-## 이번 주 배포 준비 계획
+## 완료 (19차 — 홈 Forgotten Content + Report 1차)
 
-목표: 2026-06-24(수)까지 TestFlight 제출이 가능한 상태로 만든다.
+| 항목 | 상태 |
+|------|------|
+| 홈 "잊고 있던 콘텐츠" 섹션 추가 — `viewed_at IS NOT NULL AND viewed_at < 14일 전`, 최대 10개 (→ 결정 055) | ✅ |
+| `ContentOpenedSource`에 `'forgotten'` 추가, Content Detail 화이트리스트 갱신 | ✅ |
+| 리포트 탭 1차 — "관심사 회고" 화면 (관심 분포 + 관련 주제, AI 호출 없이 단순 집계) (→ 결정 056) | ✅ |
+| `lib/report.ts` 순수 함수 모듈 — aggregateByCategory / computeDistribution / topTagsPerCategory | ✅ |
+| 30일 단일 fetch + 클라이언트 derive (7일/30일 in-memory 분기) | ✅ |
+| v1.0.0 MVP 정식 출시 | ✅ |
 
-| 날짜 | 작업 | 산출물 |
-|------|------|------|
-| 2026-06-22(월) | 릴리즈 체크리스트 고정, Analytics 실기기 검증 절차 정리, backlog 현행화, TypeScript/Expo Doctor 확인 | `docs/release-readiness.md`, `docs/analytics-queries/README.md`, `docs/mvp-backlog.md`, `tsc`/`expo-doctor` 통과 |
-| 2026-06-23(화) | Auth / Onboarding / 저장 / 원문 이동 실기기 회귀 테스트 | blocker 목록 또는 통과 기록 |
-| 2026-06-24(수) | TypeScript/Expo doctor/EAS production build/TestFlight 제출 준비 | production build 또는 제출 전 blocker 정리 |
+## 완료 (20차 — 리포트 다듬기 + 홈 재발견 섹션 안정화)
 
-## 미완료 (Apple Developer 승인 후)
+| 항목 | 상태 |
+|------|------|
+| 리포트 "많이 저장한 카테고리" 섹션 제거 — 관심 분포와 중복 (→ 결정 057) | ✅ |
+| 리포트 개발 모드 더미 케이스 선택기 제거 (검증 종료) (→ 결정 058) | ✅ |
+| 리포트 기간 라벨 badge화 + 섹션 헤더 아이콘 정렬 (→ 결정 059) | ✅ |
+| 리포트 기간 기준 — 자동 fallback → 사용자 선택(`일주일/14일/한달` 드롭다운) (→ 결정 060) | ✅ |
+| 리포트 관심 분포 Top 강조 테스트 원복 (→ 결정 061) | ✅ |
+| 홈 Forgotten Content 14일 기준 단일화 — 함수 default 30→14, 호출부 override 제거 (→ 결정 062) | ✅ |
+| Rediscover 저장 직후 노출 완화 — 3일 숙성 기간 + 탭 후 세션 유지 (→ 결정 063) | ✅ |
+| Forgotten Content 카테고리당 최대 2개 다양성 제약 (→ 결정 064) | ✅ |
+| 홈 Rediscover/Forgotten 섹션 subtitle 추가 — 데이터 기준 설명 (→ 결정 065) | ✅ |
+| 홈 데이터 상태별 밀도 조절 — 보조 섹션 개수에 따라 최근 저장 노출 수(3/4/6) 가변 (→ 결정 066) | ✅ |
+| dev preview 케이스 검증 후 제거 | ✅ |
+
+## 완료 (21차 — 재발견 재정의 + Interest Insight 홈 카드)
+
+| 항목 | 상태 |
+|------|------|
+| Rediscover 정의 변경 — viewed 무관, "한동안 안 들여다본 관심 콘텐츠" (→ 결정 067) | ✅ |
+| 망각도 계산 = `lastInteraction (viewed_at ?? saved_at)` 기준으로 변경 | ✅ |
+| `minAgeDays` 3 → 2 (저장 후 노출까지 단축) | ✅ |
+| `retainedRediscoverIdsRef` 세션 유지 로직 제거 — viewed 무관으로 자연 해결 | ✅ |
+| 발견된 콘텐츠 subtitle "한동안 안 들여다본 관심 콘텐츠예요"로 변경 | ✅ |
+| `getInterestInsight` 함수 추가 — 최근 14일 vs 이전 14일 카테고리 저장 수 비교, Top 1 (→ 결정 068) | ✅ |
+| `InterestInsightCard` 컴포넌트 추가 — "최근 2주 [카테고리] 저장이 평소보다 늘었어요" + 클릭 시 폴더 이동 | ✅ |
+| 홈 섹션 순서: 최근 저장 → Interest Insight (있을 때) → 발견된 콘텐츠 → 잊고 있던 콘텐츠 | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
+## 완료 (출시 전 회귀 — 2026-06-25 이전)
+
+| 항목 | 상태 |
+|------|------|
+| Analytics 실기기 검증 — 6개 이벤트(`app_opened`, `save_attempted`, `save_failed`, `rediscover_impression`, `content_opened`, `onboarding_completed`) Supabase 적재 확인 | ✅ |
+| Auth / Onboarding 회귀 테스트 — 신규 유저, 기존 유저, 로그아웃 후 재진입, 카테고리 0개 유저, 계정 삭제 후 재가입 | ✅ |
+| 저장 품질 회귀 — 저장 → AI 분류 → 폴더 반영 → Content Detail → 원문 바로가기 | ✅ |
+| App ID에 Sign In with Apple capability 활성화 | ✅ |
+| Apple 로그인 실기기 테스트 | ✅ |
+| Share Intent 배포 회귀 테스트 (TestFlight 빌드) | ✅ |
+| eas.json submit 정보 (appleId, ascAppId, appleTeamId) | ✅ |
+| EAS Build → TestFlight → App Store 제출 | ✅ |
+
+## Phase 2 범위
+
+### A. Phase 1 검토 발견 이슈 (우선순위 후보)
+
+| 항목 | 상태 / 비고 |
+|------|------|
+| 온보딩 화면에서 카테고리 직접 추가 | 미완료. 온보딩에서 preset 12개 외 사용자 정의 카테고리 추가 허용 |
+| 카테고리 순서 변경 | 미완료. 사용자가 폴더 순서를 직접 정렬. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
+| Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
+| 리스트 viewType 설정 (콘텐츠) | 미완료. Category Detail / Recent Saved / Search 등 콘텐츠 리스트에서 그리드 ↔ 리스트 전환 옵션 |
+| 폴더 목록 뷰 토글 (카테고리) | 미완료. 폴더 탭 자체를 그리드(현재) ↔ 리스트로 전환. 컬러/아이콘 시스템 도입 후 리스트에서도 시각 구분 유지 가능. v1.1.0 스코프에서는 제외 |
+| 오래된 링크 정리 제안 | 검토 필요. 링크 앱 특성상 저장된 링크의 수명 관리가 중요함. 자동 삭제보다는 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향이 안전 |
+
+### B. CLAUDE.md 2차 범위 (1차 완료 + 남은 항목)
+
+| 항목 | 상태 / 비고 |
+|------|------|
+| Forgotten Content | ✅ 1차 완료 (§055) |
+| Report | ✅ 1차 완료 (§056~061). 2차 — 주차별 흐름, AI 코멘트는 별도 |
+| Interest Insight | ✅ 홈 카드로 1차 완료 (§068). Report 2차에서 정적 분석 형태 추가 검토 가능 |
+| 푸시 알림 | 미정. Forgotten/Rediscover와 연결 가능 |
+| 소셜 공유 | 미정 |
+| 태그 필터링 | 미정. 현재 tags는 `text[]`로 저장만 됨 (CLAUDE.md 데이터 모델 참조) |
+| 카카오 로그인 | 미정 |
+| AI 요약 | 미정. AI 단일 호출 원칙(태그+카테고리)과 별도 호출로 분리 필요 |
+| 미분류 관리 장치 | 미정. 미분류 방치 방지 UX 검토 |
+
+### C. 기존 백로그
 
 | 항목 | 비고 |
 |------|------|
-| App ID에 Sign In with Apple capability 활성화 | Apple Developer 승인 대기 중 |
-| Apple 로그인 실기기 테스트 | Development Build 필요 |
-| Share Intent 배포 회귀 테스트 | 주요 플랫폼 저장 검증 완료. TestFlight/배포 빌드에서 최종 회귀 필요 |
-| eas.json submit 정보 채우기 (appleId, ascAppId, appleTeamId) | App Store Connect 앱 생성 후 |
-| EAS Build → TestFlight → App Store 제출 | 최종 배포 |
-
-## 미완료 (추후)
-
-| 항목 | 비고 |
-|------|------|
-| 카테고리 정렬 순서 변경 | 사용자가 카테고리 순서를 변경 가능. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
 | 카테고리 폴더 컬러칩 | 각 카테고리에 컬러 지정해 폴더 카드/Content Detail에서 시각 구분. DB 스키마 `categories.color` 컬럼 필요 |
-| 다른 플랫폼 본문 복구 (Phase 2) | X는 oEmbed fallback, Notion은 public page API로 보강 완료. Naver Blog / Medium / Velog는 저장 검증 완료했으나 본문 복구 고도화는 필요 시 별도 평가 |
+| 다른 플랫폼 본문 복구 | X는 oEmbed fallback, Notion은 public page API로 보강 완료. Naver Blog / Medium / Velog 본문 복구는 필요 시 별도 평가 |
+| 링크 수명 관리 | 1차는 수동 삭제 UX 유지/강화. 2차는 `viewed_at`/`saved_at` 기준 정리 후보 섹션, 일괄 선택, 보관 또는 삭제 검토. 완전 자동 삭제는 opt-in + 복구 기간이 있을 때만 Phase 3로 검토 |
+
+### D. 플랫폼 확장 — 웹 + Chrome 확장 (Phase 2~3)
+
+플랫폼 로드맵상 iOS 앱 다음 우선순위. 사용자 핵심 니즈: **모바일에서 저장 + 데스크탑에서 조회**.
+
+**역할 분리 (사용자 페르소나 기반)**
+
+| 플랫폼 | 역할 | 저장 방식 |
+|------|------|------|
+| iOS 앱 | 저장(주) + 조회 | Share Extension (현재 운영 중) |
+| 데스크탑 웹 | 조회(주) + URL 직접 입력 저장 | iOS와 동일한 Save UI 1개 (URL만 입력, AI 분류 맡김) |
+| Chrome 확장 | 현재 페이지 1-클릭 저장 | popup의 "이 페이지 저장" 버튼 |
+
+→ 저장 진입은 3가지: **iOS 공유 / 웹 URL 입력 / Chrome 확장 1-클릭**
+
+**접근 방식 권장: RN Web (Expo Web) + Chrome 확장 별 빌드**
+
+- 웹은 RN Web으로 현재 컴포넌트 재사용 (홈/폴더/Report/Search/Content Detail + Save Bottom Sheet)
+- 데스크탑 반응형 우선 (≥1024px). 모바일 웹은 보조 (iOS 앱 있으니까)
+- Chrome 확장은 manifest v3, 가벼운 popup UI + Edge Function 호출
+- 웹 Save Bottom Sheet는 iOS 컴포넌트 그대로 재사용 — 데스크탑은 화면 중앙 모달, 모바일 웹은 바텀시트로만 분기
+
+**아키텍처 영향 — 백엔드 재구조화 (선결 작업)**
+
+웹/확장 착수 전 Supabase Edge Function으로 이전해야 할 것:
+
+1. **메타데이터 추출 Edge Function** — 현재 `lib/metadata.ts`의 fetch + parsing 로직 이전. iOS도 함께 사용 → 보안 ↑, CORS 회피
+2. **AI 분류 Edge Function** — 현재 `lib/ai.ts`의 Anthropic 직접 호출을 Edge Function 경유로. API 키 서버 보관 (브라우저 노출 차단)
+3. (선택) **AI 분류 트리거 자동화** — 콘텐츠 INSERT 시 Supabase webhook/trigger로 Edge Function 자동 호출 → iOS/Web/확장 모두 단순히 raw insert만 하면 됨
+
+이 작업은 웹 안 가도 iOS 보안 개선으로 가치 있음 (결정 004에서 이미 "프로덕션에서는 Edge Function 권장" 언급).
+
+**검토할 의존성 / 대체 필요 영역 (웹)**
+
+| 영역 | iOS 현 동작 | 웹 대응 |
+|------|-----------|-----------|
+| Google 로그인 | expo-auth-session | Supabase OAuth 리다이렉트 |
+| Apple 로그인 | expo-apple-authentication (네이티브) | Sign in with Apple JS |
+| 세션 저장 | expo-secure-store | localStorage / cookie session |
+| 메타데이터 fetch | 클라이언트 fetch | Edge Function (선결 작업으로 해결) |
+| AI 분류 | 클라이언트 Anthropic 호출 | Edge Function (선결 작업으로 해결) |
+| 원문 바로가기 (앱 scheme) | Linking.openURL + LSApplicationQueriesSchemes | `window.open` 새 탭 |
+| 바텀시트 키보드 회피 | Reanimated 4 useAnimatedKeyboard | 데스크탑은 모달 패턴 (저장 UI 없으니 사용 빈도 ↓) |
+| 푸시 알림 (향후) | expo-notifications | Web Push API |
+| 디자인 토큰 / 컴포넌트 | 그대로 | 그대로 사용, 데스크탑 레이아웃만 추가 |
+
+**Chrome 확장 범위**
+
+- manifest v3, popup UI (작은 카드)
+- 현재 탭 URL 자동 캡처 → 옵션으로 카테고리/태그 미리 지정 가능
+- Supabase Auth 토큰을 chrome.storage에 저장 (확장 첫 진입 시 웹 로그인 페이지로 보내 토큰 받아옴)
+- 저장 = Edge Function `/save-content` POST → DB insert → AI 분류 트리거 (자동)
+- "저장 완료" Toast 후 popup 자동 닫힘
+
+**단계 분할 (확정 범위)**
+
+| 단계 | 작업 | 예상 |
+|------|------|------|
+| **A. 백엔드 재구조화** | 메타 추출 + AI 분류 Edge Function 이전. iOS 클라이언트도 Edge Function 호출하도록 마이그레이션. 분류 자동 트리거 검토 | 1~2주 |
+| **B. RN Web** | 로그인(OAuth 리다이렉트) + 홈/폴더/Report/Search/Content Detail + Save Bottom Sheet(URL 직접 입력) + 데스크탑 반응형 디자인 | 3~4주 |
+| **C. Chrome 확장** | manifest v3, popup, URL 캡처, 인증 토큰 공유, 저장 API 호출, 결과 Toast | 2주 |
+
+**총 예상**: 6~8주 (디자이너/QA 비용 별도)
+
+**핵심 결정 포인트 (착수 전)**
+
+1. 백엔드 재구조화 시점 — 웹 착수 전 선결 (안전) vs 웹과 병렬 (빠름)
+2. 모바일 웹 지원 수준 — 데스크탑만 우선? 아니면 반응형으로 모바일 웹도?
+3. Chrome 확장 인증 — 웹 로그인 후 토큰 공유 vs 확장 내 독립 로그인
+4. 디자인 — 데스크탑 레이아웃 시안을 새로 디자인할지, iOS 화면 그대로 stretch할지
+
+**리스크 / 트레이드오프**
+
+- 백엔드 재구조화는 iOS 회귀 테스트 부담이 있음 (저장 → 메타 → AI 흐름 전체 재검증)
+- RN Web의 데스크탑 UX 한계 — 컴포넌트는 동작하지만 "데스크탑답지 않은" 느낌 가능. 데스크탑 전용 디자인 시안이 결과 품질을 좌우
+- Chrome 확장 인증 토큰 공유는 보안/UX 균형이 까다로움 — Supabase Auth의 magic link 또는 web 로그인 → 토큰 deep link 패턴 검토 필요
 
 ## 보류 / 시도 기록
 
