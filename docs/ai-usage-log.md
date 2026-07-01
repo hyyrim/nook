@@ -130,3 +130,12 @@
 | Codex | Forgotten Content에 카테고리당 최대 2개 다양성 제약 추가 (→ 결정 064) |
 | Codex | 홈 Rediscover/Forgotten 섹션 subtitle 추가 (→ 결정 065) |
 | Codex | 홈 데이터 상태별 밀도 조절 + dev 전용 케이스 preview 검증 후 제거 (→ 결정 066) |
+
+## 2026-06-29
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Claude Code | 진행 문서/CLAUDE.md 현행화 — 18~20차 섹션 추가, Phase 2 범위 정리(A: Phase 1 검토 이슈, B: CLAUDE.md 2차 범위, C: 백로그) |
+| Claude Code | Rediscover 재정의 — viewed 무관 + 망각도(lastInteraction) 기준, retainedRediscoverIdsRef 제거 (→ 결정 067) |
+| Claude Code | Interest Insight 홈 카드 추가 — 최근 14일 vs 이전 14일 카테고리 저장 수 비교 Top 1 (→ 결정 068) |
+| Claude Code | Phase 2 범위 정리 — 웹 + Chrome 확장 단계 분할 (백엔드 Edge Function 이전 / RN Web / 확장), `docs/progress.md` D 섹션 |

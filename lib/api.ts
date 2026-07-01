@@ -461,9 +461,11 @@ export async function markContentViewed(id: string) {
   if (error) throw error;
 }
 
-// ─── Rediscover (저장 빈도 높은 카테고리의 안 본 콘텐츠 우선) ───
+// ─── Rediscover (관심사 기반 + 망각도 추천 / viewed 무관) ───
+// §067: viewed_at 필터 제거. "저장했는지 까먹은 콘텐츠"가 핵심이지 "본 적 없음"이 핵심이 아님.
+// 본 적 있어도 한동안 안 들어왔으면 후보. 망각도 = lastInteraction(viewed_at ?? saved_at) 기준.
 
-export async function getRediscoverContents(limit = 5, minAgeDays = 3, maxAgeDays = 14) {
+export async function getRediscoverContents(limit = 5, minAgeDays = 2, maxAgeDays = 14) {
   const userId = await requireUserId();
 
   // 1. 전체 콘텐츠로 카테고리별 조회율(관심도) 계산
@@ -488,14 +490,13 @@ export async function getRediscoverContents(limit = 5, minAgeDays = 3, maxAgeDay
     return s.total > 0 ? s.viewed / s.total : 0;
   };
 
-  // 2. 안 본 콘텐츠 가져오기 (저장 직후 Recent와 겹치지 않도록 최소 숙성 기간 적용)
+  // 2. 후보 풀: 최근 maxAgeDays 내 저장, minAgeDays 이상 숙성 (Recent와 시간대 분리)
   const since = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
   const matureBefore = new Date(Date.now() - minAgeDays * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('contents')
     .select('*, categories(name)')
     .eq('user_id', userId)
-    .is('viewed_at', null)
     .gte('saved_at', since)
     .lte('saved_at', matureBefore);
   if (error) throw error;
@@ -503,16 +504,21 @@ export async function getRediscoverContents(limit = 5, minAgeDays = 3, maxAgeDay
   const items = data as (Content & { categories: { name: string } | null })[];
   const now = Date.now();
 
-  // 3. 관심도 × 망각도 스코어 → 카테고리당 최대 2개
+  // 3. 관심도 × 망각도. 망각도 = daysSinceLastInteraction / 7
+  //    lastInteraction = viewed_at ?? saved_at — 본 적 있어도 본 지 오래되면 점수 ↑
   const scored = items.map((item) => {
     const interest = interestRate(item.category_id);
-    const daysSinceSaved = (now - new Date(item.saved_at).getTime()) / (1000 * 60 * 60 * 24);
-    const forgottenness = Math.max(daysSinceSaved / 7, 0.1);
+    const lastInteractionMs = item.viewed_at
+      ? new Date(item.viewed_at).getTime()
+      : new Date(item.saved_at).getTime();
+    const daysSinceLastInteraction = (now - lastInteractionMs) / (1000 * 60 * 60 * 24);
+    const forgottenness = Math.max(daysSinceLastInteraction / 7, 0.1);
     return { item, score: interest * forgottenness };
   });
 
   scored.sort((a, b) => b.score - a.score);
 
+  // 4. 다양성: 카테고리당 최대 2개
   const result: typeof items = [];
   const catCount: Record<string, number> = {};
   for (const { item } of scored) {
@@ -524,6 +530,61 @@ export async function getRediscoverContents(limit = 5, minAgeDays = 3, maxAgeDay
   }
 
   return result;
+}
+
+// ─── Interest Insight (관심 카테고리 급부상 시그널) ───
+// §068: 최근 14일 vs 이전 14일 카테고리별 저장 수 비교. 평소보다 늘어난 Top 1 카테고리.
+
+export type InterestInsight = {
+  categoryId: string;
+  categoryName: string;
+  recent: number;  // 최근 14일 저장 수
+  previous: number;  // 이전 14일 저장 수
+};
+
+export async function getInterestInsight(windowDays = 14): Promise<InterestInsight | null> {
+  const userId = await requireUserId();
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  const since = new Date(Date.now() - windowMs * 2).toISOString();
+  const cutoff = new Date(Date.now() - windowMs).toISOString();
+
+  const { data, error } = await supabase
+    .from('contents')
+    .select('category_id, saved_at, categories(name)')
+    .eq('user_id', userId)
+    .not('category_id', 'is', null)
+    .gte('saved_at', since);
+  if (error) throw error;
+
+  type Row = { category_id: string; saved_at: string; categories: { name: string } | null };
+  const rows = (data as unknown as Row[]) ?? [];
+
+  const stats: Record<string, { name: string; recent: number; previous: number }> = {};
+  for (const row of rows) {
+    const cid = row.category_id;
+    const name = row.categories?.name ?? '';
+    if (!name) continue;
+    if (!stats[cid]) stats[cid] = { name, recent: 0, previous: 0 };
+    if (row.saved_at >= cutoff) stats[cid].recent++;
+    else stats[cid].previous++;
+  }
+
+  // 임계값: delta >= 3 AND (이전==0이면 최근>=3 / 그 외엔 최근/이전 >= 2)
+  const candidates: InterestInsight[] = [];
+  for (const [cid, s] of Object.entries(stats)) {
+    const delta = s.recent - s.previous;
+    if (delta < 3) continue;
+    if (s.previous === 0) {
+      if (s.recent < 3) continue;
+    } else {
+      if (s.recent / s.previous < 2) continue;
+    }
+    candidates.push({ categoryId: cid, categoryName: s.name, recent: s.recent, previous: s.previous });
+  }
+
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => (b.recent - b.previous) - (a.recent - a.previous));
+  return candidates[0];
 }
 
 // Phase 2 리포트용 단일 fetch. 카테고리/분포/관련 주제를 클라이언트에서 derive.

@@ -9,8 +9,9 @@ import { RediscoverCard } from '@/components/RediscoverCard';
 import { SectionHeader } from '@/components/SectionHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { InterestInsightCard } from '@/components/InterestInsightCard';
 import { Ionicons } from '@expo/vector-icons';
-import { getRecentContents, getRediscoverContents, getForgottenContents } from '@/lib/api';
+import { getRecentContents, getRediscoverContents, getForgottenContents, getInterestInsight, type InterestInsight } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { analytics } from '@/lib/analytics';
@@ -25,9 +26,9 @@ export default function HomeScreen() {
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
   const [forgottenItems, setForgottenItems] = useState<ContentWithCategory[]>([]);
+  const [insight, setInsight] = useState<InterestInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const retainedRediscoverIdsRef = useRef(new Set<string>());
 
   // §12.4 Rediscover impression — viewport 진입 시 발화. 세션당 같은 content_id는 1회만(라이브러리 dedup).
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
@@ -46,20 +47,16 @@ export default function HomeScreen() {
 
     setLoadError(false);
     try {
-      const [recent, rediscover, forgotten] = await Promise.all([
+      const [recent, rediscover, forgotten, nextInsight] = await Promise.all([
         getRecentContents(6),
         getRediscoverContents(10),
         getForgottenContents(10),
+        getInterestInsight(),
       ]);
       setRecentItems(recent);
-      setRediscoverItems((prev) => {
-        const fetchedIds = new Set(rediscover.map((item) => item.id));
-        const retained = prev.filter(
-          (item) => retainedRediscoverIdsRef.current.has(item.id) && !fetchedIds.has(item.id)
-        );
-        return [...rediscover, ...retained].slice(0, 10);
-      });
+      setRediscoverItems(rediscover);
       setForgottenItems(forgotten);
+      setInsight(nextInsight);
     } catch (e) {
       console.error('Home load error:', e);
       setLoadError(true);
@@ -76,13 +73,9 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!session) return;
-    const handleContentDeleted = () => {
-      retainedRediscoverIdsRef.current.clear();
-      void loadData();
-    };
     const offSaved = on('content-saved', loadData);
     const offClassified = on('content-classified', loadData);
-    const offDeleted = on('content-deleted', handleContentDeleted);
+    const offDeleted = on('content-deleted', loadData);
     return () => {
       offSaved();
       offClassified();
@@ -124,7 +117,7 @@ export default function HomeScreen() {
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : loadError ? (
             <ErrorState onRetry={loadData} />
-          ) : recentItems.length === 0 && rediscoverItems.length === 0 && forgottenItems.length === 0 ? (
+          ) : recentItems.length === 0 && rediscoverItems.length === 0 && forgottenItems.length === 0 && !insight ? (
             <View style={styles.welcomeCard}>
               <View style={styles.welcomeIconWrap}>
                 <Ionicons name="bookmark" size={28} color={Colors.primary} />
@@ -206,7 +199,22 @@ export default function HomeScreen() {
                 )}
               </View>
 
-              {/* Rediscover */}
+              {/* Interest Insight — 관심 카테고리 급부상 시그널 (§068) */}
+              {insight && (
+                <View style={styles.insightSection}>
+                  <InterestInsightCard
+                    categoryName={insight.categoryName}
+                    previous={insight.previous}
+                    recent={insight.recent}
+                    onPress={() => router.push({
+                      pathname: '/category/[id]',
+                      params: { id: insight.categoryId },
+                    })}
+                  />
+                </View>
+              )}
+
+              {/* Rediscover — 관심사 + 망각도 기반 추천 (viewed 무관, §067) */}
               {rediscoverItems.length > 0 && (
                 <View style={[
                   styles.discoverySection,
@@ -215,7 +223,7 @@ export default function HomeScreen() {
                   <SectionHeader
                     icon="sparkles"
                     label="발견된 콘텐츠"
-                    subtitle="아직 열어보지 않은 관심 콘텐츠예요"
+                    subtitle="한동안 안 들여다본 관심 콘텐츠예요"
                   />
                   <FlatList
                     horizontal
@@ -232,13 +240,10 @@ export default function HomeScreen() {
                         hint={item.categories?.name ?? '미분류'}
                         thumbnailUrl={item.thumbnail_url}
                         placeholderColor={THUMBNAIL_PLACEHOLDER}
-                        onPress={() => {
-                          retainedRediscoverIdsRef.current.add(item.id);
-                          router.push({
-                            pathname: '/content/[id]',
-                            params: { id: item.id, source: 'rediscover' },
-                          });
-                        }}
+                        onPress={() => router.push({
+                          pathname: '/content/[id]',
+                          params: { id: item.id, source: 'rediscover' },
+                        })}
                       />
                     )}
                   />
@@ -345,6 +350,9 @@ const styles = StyleSheet.create({
   },
   discoverySectionWithNext: {
     marginBottom: 28,
+  },
+  insightSection: {
+    marginBottom: 24,
   },
   emptyText: {
     fontSize: 13,
