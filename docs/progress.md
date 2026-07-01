@@ -295,6 +295,18 @@
 | 홈 섹션 순서: 최근 저장 → Interest Insight (있을 때) → 발견된 콘텐츠 → 잊고 있던 콘텐츠 | ✅ |
 | TypeScript 검증 통과 | ✅ |
 
+## 완료 (22차 — 온보딩 카테고리 직접 추가)
+
+| 항목 | 상태 |
+|------|------|
+| `app/choose-interests.tsx` — 기본 12개 칩 + 사용자 정의 칩 + "+ 직접 추가" 칩 (그리드 끝, dashed border) (→ 결정 069) | ✅ |
+| 커스텀 칩 우측 × 버튼으로 제거 (선택 해제 + 목록 제거) | ✅ |
+| 사용자 정의 추가는 `CategoryBottomSheet` (mode=add) 재사용, existingNames에 preset + custom 모두 전달 | ✅ |
+| 추가 후 자동 선택 (선택 수가 MAX 미만일 때만, 그 외엔 칩만 추가) | ✅ |
+| 칩 영역을 `ScrollView`로 변경 — 칩이 늘어나도 하단 CTA 가려지지 않음 | ✅ |
+| `createInitialCategories(selected)` 기존 함수 그대로 사용 — preset/custom 구분 없이 names만 전달 | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
 ## 완료 (출시 전 회귀 — 2026-06-25 이전)
 
 | 항목 | 상태 |
@@ -314,7 +326,7 @@
 
 | 항목 | 상태 / 비고 |
 |------|------|
-| 온보딩 화면에서 카테고리 직접 추가 | 미완료. 온보딩에서 preset 12개 외 사용자 정의 카테고리 추가 허용 |
+| 온보딩 화면에서 카테고리 직접 추가 | ✅ 22차 완료 (결정 069). "+ 직접 추가" 칩 + CategoryBottomSheet 재사용 |
 | 카테고리 순서 변경 | 미완료. 사용자가 폴더 순서를 직접 정렬. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
 | Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
 | 리스트 viewType 설정 (콘텐츠) | 미완료. Category Detail / Recent Saved / Search 등 콘텐츠 리스트에서 그리드 ↔ 리스트 전환 옵션 |
