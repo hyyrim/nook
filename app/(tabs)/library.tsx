@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -79,6 +79,15 @@ export default function LibraryScreen() {
       <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>폴더</Text>
+          {categories.length >= 2 && (
+            <Pressable
+              onPress={() => router.push('/reorder-categories')}
+              hitSlop={8}
+              style={styles.editButton}
+            >
+              <Text style={styles.editButtonText}>순서 편집</Text>
+            </Pressable>
+          )}
         </View>
 
         {loading ? (
@@ -129,6 +138,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 19,
     paddingBottom: 20,
@@ -138,6 +150,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: -0.6,
+  },
+  editButton: {
+    paddingBottom: 4,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.secondary,
   },
   grid: {
     flexDirection: 'row',
