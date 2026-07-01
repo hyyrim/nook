@@ -53,10 +53,12 @@ export function isDuplicateContentUrlError(error: unknown) {
 export async function getCategories() {
   const userId = await requireUserId();
 
+  // sort_order 우선(nulls last), created_at 타이브레이커
   const { data, error } = await supabase
     .from('categories')
     .select('*')
     .eq('user_id', userId)
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data as Category[];
@@ -90,6 +92,7 @@ export async function getCategoriesWithCounts() {
     .from('categories')
     .select('*')
     .eq('user_id', userId)
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
   if (catError) throw catError;
 
@@ -119,6 +122,17 @@ export async function createCategory(
 ) {
   const userId = await requireUserId();
 
+  // 새 카테고리는 sort_order max + 1로 부여 (맨 뒤 자동 추가)
+  const { data: maxRow } = await supabase
+    .from('categories')
+    .select('sort_order')
+    .eq('user_id', userId)
+    .not('sort_order', 'is', null)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow?.sort_order ?? 0) + 1;
+
   const { data, error } = await supabase
     .from('categories')
     .insert({
@@ -126,11 +140,28 @@ export async function createCategory(
       name,
       color: options?.color ?? null,
       icon: options?.icon ?? null,
+      sort_order: nextOrder,
     })
     .select()
     .single();
   if (error) throw error;
   return data as Category;
+}
+
+// 카테고리 순서 일괄 업데이트. orderedIds[0] → sort_order 1, [1] → 2, ...
+export async function reorderCategories(orderedIds: string[]) {
+  const userId = await requireUserId();
+  if (orderedIds.length === 0) return;
+
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from('categories')
+        .update({ sort_order: index + 1 })
+        .eq('user_id', userId)
+        .eq('id', id),
+    ),
+  );
 }
 
 export async function updateCategory(
@@ -713,11 +744,12 @@ export async function createInitialCategories(names: string[]) {
     .eq('user_id', userId);
   if (count && count > 0) return [];
 
-  const rows = names.map((name) => ({
+  const rows = names.map((name, index) => ({
     user_id: userId,
     name,
     icon: PRESET_CATEGORY_ICON_MAP[name] ?? null,
     color: null,
+    sort_order: index + 1,
   }));
   const { data, error } = await supabase
     .from('categories')
