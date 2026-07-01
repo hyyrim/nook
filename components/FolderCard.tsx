@@ -1,23 +1,42 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants';
+import {
+  CATEGORY_DEFAULT_BG,
+  CATEGORY_DEFAULT_TAB,
+  getCategoryColor,
+  getCategoryIcon,
+} from '@/constants/categoryStyle';
 
 type FolderCardProps = {
   name: string;
   count: number;
+  color?: string | null;
+  icon?: string | null;
   onPress?: () => void;
 };
 
-export function FolderCard({ name, count, onPress }: FolderCardProps) {
+export function FolderCard({ name, count, color, icon, onPress }: FolderCardProps) {
+  const { bg, tab } = getCategoryColor(color);
+  const iconName = getCategoryIcon(icon);
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.cardItem, pressed && styles.pressed]}
     >
       <View style={styles.wrapper}>
-        <View style={styles.tab} />
-        <View style={styles.card}>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.count}>{count}개 저장됨</Text>
+        <View style={[styles.tab, { backgroundColor: tab }]} />
+        <View style={[styles.card, { backgroundColor: bg }]}>
+          <View style={styles.nameRow}>
+            {iconName ? (
+              <Ionicons name={iconName} size={17} color={Colors.primary} style={styles.icon} />
+            ) : null}
+            <Text style={styles.name} numberOfLines={1}>{name}</Text>
+          </View>
+          <View style={styles.bottomRow}>
+            <Text style={styles.count}>{count}개</Text>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -44,14 +63,12 @@ export function AddCategoryCard({ onPress }: { onPress?: () => void }) {
   );
 }
 
-import { Ionicons } from '@expo/vector-icons';
-
 const styles = StyleSheet.create({
   cardItem: {
     width: '47.8%',
   },
   pressed: {
-    transform: [{ scale: 0.96 }],
+    opacity: 0.72,
   },
   wrapper: {
     paddingTop: 9,
@@ -62,17 +79,19 @@ const styles = StyleSheet.create({
     left: 0,
     width: 55,
     height: 8,
-    backgroundColor: '#E5E4E4',
+    backgroundColor: CATEGORY_DEFAULT_TAB,
     borderTopLeftRadius: 5,
     borderTopRightRadius: 14,
   },
   card: {
-    backgroundColor: Colors.surface,
-    borderTopRightRadius:12,
-    borderBottomLeftRadius:12,
-    borderBottomRightRadius:12,
+    backgroundColor: CATEGORY_DEFAULT_BG,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     height: 116,
-    padding: 13,
+    paddingHorizontal: 13,
+    paddingTop: 18,
+    paddingBottom: 13,
     justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -80,7 +99,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  icon: {
+    marginTop: 1,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+  },
+  nameRow: {
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   name: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
     color: Colors.primary,
@@ -89,13 +123,12 @@ const styles = StyleSheet.create({
   count: {
     fontSize: 12,
     color: Colors.secondary,
-    alignSelf: 'flex-end',
   },
   addCard: {
     height: 116,
-    borderTopRightRadius:12,
-    borderBottomLeftRadius:12,
-    borderBottomRightRadius:12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#CCCCCC',

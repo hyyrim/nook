@@ -163,7 +163,15 @@ export default function HomeScreen() {
             <>
               {/* Recent Saved */}
               <View style={styles.section}>
-                <SectionHeader icon="time-outline" label="최근 저장" />
+                <SectionHeader
+                  icon="time-outline"
+                  label="최근 저장"
+                  rightAction={
+                    recentItems.length > 0
+                      ? { label: '전체 보기', onPress: () => router.push('/recent-saved') }
+                      : undefined
+                  }
+                />
                 {visibleRecentItems.length > 0 ? (
                   visibleRecentItems.map((item) => (
                     <ContentCard
@@ -187,15 +195,6 @@ export default function HomeScreen() {
                     title="첫 콘텐츠를 저장해보세요"
                     subtitle="공유하기로 링크를 빠르게 모을 수 있어요"
                   />
-                )}
-                {recentItems.length > 0 && (
-                  <Pressable
-                    onPress={() => router.push('/recent-saved')}
-                    style={styles.seeAllRow}
-                  >
-                    <Text style={styles.seeAllText}>전체 보기</Text>
-                    <Ionicons name="chevron-forward" size={12} color={Colors.secondary} />
-                  </Pressable>
                 )}
               </View>
 
@@ -316,7 +315,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 18,
+    paddingBottom: 16,
   },
   appLogo: {
     height: 42,
@@ -339,39 +338,27 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingBottom: 28,
   },
+  // 최근 저장은 ContentCard(marginBottom: 9)가 마지막 카드에도 붙어 실제 갭이 +9px. 26 - 9 = 17로 상쇄
   section: {
-    marginBottom: 28,
+    marginBottom: 17,
   },
   discoverySection: {
-    marginBottom: 24,
+    marginBottom: 26,
   },
   discoverySectionWithNext: {
-    marginBottom: 28,
+    marginBottom: 26,
   },
   insightSection: {
-    marginBottom: 24,
+    marginBottom: 26,
   },
   emptyText: {
     fontSize: 13,
     color: Colors.tertiary,
     textAlign: 'center',
     paddingVertical: 24,
-  },
-  seeAllRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 3,
-    marginTop: 4,
-    paddingVertical: 4,
-  },
-  seeAllText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Colors.secondary,
   },
   rediscoverScroll: {
     gap: 11,

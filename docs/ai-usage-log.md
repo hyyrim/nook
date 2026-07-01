@@ -140,3 +140,9 @@
 | Claude Code | Interest Insight 홈 카드 추가 — 최근 14일 vs 이전 14일 카테고리 저장 수 비교 Top 1 (→ 결정 068) |
 | Claude Code | Phase 2 범위 정리 — 웹 + Chrome 확장 단계 분할 (백엔드 Edge Function 이전 / RN Web / 확장), `docs/progress.md` D 섹션 |
 | Claude Code | 온보딩 카테고리 직접 추가 — "+ 직접 추가" 칩 + CategoryBottomSheet 재사용 (→ 결정 069) |
+
+## 2026-07-01
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Codex | 카테고리 폴더 색상/아이콘 시스템 1차 구현 + 시뮬레이터 피드백 기반 폴더 카드, 바텀시트, 리포트/홈 UI 조정 (→ 결정 070) |

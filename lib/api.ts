@@ -3,6 +3,7 @@ import { classifyContent } from './ai';
 import { emit, markClassified, markClassifying } from './events';
 import { fetchLinkMetadata, isBadMetadataText, isGenericPlatformTitle, normalizeUrl, platformFallbackTitle } from './metadata';
 import { analytics, type EntrySource, type FailureReason } from './analytics';
+import { PRESET_CATEGORY_ICON_MAP } from '@/constants/categoryStyle';
 import type { Category, Content } from '@/types';
 
 async function requireUserId() {
@@ -112,24 +113,35 @@ export async function getCategoriesWithCounts() {
   }));
 }
 
-export async function createCategory(name: string) {
+export async function createCategory(
+  name: string,
+  options?: { color?: string | null; icon?: string | null },
+) {
   const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from('categories')
-    .insert({ user_id: userId, name })
+    .insert({
+      user_id: userId,
+      name,
+      color: options?.color ?? null,
+      icon: options?.icon ?? null,
+    })
     .select()
     .single();
   if (error) throw error;
   return data as Category;
 }
 
-export async function updateCategory(id: string, name: string) {
+export async function updateCategory(
+  id: string,
+  patch: { name?: string; color?: string | null; icon?: string | null },
+) {
   const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from('categories')
-    .update({ name })
+    .update(patch)
     .eq('user_id', userId)
     .eq('id', id)
     .select()
@@ -701,7 +713,12 @@ export async function createInitialCategories(names: string[]) {
     .eq('user_id', userId);
   if (count && count > 0) return [];
 
-  const rows = names.map(name => ({ user_id: userId, name }));
+  const rows = names.map((name) => ({
+    user_id: userId,
+    name,
+    icon: PRESET_CATEGORY_ICON_MAP[name] ?? null,
+    color: null,
+  }));
   const { data, error } = await supabase
     .from('categories')
     .insert(rows)

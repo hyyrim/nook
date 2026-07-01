@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography } from '@/constants';
 
@@ -13,11 +14,12 @@ type Props = {
   backLabel?: string;
   onBack?: () => void;
   rightAction?: RightAction;
+  titleAccessory?: ReactNode;
 };
 
 const SIDE_MIN_WIDTH = 70;
 
-export function NavHeader({ title, backLabel, onBack, rightAction }: Props) {
+export function NavHeader({ title, backLabel, onBack, rightAction, titleAccessory }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.side}>
@@ -29,7 +31,10 @@ export function NavHeader({ title, backLabel, onBack, rightAction }: Props) {
         ) : null}
       </View>
 
-      <Text style={styles.title} numberOfLines={1}>{title}</Text>
+      <View style={styles.titleWrap}>
+        {titleAccessory}
+        <Text style={styles.title} numberOfLines={1}>{title}</Text>
+      </View>
 
       <View style={[styles.side, styles.sideRight]}>
         {rightAction ? <RightActionView action={rightAction} /> : null}
@@ -104,9 +109,17 @@ const styles = StyleSheet.create({
   },
   title: {
     ...Typography.navTitle,
-    flex: 1,
+    flexShrink: 1,
     color: Colors.primary,
     textAlign: 'center',
+  },
+  titleWrap: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   iconButton: {
     width: 44,

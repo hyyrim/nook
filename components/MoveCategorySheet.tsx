@@ -1,6 +1,7 @@
 import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors } from '@/constants';
+import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategories, createCategory } from '@/lib/api';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
@@ -73,9 +74,9 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
     onClose();
   };
 
-  const handleAddCategory = async (name: string) => {
+  const handleAddCategory = async (data: { name: string; color: string | null; icon: string | null }) => {
     try {
-      const created = await createCategory(name);
+      const created = await createCategory(data.name, { color: data.color, icon: data.icon });
       setCategories((prev) => [...prev, created]);
       setShowAddSheet(false);
       handleSelect(created.id);
@@ -84,9 +85,9 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
     }
   };
 
-  const options = [
-    { id: null, name: '미분류' },
-    ...categories.map(c => ({ id: c.id, name: c.name })),
+  const options: Array<{ id: string | null; name: string; color: string | null; icon: string | null }> = [
+    { id: null, name: '미분류', color: null, icon: null },
+    ...categories.map(c => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
   ];
 
   return (
@@ -124,15 +125,25 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
               <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
                 {options.map(opt => {
                   const isSelected = opt.id === currentCategoryId;
+                  const isUncategorized = opt.id === null;
+                  const { bg } = getCategoryColor(opt.color);
+                  const iconName = isUncategorized ? 'file-tray-outline' : getCategoryIcon(opt.icon);
                   return (
                     <Pressable
                       key={opt.id ?? 'uncategorized'}
                       style={styles.option}
                       onPress={() => handleSelect(opt.id)}
                     >
-                      <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                        {opt.name}
-                      </Text>
+                      <View style={styles.optionLeft}>
+                        {iconName ? (
+                          <View style={[styles.optionIconWrap, { backgroundColor: bg }]}>
+                            <Ionicons name={iconName} size={16} color={Colors.primary} />
+                          </View>
+                        ) : null}
+                        <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                          {opt.name}
+                        </Text>
+                      </View>
                       {isSelected && (
                         <Ionicons name="checkmark" size={16} color={Colors.accent} />
                       )}
@@ -242,10 +253,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 4,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  optionIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   optionText: {
     fontSize: 15,
