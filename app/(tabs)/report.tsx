@@ -140,7 +140,10 @@ export default function ReportScreen() {
                 label="관심 분포"
                 description="저장한 관심사가 어떻게 나뉘는지 보여줘요."
               />
-              <DistributionCard stats={view.distribution} animationKey={entryAnimationKey} />
+              <DistributionCard
+                stats={view.distribution}
+                animationKey={`${entryAnimationKey}-${selectedWindowKey}`}
+              />
             </View>
 
             {view.subjects.length > 0 && (
@@ -256,7 +259,7 @@ function DistributionCard({
   animationKey,
 }: {
   stats: DistributionStat[];
-  animationKey: number;
+  animationKey: string;
 }) {
   return (
     <View style={styles.card}>
@@ -270,7 +273,12 @@ function DistributionCard({
             <Text style={styles.distPct}>{s.percentage}%</Text>
           </View>
           <View style={styles.barTrack}>
-            <AnimatedProgressBar percentage={s.percentage} index={i} animationKey={animationKey} />
+            <AnimatedProgressBar
+              key={`${animationKey}-${s.categoryId}-${s.percentage}`}
+              percentage={s.percentage}
+              index={i}
+              animationKey={animationKey}
+            />
           </View>
         </View>
       ))}
@@ -285,19 +293,21 @@ function AnimatedProgressBar({
 }: {
   percentage: number;
   index: number;
-  animationKey: number;
+  animationKey: string;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     progress.setValue(0);
-    Animated.timing(progress, {
+    const animation = Animated.timing(progress, {
       toValue: percentage,
       duration: 620,
       delay: index * 70,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
-    }).start();
+    });
+    animation.start();
+    return () => animation.stop();
   }, [animationKey, index, percentage, progress]);
 
   const width = progress.interpolate({
@@ -388,7 +398,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 26,
   },
   windowDropdown: {
     flexDirection: 'row',
@@ -557,7 +567,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 14,
-    marginTop: 4,
+    marginTop: -6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
   },

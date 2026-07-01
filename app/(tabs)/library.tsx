@@ -62,9 +62,9 @@ export default function LibraryScreen() {
     };
   }, [session, loadData]);
 
-  const handleAddCategory = async (name: string) => {
+  const handleAddCategory = async (data: { name: string; color: string | null; icon: string | null }) => {
     try {
-      await createCategory(name);
+      await createCategory(data.name, { color: data.color, icon: data.icon });
       await loadData();
       requestAnimationFrame(() => {
         scrollRef.current?.scrollToEnd({ animated: true });
@@ -100,6 +100,8 @@ export default function LibraryScreen() {
                 key={cat.id}
                 name={cat.name}
                 count={cat.count}
+                color={cat.color}
+                icon={cat.icon}
                 onPress={() => router.push(`/category/${cat.id}`)}
               />
             ))}

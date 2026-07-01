@@ -1,25 +1,52 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
+import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard, ScrollView, useWindowDimensions } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
+import {
+  CATEGORY_COLOR_PRESETS,
+  CATEGORY_DEFAULT_BG,
+  CATEGORY_ICON_PRESETS,
+  getCategoryColor,
+  type CategoryIconName,
+} from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
+
+type CategorySubmitData = {
+  name: string;
+  color: string | null;
+  icon: string | null;
+};
 
 type CategoryBottomSheetProps = {
   visible: boolean;
   mode: 'add' | 'edit';
   initialValue?: string;
+  initialColor?: string | null;
+  initialIcon?: string | null;
   existingNames?: string[];
   onClose: () => void;
-  onSubmit?: (name: string) => void;
+  onSubmit?: (data: CategorySubmitData) => void;
 };
 
-export function CategoryBottomSheet({ visible, mode, initialValue = '', existingNames = [], onClose, onSubmit }: CategoryBottomSheetProps) {
+export function CategoryBottomSheet({
+  visible,
+  mode,
+  initialValue = '',
+  initialColor = null,
+  initialIcon = null,
+  existingNames = [],
+  onClose,
+  onSubmit,
+}: CategoryBottomSheetProps) {
+  const { height: windowHeight } = useWindowDimensions();
   const [value, setValue] = useState(initialValue);
+  const [color, setColor] = useState<string | null>(initialColor);
+  const [icon, setIcon] = useState<string | null>(initialIcon);
   const [error, setError] = useState('');
   const [isMounted, setIsMounted] = useState(visible);
   const inputRef = useRef<TextInput>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(320)).current;
+  const sheetTranslateY = useRef(new Animated.Value(600)).current;
 
   const keyboard = useAnimatedKeyboard();
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
@@ -33,8 +60,10 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
 
   useEffect(() => {
     setValue(initialValue);
+    setColor(initialColor);
+    setIcon(initialIcon);
     setError('');
-  }, [initialValue, visible]);
+  }, [initialValue, initialColor, initialIcon, visible]);
 
   useEffect(() => {
     if (visible) {
@@ -63,7 +92,7 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
         useNativeDriver: true,
       }),
       Animated.timing(sheetTranslateY, {
-        toValue: 320,
+        toValue: 600,
         duration: 190,
         useNativeDriver: true,
       }),
@@ -75,6 +104,8 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
   const isEdit = mode === 'edit';
   const title = isEdit ? '카테고리 수정' : '카테고리 추가';
   const cta = isEdit ? '수정' : '추가';
+  const maxSheetHeight = windowHeight * 0.82;
+  const maxScrollHeight = Math.max(220, maxSheetHeight - 168);
 
   const handleValueChange = (text: string) => {
     setValue(text);
@@ -91,12 +122,22 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
       setError('이미 같은 이름의 카테고리가 있어요');
       return;
     }
-    onSubmit?.(trimmed);
+    onSubmit?.({ name: trimmed, color, icon });
     handleClose();
   };
 
+  const dismissKeyboardOnPickerTap = () => {
+    Keyboard.dismiss();
+  };
+
   return (
-    <Modal visible={isMounted} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal
+      visible={isMounted}
+      transparent
+      animationType="none"
+      presentationStyle="overFullScreen"
+      onRequestClose={handleClose}
+    >
       <Animated.View
         pointerEvents="none"
         style={[styles.dim, { opacity: backdropOpacity }]}
@@ -106,7 +147,7 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
           style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
           onStartShouldSetResponder={() => true}
         >
-          <Reanimated.View style={[styles.sheet, sheetAnimatedStyle]}>
+          <Reanimated.View style={[styles.sheet, { maxHeight: maxSheetHeight }, sheetAnimatedStyle]}>
             <View style={styles.dragHandle} />
 
             <View style={styles.header}>
@@ -116,33 +157,119 @@ export function CategoryBottomSheet({ visible, mode, initialValue = '', existing
               </Pressable>
             </View>
 
-            <View style={styles.form}>
-              <View>
-                <Text style={styles.label}>카테고리 이름</Text>
-                <TextInput
-                  ref={inputRef}
-                  style={styles.input}
-                  placeholder="예) AI, 디자인, 여행..."
-                  placeholderTextColor={Colors.tertiary}
-                  value={value}
-                  onChangeText={handleValueChange}
-                />
-                {error ? <Text style={Typography.errorText}>{error}</Text> : null}
-              </View>
-
-              <Pressable
-                onPress={handleSubmit}
-                style={[styles.ctaButton, !value.trim() && styles.ctaDisabled]}
+            <View style={[styles.scrollFrame, { maxHeight: maxScrollHeight }]}>
+              <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.ctaText}>{cta}</Text>
-              </Pressable>
+                <View style={styles.field}>
+                  <Text style={styles.label}>이름</Text>
+                  <TextInput
+                    ref={inputRef}
+                    style={styles.input}
+                    placeholder="예) AI, 디자인, 여행..."
+                    placeholderTextColor={Colors.tertiary}
+                    value={value}
+                    onChangeText={handleValueChange}
+                  />
+                  {error ? <Text style={Typography.errorText}>{error}</Text> : null}
+                </View>
+
+                <View style={styles.field}>
+                  <Text style={styles.label}>색상</Text>
+                  <View style={styles.swatchRow}>
+                    <Pressable
+                      key="no-color"
+                      onPress={() => {
+                        dismissKeyboardOnPickerTap();
+                        setColor(null);
+                      }}
+                      style={[
+                        styles.swatch,
+                        styles.swatchNoColor,
+                        color === null && styles.swatchSelected,
+                      ]}
+                    >
+                      <Ionicons name="close" size={14} color={Colors.tertiary} />
+                    </Pressable>
+                    {CATEGORY_COLOR_PRESETS.map((preset) => {
+                      const selected = color === preset.key;
+                      return (
+                        <Pressable
+                          key={preset.key}
+                          onPress={() => {
+                            dismissKeyboardOnPickerTap();
+                            setColor(preset.key);
+                          }}
+                          style={[
+                            styles.swatch,
+                            { backgroundColor: preset.bg },
+                            selected && styles.swatchSelected,
+                          ]}
+                        >
+                          {selected && <Ionicons name="checkmark" size={14} color={Colors.primary} />}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View style={styles.field}>
+                  <Text style={styles.label}>아이콘</Text>
+                  <View style={styles.iconGrid}>
+                    <Pressable
+                      key="no-icon"
+                      onPress={() => {
+                        dismissKeyboardOnPickerTap();
+                        setIcon(null);
+                      }}
+                      style={[
+                        styles.iconTile,
+                        icon === null && styles.iconTileSelected,
+                      ]}
+                    >
+                      <Ionicons name="close" size={15} color={Colors.tertiary} />
+                    </Pressable>
+                    {CATEGORY_ICON_PRESETS.map((iconName) => {
+                      const selected = icon === iconName;
+                      return (
+                        <Pressable
+                          key={iconName}
+                          onPress={() => {
+                            dismissKeyboardOnPickerTap();
+                            setIcon(iconName);
+                          }}
+                          style={[
+                            styles.iconTile,
+                            selected && styles.iconTileSelected,
+                          ]}
+                        >
+                          <Ionicons name={iconName as CategoryIconName} size={17} color={Colors.secondary} />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              </ScrollView>
             </View>
+
+            <Pressable
+              onPress={handleSubmit}
+              style={[styles.ctaButton, !value.trim() && styles.ctaDisabled]}
+            >
+              <Text style={styles.ctaText}>{cta}</Text>
+            </Pressable>
           </Reanimated.View>
         </Animated.View>
       </Pressable>
     </Modal>
   );
 }
+
+const SWATCH_SIZE = 30;
+const ICON_TILE_SIZE = 38;
 
 const styles = StyleSheet.create({
   dim: {
@@ -165,7 +292,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM,
     paddingTop: 12,
   },
   dragHandle: {
@@ -180,7 +306,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 18,
   },
   title: {
     fontSize: 18,
@@ -196,14 +322,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  form: {
-    gap: 10,
+  scrollFrame: {
+    flexShrink: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  scroll: {
+    flexGrow: 0,
+  },
+  scrollContent: {
+    paddingBottom: 8,
+  },
+  field: {
+    marginBottom: 18,
   },
   label: {
     fontSize: 12,
     fontWeight: '500',
     color: Colors.secondary,
-    marginBottom: 7,
+    marginBottom: 10,
   },
   input: {
     backgroundColor: Colors.background,
@@ -213,11 +350,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
   },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  swatch: {
+    width: SWATCH_SIZE,
+    height: SWATCH_SIZE,
+    borderRadius: SWATCH_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatchNoColor: {
+    backgroundColor: CATEGORY_DEFAULT_BG,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  swatchSelected: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  iconTile: {
+    width: ICON_TILE_SIZE,
+    height: ICON_TILE_SIZE,
+    borderRadius: 11,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconTileSelected: {
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.surface,
+  },
   ctaButton: {
     backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: 10,
   },
   ctaDisabled: {
     backgroundColor: '#C8C8C8',

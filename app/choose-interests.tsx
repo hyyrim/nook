@@ -34,7 +34,8 @@ export default function ChooseInterestsScreen() {
     });
   };
 
-  const handleAddCustom = (name: string) => {
+  const handleAddCustom = (data: { name: string; color: string | null; icon: string | null }) => {
+    const name = data.name;
     if (allCategories.some(c => c.toLowerCase() === name.toLowerCase())) return;
     setCustomCategories(prev => [...prev, name]);
     setSelected(prev => (prev.length < MAX_SELECT ? [...prev, name] : prev));

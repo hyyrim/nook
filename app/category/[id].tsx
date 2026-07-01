@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
+import { getCategoryIcon } from '@/constants/categoryStyle';
 import { ContentCard } from '@/components/ContentCard';
 import { SearchBar } from '@/components/SearchBar';
 import { ActionSheet } from '@/components/ActionSheet';
@@ -102,7 +103,8 @@ export default function CategoryDetailScreen() {
     return on('content-classified', loadData);
   }, [session, loadData]);
 
-  const catName = isUncategorized ? '미분류' : (category?.name ?? 'Category');
+  const catName = isUncategorized ? '미분류' : (category?.name ?? '');
+  const categoryIcon = getCategoryIcon(category?.icon);
 
   const filtered = query.trim() === ''
     ? articles
@@ -112,10 +114,10 @@ export default function CategoryDetailScreen() {
         a.tags.some(t => t.toLowerCase().includes(query.toLowerCase()))
       );
 
-  const handleUpdate = async (name: string) => {
+  const handleUpdate = async (data: { name: string; color: string | null; icon: string | null }) => {
     if (!category) return;
     try {
-      await updateCategory(category.id, name);
+      await updateCategory(category.id, data);
       loadData();
     } catch (e: any) {
       Alert.alert('Error', e.message);
@@ -269,6 +271,11 @@ export default function CategoryDetailScreen() {
             title={catName}
             backLabel="폴더"
             onBack={() => router.back()}
+            titleAccessory={
+              !isUncategorized && categoryIcon
+                ? <Ionicons name={categoryIcon} size={15} color={Colors.primary} />
+                : undefined
+            }
             rightAction={
               isUncategorized
                 ? { type: 'text', label: '선택', onPress: enterSelectionMode }
@@ -371,6 +378,7 @@ export default function CategoryDetailScreen() {
           <ActionSheet
             visible={showActionSheet}
             onClose={() => setShowActionSheet(false)}
+            handoffDelay={320}
             actions={[
               { label: '선택', onPress: enterSelectionMode },
               { label: '카테고리 수정', onPress: () => setShowEditSheet(true) },
@@ -381,6 +389,8 @@ export default function CategoryDetailScreen() {
             visible={showEditSheet}
             mode="edit"
             initialValue={category?.name ?? ''}
+            initialColor={category?.color ?? null}
+            initialIcon={category?.icon ?? null}
             existingNames={allCategoryNames}
             onClose={() => setShowEditSheet(false)}
             onSubmit={handleUpdate}

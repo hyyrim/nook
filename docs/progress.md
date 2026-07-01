@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-06-29 (22차 — 온보딩 카테고리 직접 추가)
+최종 업데이트: 2026-07-01 (23차 — 카테고리 폴더 색상/아이콘 시스템)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
 
@@ -307,6 +307,23 @@
 | `createInitialCategories(selected)` 기존 함수 그대로 사용 — preset/custom 구분 없이 names만 전달 | ✅ |
 | TypeScript 검증 통과 | ✅ |
 
+## 완료 (23차 — 카테고리 폴더 색상/아이콘 시스템)
+
+| 항목 | 상태 |
+|------|------|
+| `supabase/migrations/004_add_category_color_icon.sql` — `categories.color`, `categories.icon` 컬럼 추가 + 기본 12개 카테고리 icon backfill | ✅ |
+| `types/Category`에 `color`, `icon` nullable 필드 추가 | ✅ |
+| `constants/categoryStyle.ts` 추가 — 카테고리 컬러 preset, 아이콘 preset, 기본 카테고리 icon map 관리 (→ 결정 070) | ✅ |
+| `createCategory`, `updateCategory`, `createInitialCategories`가 color/icon 저장을 지원하도록 확장 | ✅ |
+| `FolderCard` — 폴더 카드에 색상 탭/배경 적용, 아이콘이 있으면 기존 아이콘 위치에 `[아이콘] [폴더명]` 표시, 아이콘 없으면 폴더명만 표시 | ✅ |
+| `CategoryBottomSheet` — 카테고리 추가/수정에서 이름 + 색상 + 아이콘 선택 지원. 긴 icon grid가 CTA와 겹치지 않도록 scroll 영역 높이 분리 | ✅ |
+| `MoveCategorySheet` — 카테고리 변경 옵션에 컬러/아이콘 표시. 아이콘 없는 카테고리는 텍스트만 표시 | ✅ |
+| `Category Detail` — 제목 옆에 선택된 카테고리 아이콘 표시, 로딩 중 `Category` fallback 제거 | ✅ |
+| `ActionSheet` 핸드오프 딜레이 — Category Detail의 "카테고리 수정"도 Content Detail과 동일하게 320ms 적용 | ✅ |
+| Report progress bar — 기간 필터 변경 시 모든 카테고리 bar가 다시 애니메이션되도록 animation key 보강 | ✅ |
+| 홈 섹션 간격 정리 + 폴더 카드 press scale 제거로 미세한 버벅임 완화 | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
 ## 완료 (출시 전 회귀 — 2026-06-25 이전)
 
 | 항목 | 상태 |
@@ -331,6 +348,7 @@
 | Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
 | 리스트 viewType 설정 (콘텐츠) | 미완료. Category Detail / Recent Saved / Search 등 콘텐츠 리스트에서 그리드 ↔ 리스트 전환 옵션 |
 | 폴더 목록 뷰 토글 (카테고리) | 미완료. 폴더 탭 자체를 그리드(현재) ↔ 리스트로 전환. 컬러/아이콘 시스템 도입 후 리스트에서도 시각 구분 유지 가능. v1.1.0 스코프에서는 제외 |
+| 카테고리 아이콘 세트 교체 검토 | 미완료. 현재 Ionicons `-outline` 28개. 웹 배포까지 통일된 톤을 위해 Lucide(웹 호환) 또는 Feather로 교체 검토. SF Symbols는 iOS 전용이라 배제 |
 | 오래된 링크 정리 제안 | 검토 필요. 링크 앱 특성상 저장된 링크의 수명 관리가 중요함. 자동 삭제보다는 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향이 안전 |
 
 ### B. CLAUDE.md 2차 범위 (1차 완료 + 남은 항목)
@@ -351,7 +369,7 @@
 
 | 항목 | 비고 |
 |------|------|
-| 카테고리 폴더 컬러칩 | 각 카테고리에 컬러 지정해 폴더 카드/Content Detail에서 시각 구분. DB 스키마 `categories.color` 컬럼 필요 |
+| 카테고리 폴더 컬러칩 | ✅ 23차 1차 완료. `categories.color/icon` 컬럼 + 폴더 카드/이동 시트/수정 시트 반영. 향후 필요 시 정렬/리스트 뷰와 함께 고도화 |
 | 다른 플랫폼 본문 복구 | X는 oEmbed fallback, Notion은 public page API로 보강 완료. Naver Blog / Medium / Velog 본문 복구는 필요 시 별도 평가 |
 | 링크 수명 관리 | 1차는 수동 삭제 UX 유지/강화. 2차는 `viewed_at`/`saved_at` 기준 정리 후보 섹션, 일괄 선택, 보관 또는 삭제 검토. 완전 자동 삭제는 opt-in + 복구 기간이 있을 때만 Phase 3로 검토 |
 
