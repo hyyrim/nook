@@ -1,12 +1,14 @@
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Colors } from '@/constants';
 import { createInitialCategories } from '@/lib/api';
 import { analytics } from '@/lib/analytics';
+import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
+import { Ionicons } from '@expo/vector-icons';
 
-const CATEGORIES = [
+const PRESET_CATEGORIES = [
   'AI', '테크', '경제', '비즈니스', '커리어', '디자인',
   '인테리어', '여행', '음식', '음악', '영화', '운동',
 ];
@@ -17,6 +19,12 @@ const MAX_SELECT = 6;
 export default function ChooseInterestsScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const allCategories = [...PRESET_CATEGORIES, ...customCategories];
+  const canProceed = selected.length >= MIN_SELECT;
 
   const toggle = (cat: string) => {
     setSelected(prev => {
@@ -26,8 +34,16 @@ export default function ChooseInterestsScreen() {
     });
   };
 
-  const [saving, setSaving] = useState(false);
-  const canProceed = selected.length >= MIN_SELECT;
+  const handleAddCustom = (name: string) => {
+    if (allCategories.some(c => c.toLowerCase() === name.toLowerCase())) return;
+    setCustomCategories(prev => [...prev, name]);
+    setSelected(prev => (prev.length < MAX_SELECT ? [...prev, name] : prev));
+  };
+
+  const handleRemoveCustom = (name: string) => {
+    setCustomCategories(prev => prev.filter(c => c !== name));
+    setSelected(prev => prev.filter(c => c !== name));
+  };
 
   const handleGetStarted = async () => {
     setSaving(true);
@@ -54,8 +70,12 @@ export default function ChooseInterestsScreen() {
         </View>
 
         {/* Chips */}
-        <View style={styles.chipGrid}>
-          {CATEGORIES.map(cat => {
+        <ScrollView
+          style={styles.chipScroll}
+          contentContainerStyle={styles.chipGrid}
+          showsVerticalScrollIndicator={false}
+        >
+          {PRESET_CATEGORIES.map(cat => {
             const isSelected = selected.includes(cat);
             return (
               <Pressable
@@ -69,7 +89,41 @@ export default function ChooseInterestsScreen() {
               </Pressable>
             );
           })}
-        </View>
+
+          {customCategories.map(cat => {
+            const isSelected = selected.includes(cat);
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => toggle(cat)}
+                style={[styles.chip, styles.customChip, isSelected && styles.chipSelected]}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                  {cat}
+                </Text>
+                <Pressable
+                  onPress={() => handleRemoveCustom(cat)}
+                  hitSlop={8}
+                  style={styles.removeButton}
+                >
+                  <Ionicons
+                    name="close"
+                    size={12}
+                    color={isSelected ? Colors.surface : Colors.secondary}
+                  />
+                </Pressable>
+              </Pressable>
+            );
+          })}
+
+          <Pressable
+            onPress={() => setShowAddSheet(true)}
+            style={styles.addChip}
+          >
+            <Ionicons name="add" size={14} color={Colors.secondary} />
+            <Text style={styles.addChipText}>직접 추가</Text>
+          </Pressable>
+        </ScrollView>
 
         {/* Bottom */}
         <View style={styles.bottom}>
@@ -95,6 +149,14 @@ export default function ChooseInterestsScreen() {
           </Pressable>
         </View>
       </View>
+
+      <CategoryBottomSheet
+        visible={showAddSheet}
+        mode="add"
+        existingNames={allCategories}
+        onClose={() => setShowAddSheet(false)}
+        onSubmit={handleAddCustom}
+      />
     </SafeAreaView>
   );
 }
@@ -124,10 +186,14 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     lineHeight: 20,
   },
+  chipScroll: {
+    flex: 1,
+  },
   chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    paddingBottom: 12,
   },
   chip: {
     backgroundColor: Colors.surface,
@@ -141,6 +207,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
   },
+  customChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingRight: 12,
+  },
   chipText: {
     fontSize: 14,
     fontWeight: '500',
@@ -150,8 +222,32 @@ const styles = StyleSheet.create({
     color: Colors.surface,
     fontWeight: '600',
   },
+  removeButton: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'transparent',
+    borderRadius: 100,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+  },
+  addChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.secondary,
+  },
   bottom: {
-    marginTop: 'auto',
+    paddingTop: 8,
     paddingBottom: 20,
     gap: 12,
     alignItems: 'center',
