@@ -449,6 +449,52 @@ Archived records:
 
 ---
 
+## 073. 카테고리 콘텐츠 뷰 타입 토글 (2026-07-02)
+
+**결정**: Category Detail에서 콘텐츠 리스트를 list ↔ grid로 사용자가 토글할 수 있게 한다. 프리퍼런스는 SecureStore에 저장해 다음 진입 시에도 유지한다. 기본값은 `list`.
+
+**배경**: 폴더 안 콘텐츠가 쌓이면 list 뷰는 스캔이 느리고, 이미지 중심 소스(Instagram, YouTube 등)는 썸네일 grid가 훨씬 빠르게 훑어진다. 사용자 선호가 폴더 성격에 따라 다르지만, 1차에서는 전역 프리퍼런스로 시작한다.
+
+**결과**:
+- `lib/preferences.ts` — SecureStore 기반 `ContentViewType` (`'list' | 'grid'`) get/set 함수. IO 실패는 silent, unknown 값은 `list` fallback.
+- `components/GridContentCard.tsx` — 2열 그리드용 카드. 폭 48%, aspect ratio 4:3 썸네일, 선택 모드 체크박스, Notion 도메인 아이콘 지원.
+- `app/category/[id].tsx` — 헤더 `{count}개 저장됨` 옆에 `list-outline` / `grid-outline` 토글 버튼. 선택 모드에서는 숨김. 토글 시 상태 즉시 반영 + SecureStore 비동기 저장.
+- 리스트 렌더링부는 `commonProps` 추출 후 `viewType === 'grid'` 분기로 `GridContentCard` vs `ContentCard`.
+
+**대안 검토**:
+- **(a) 전역 뷰 설정 (Recent Saved / Search / Category 통합)** — 스코프 확장 부담과 검색 결과 grid의 유용성 논쟁이 있어 1차에서는 Category Detail만.
+- **(b) 폴더 단위 개별 저장** — 폴더마다 다른 뷰 타입. 데이터 모델 확장 필요, 사용 패턴 근거 부족.
+- **(c) AsyncStorage 저장** — 기존 세션/프리퍼런스가 SecureStore에 있어 저장 계층 일관성 유지 목적으로 SecureStore 채택.
+
+**제약 / 트레이드오프**: 뷰 타입은 전역 프리퍼런스라 폴더별 최적 뷰가 달라도 하나만 선택 가능. 사용자 요청이 쌓이면 폴더별 저장으로 확장할 수 있게 함수 시그니처를 열어둠.
+
+**교훈**: 개인 아카이브의 뷰 옵션은 콘텐츠 특성(썸네일 존재 여부, 도메인 다양성)에 따라 선호가 갈린다. 사용자에게 선택권을 주되 기본값(list)은 텍스트 스캔에 강한 쪽을 유지한다.
+
+---
+
+## 074. 재발견/잊고있던 콘텐츠 전체 화면 + 더보기 진입점 (2026-07-02)
+
+**결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 가로 스크롤 마지막에 "더보기" 카드 진입점을 두고, `/rediscover`, `/forgotten` 세로 리스트 전체 화면(각 20개, 큐레이션 로직 유지)을 추가한다.
+
+**배경**: 홈에서 가로 스크롤 10개만 보이는 구조로는 사용자가 전체 후보 콘텐츠를 파악하기 어렵다는 피드백. 최근 저장(Recent Saved)이 이미 `/recent-saved`로 전체 리스트를 제공하듯, 발견/잊고있던도 동일 패턴으로 확장.
+
+**결과**:
+- `app/rediscover.tsx` 신규 — `getRediscoverContents(20)` 세로 리스트. NavHeader "발견된 콘텐츠". empty/error/loading 상태 처리.
+- `app/forgotten.tsx` 신규 — `getForgottenContents(20)` 세로 리스트. NavHeader "잊고 있던 콘텐츠".
+- `components/HorizontalMoreCard.tsx` 신규 — 가로 스크롤 끝에 붙는 원형 chevron 아이콘 + "더보기" 라벨 카드. 폭 56, height 183 고정(RediscoverCard 높이와 일치). 배경 투명, 아이콘 원만 `Colors.surface`.
+- `app/(tabs)/index.tsx` — 발견/잊고있던 FlatList에 `ListFooterComponent`로 `HorizontalMoreCard` 부착.
+- `app/_layout.tsx` — `rediscover`, `forgotten` Stack Screen을 `slide_from_right`로 등록.
+- 큐레이션 로직(카테고리당 최대 2개 다양성 제한)은 유지 — "전체 보기"라는 라벨보다 "더보기"로 톤 다운.
+
+**대안 검토**:
+- **(a) SectionHeader 우측에 아이콘 진입점** — 처음 시도한 방향이지만 "평소보다 늘었어요"(Interest Insight) 카드의 chevron 위치와 세로 정렬이 어긋나 이질감. 진입점을 콘텐츠 스크롤 끝에 두는 편이 자연스러움.
+- **(b) 큐레이션 로직 해제 (제한 없이 전체 후보)** — "전체 보기"라는 이름에 더 부합하지만 발견/잊고있던의 정의(균형있게 큐레이션된 재발견)가 흐려짐. 20개 상한 + 다양성 유지가 UX 정체성에 맞음.
+- **(c) 필터/정렬 옵션 추가** — 필요할 때 후속으로. 1차는 세로 리스트만.
+
+**교훈**: 진입점 아이콘 위치는 인접 카드의 정렬 축과 함께 봐야 한다. 섹션 헤더 우측 아이콘은 논리적으로 자연스러워도 다른 카드의 시각적 흐름과 어긋나면 이질감을 만든다. 콘텐츠 스크롤의 끝에서 이어지는 "더보기" 카드는 "다 보고 나서 더" 라는 자연스러운 인지 흐름을 만든다.
+
+---
+
 ## 075. 재발견/잊고있던 세션 안정성 — sticky + AppState 30분 + pull-to-refresh (2026-07-02)
 
 **결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 카드를 탭해 상세를 열고 돌아왔을 때 방금 본 카드가 그 자리에 남아있도록, discovery(발견/잊고있던) 페치를 세션 첫 마운트 + 앱 30분 백그라운드 후 복귀 + pull-to-refresh 3가지 트리거로 제한한다. 삭제 이벤트는 서버 재페치 없이 로컬 배열에서 해당 id만 제거.
