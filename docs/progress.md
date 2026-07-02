@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-01 (25차 — 문서 로그 archive 정리)
+최종 업데이트: 2026-07-02 (26차 — 카테고리 콘텐츠 뷰 타입 토글)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
 > Phase 1 완료 기록은 `docs/archive/progress-phase-1.md`에 보관합니다.
@@ -10,7 +10,7 @@
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.0 |
-| 최근 앱 작업 | 24차 — 카테고리 순서 수동 편집 |
+| 최근 앱 작업 | 26차 — 카테고리 콘텐츠 뷰 타입 토글 |
 | 최근 문서 작업 | 25차 — 문서 로그 archive 정리 |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
@@ -111,6 +111,17 @@
 | 루트의 `decisions.md`, `ai-usage-log.md`, `progress.md`는 현재 Phase 기록용으로 경량화 | ✅ |
 | `AGENTS.md` 문서 운영 규칙을 archive 구조에 맞게 업데이트 | ✅ |
 
+## 완료 (26차 — 카테고리 콘텐츠 뷰 타입 토글)
+
+| 항목 | 상태 |
+|------|------|
+| `lib/preferences.ts` 신규 — SecureStore 기반 `ContentViewType` (`'list' \| 'grid'`) get/set (→ 결정 073) | ✅ |
+| `components/GridContentCard.tsx` 신규 — 2열 grid, aspect ratio 4:3 썸네일, 선택 모드 체크박스 | ✅ |
+| `app/category/[id].tsx` — 헤더 우상단 `list-outline` / `grid-outline` 토글 아이콘 (선택 모드에서는 숨김) | ✅ |
+| 마운트 시 프리퍼런스 로드 → 토글 시 즉시 반영 + 비동기 저장 | ✅ |
+| 리스트 렌더링 `commonProps` 추출 + `viewType === 'grid'` 분기 | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
 ## Phase 2 범위
 
 ### A. Phase 1 검토 발견 이슈 (우선순위 후보)
@@ -120,7 +131,7 @@
 | 온보딩 화면에서 카테고리 직접 추가 | ✅ 22차 완료 (결정 069). "+ 직접 추가" 칩 + CategoryBottomSheet 재사용 |
 | 카테고리 순서 변경 | ✅ 24차 완료 (결정 071). 수동 정렬만 도입. 편집 전용 2depth 화면 + `react-native-draggable-flatlist` 세로 리스트 드래그. 자동 정렬 옵션(이름순/저장순/최근순)은 백로그 유지 |
 | Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
-| 리스트 viewType 설정 (콘텐츠) | 미완료. Category Detail / Recent Saved / Search 등 콘텐츠 리스트에서 그리드 ↔ 리스트 전환 옵션 |
+| 리스트 viewType 설정 (콘텐츠) | ✅ 26차 Category Detail 1차 완료 (결정 073). Recent Saved / Search 등 다른 리스트 확장은 필요 시 후속 |
 | 폴더 목록 뷰 토글 (카테고리) | 미완료. 폴더 탭 자체를 그리드(현재) ↔ 리스트로 전환. 컬러/아이콘 시스템 도입 후 리스트에서도 시각 구분 유지 가능. v1.1.0 스코프에서는 제외 |
 | 카테고리 아이콘 세트 교체 검토 | 미완료. 현재 Ionicons `-outline` 28개. 웹 배포까지 통일된 톤을 위해 Lucide(웹 호환) 또는 Feather로 교체 검토. SF Symbols는 iOS 전용이라 배제 |
 | 오래된 링크 정리 제안 | 검토 필요. 링크 앱 특성상 저장된 링크의 수명 관리가 중요함. 자동 삭제보다는 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향이 안전 |
