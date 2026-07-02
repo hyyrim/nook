@@ -452,7 +452,7 @@ export async function deleteContent(id: string) {
     .eq('user_id', userId)
     .eq('id', id);
   if (error) throw error;
-  emit('content-deleted');
+  emit('content-deleted', [id]);
 }
 
 export async function moveContents(ids: string[], categoryId: string | null) {
@@ -490,7 +490,7 @@ export async function deleteContents(ids: string[]) {
     .eq('user_id', userId)
     .in('id', ids);
   if (error) throw error;
-  emit('content-deleted');
+  emit('content-deleted', ids);
 }
 
 export async function markContentViewed(id: string) {

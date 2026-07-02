@@ -492,3 +492,35 @@ Archived records:
 - **(c) 필터/정렬 옵션 추가** — 필요할 때 후속으로. 1차는 세로 리스트만.
 
 **교훈**: 진입점 아이콘 위치는 인접 카드의 정렬 축과 함께 봐야 한다. 섹션 헤더 우측 아이콘은 논리적으로 자연스러워도 다른 카드의 시각적 흐름과 어긋나면 이질감을 만든다. 콘텐츠 스크롤의 끝에서 이어지는 "더보기" 카드는 "다 보고 나서 더" 라는 자연스러운 인지 흐름을 만든다.
+
+---
+
+## 075. 재발견/잊고있던 세션 안정성 — sticky + AppState 30분 + pull-to-refresh (2026-07-02)
+
+**결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 카드를 탭해 상세를 열고 돌아왔을 때 방금 본 카드가 그 자리에 남아있도록, discovery(발견/잊고있던) 페치를 세션 첫 마운트 + 앱 30분 백그라운드 후 복귀 + pull-to-refresh 3가지 트리거로 제한한다. 삭제 이벤트는 서버 재페치 없이 로컬 배열에서 해당 id만 제거.
+
+**배경**: `getRediscoverContents`는 `interest × forgottenness` 점수로 랭킹하는데, 콘텐츠 상세를 열면 `viewed_at`이 갱신돼 forgottenness가 0.1 (최소값)로 떨어지고 상위 10위 안에서 밀림. `getForgottenContents`는 `viewed_at < 14일 전` 필터라 상세를 여는 순간 후보 풀에서 아예 빠짐. 결과적으로 사용자가 홈 → 카드 탭 → 상세 → 홈 복귀했을 때 방금 본 카드가 사라짐 → "왜 없어졌지?" 인지 이질감. 사용자 요청은 "탭하고 돌아왔을 때 안 없어졌으면 좋겠다".
+
+**결과**:
+- `app/(tabs)/index.tsx`:
+  - `loadData` 단일 loader를 `loadFresh`(최근 저장 + Interest Insight) / `loadDiscovery`(발견 + 잊고있던)로 분리
+  - `useFocusEffect`는 항상 `loadFresh`만 실행. discovery는 `discoveryLoadedRef`가 false일 때만(세션 첫 마운트) 실행.
+  - `content-saved` / `content-classified` 이벤트: `loadFresh`만 호출. discovery는 건드리지 않음 — Rediscover는 `minAgeDays: 2`, Forgotten은 `days: 14`라 방금 저장/분류된 콘텐츠는 어차피 후보가 될 수 없음.
+  - `content-deleted` 이벤트: 이벤트 payload로 넘긴 id들을 `recentItems` / `rediscoverItems` / `forgottenItems`에서 로컬 filter로 제거. 서버 왕복 없음. + `loadFresh`로 최근/insight 갱신.
+  - `AppState` change 리스너 추가: background 진입 시각을 ref에 기록, active로 복귀 시 30분(`STALE_MS = 30 * 60 * 1000`) 이상 지났으면 `loadDiscovery` 재실행.
+  - `<ScrollView>`에 `RefreshControl` 부착. `onRefresh`는 fresh + discovery 병렬 재페치.
+- `lib/events.ts`: `emit(event, payload?)` 시그니처 확장. 기존 리스너는 payload 무시로 하위 호환.
+- `lib/api.ts`: `deleteContent(id)` → `emit('content-deleted', [id])`, `deleteContents(ids)` → `emit('content-deleted', ids)`.
+
+**대안 검토**:
+- **(A) minimal — discovery 마운트 1회 + delete 로컬 filter만** — 가장 짧지만 장시간 세션에서 discovery가 stale. 며칠 앱 켜두면 새 후보가 안 뜨고 지난 후보도 안 사라짐.
+- **(B) 서버 sematics — viewed_at grace period** — `getRediscoverContents`/`getForgottenContents`에 "최근 5~10분 이내 조회는 미조회로 간주" 룰. 클라이언트 코드 최소지만 "방금 다시 본 걸 재발견에 두는 게 맞나?" 시맨틱 논쟁 여지. 사용자 요청과 부합도 애매.
+- **(C) sticky IDs 스냅샷** — 첫 로드 시 표시된 id를 스냅샷으로 저장, 리로드 시 fresh 후보와 union해 원래 위치 유지. 가장 강력하지만 로직 복잡도와 순서 관리 부담.
+- 최종은 **A안 + AppState 30분 룰 + pull-to-refresh**로 조합. A안의 stale 문제를 AppState 트리거로 자연스럽게 해소하고, 급할 때는 사용자가 명시적으로 새로고침 가능.
+
+**제약 / 트레이드오프**:
+- `save` / `classify` 이벤트에서 discovery를 안 건드리기 때문에, 만약 향후 `minAgeDays`가 0으로 낮아진다면 이 로직도 재검토 필요.
+- `content-deleted` payload 규약이 `string[]`로 고정됨. 향후 다른 이벤트가 payload를 쓴다면 타입 안전성을 위해 이벤트별 payload 타입 매핑을 도입해야 할 수 있음.
+- 세션 첫 마운트 트리거는 `discoveryLoadedRef`(ref). 하단 탭이 언마운트되지 않는 한 세션 내내 재로드 없음 — expo-router 탭의 기본 동작에 의존.
+
+**교훈**: "새로고침"의 트리거 설계는 사용자 인지 흐름과 데이터 신선도 사이의 균형이다. 자동 트리거만 두면 UX 안정성이 흔들리고, 아무 트리거도 없으면 데이터가 얼어붙는다. **자동(수명 30분) + 명시(pull-to-refresh)의 이중 트리거**가 이 균형점을 안전하게 잡는다. 그리고 이벤트 페이로드는 "필요할 때" 미리 확장해두면 파급이 작다 — id 정보 하나 넘기는 것으로 서버 왕복 하나를 절약.

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, FlatList, StyleSheet, Pressable, ActivityIndicator, Image, type ViewToken } from 'react-native';
+import { View, Text, ScrollView, FlatList, StyleSheet, Pressable, ActivityIndicator, Image, RefreshControl, AppState, type ViewToken, type AppStateStatus } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -30,6 +30,7 @@ export default function HomeScreen() {
   const [insight, setInsight] = useState<InterestInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // §12.4 Rediscover impression — viewport 진입 시 발화. 세션당 같은 content_id는 1회만(라이브러리 dedup).
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
@@ -39,50 +40,111 @@ export default function HomeScreen() {
     }
   }).current;
 
-  const loadData = useCallback(async () => {
+  // 재발견/잊고있던은 콘텐츠 상세를 열면 viewed_at이 갱신돼 다음 페치에서 순위가 떨어지거나 조건에서 빠짐.
+  // 사용자는 홈 복귀 시 방금 본 카드가 그 자리에 남아있길 기대 → discovery는 아래 트리거에서만 재페치:
+  //  1) 세션 첫 마운트
+  //  2) 앱이 30분 이상 백그라운드에 있다가 포그라운드로 돌아왔을 때
+  //  3) 사용자가 pull-to-refresh 했을 때
+  // 삭제 이벤트는 서버 재페치 없이 로컬 배열에서만 id를 걸러냄.
+  const discoveryLoadedRef = useRef(false);
+  const backgroundedAtRef = useRef<number | null>(null);
+  const STALE_MS = 30 * 60 * 1000;
+
+  const loadFresh = useCallback(async () => {
     if (isAuthLoading) return;
     if (!session) {
       setLoading(false);
       return;
     }
-
     setLoadError(false);
     try {
-      const [recent, rediscover, forgotten, nextInsight] = await Promise.all([
+      const [recent, nextInsight] = await Promise.all([
         getRecentContents(6),
-        getRediscoverContents(10),
-        getForgottenContents(10),
         getInterestInsight(),
       ]);
       setRecentItems(recent);
-      setRediscoverItems(rediscover);
-      setForgottenItems(forgotten);
       setInsight(nextInsight);
     } catch (e) {
-      console.error('Home load error:', e);
+      console.error('Home fresh load error:', e);
       setLoadError(true);
     } finally {
       setLoading(false);
     }
   }, [session, isAuthLoading]);
 
+  const loadDiscovery = useCallback(async () => {
+    if (isAuthLoading || !session) return;
+    try {
+      const [rediscover, forgotten] = await Promise.all([
+        getRediscoverContents(10),
+        getForgottenContents(10),
+      ]);
+      setRediscoverItems(rediscover);
+      setForgottenItems(forgotten);
+      discoveryLoadedRef.current = true;
+    } catch (e) {
+      console.error('Home discovery load error:', e);
+    }
+  }, [session, isAuthLoading]);
+
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      void loadFresh();
+      if (!discoveryLoadedRef.current) {
+        void loadDiscovery();
+      }
+    }, [loadFresh, loadDiscovery])
   );
 
+  // 삭제된 id는 로컬 배열에서만 제거 (서버 재페치 안 함 — 재발견 안정성 유지).
   useEffect(() => {
     if (!session) return;
-    const offSaved = on('content-saved', loadData);
-    const offClassified = on('content-classified', loadData);
-    const offDeleted = on('content-deleted', loadData);
+    const offSaved = on('content-saved', () => { void loadFresh(); });
+    const offClassified = on('content-classified', () => { void loadFresh(); });
+    const offDeleted = on('content-deleted', (payload) => {
+      const ids = Array.isArray(payload) ? (payload as string[]) : [];
+      if (ids.length > 0) {
+        const drop = new Set(ids);
+        setRecentItems((prev) => prev.filter((it) => !drop.has(it.id)));
+        setRediscoverItems((prev) => prev.filter((it) => !drop.has(it.id)));
+        setForgottenItems((prev) => prev.filter((it) => !drop.has(it.id)));
+      }
+      void loadFresh();
+    });
     return () => {
       offSaved();
       offClassified();
       offDeleted();
     };
-  }, [session, loadData]);
+  }, [session, loadFresh]);
+
+  // AppState: 30분 이상 백그라운드 후 복귀하면 discovery 새로고침.
+  useEffect(() => {
+    const handleChange = (status: AppStateStatus) => {
+      if (status === 'background') {
+        backgroundedAtRef.current = Date.now();
+        return;
+      }
+      if (status === 'active') {
+        const bgAt = backgroundedAtRef.current;
+        backgroundedAtRef.current = null;
+        if (bgAt && Date.now() - bgAt >= STALE_MS) {
+          void loadDiscovery();
+        }
+      }
+    };
+    const sub = AppState.addEventListener('change', handleChange);
+    return () => sub.remove();
+  }, [loadDiscovery]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([loadFresh(), loadDiscovery()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadFresh, loadDiscovery]);
 
   const secondarySectionCount =
     (rediscoverItems.length > 0 ? 1 : 0) +
@@ -97,7 +159,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.tertiary} />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Image
@@ -117,7 +185,7 @@ export default function HomeScreen() {
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : loadError ? (
-            <ErrorState onRetry={loadData} />
+            <ErrorState onRetry={onRefresh} />
           ) : recentItems.length === 0 && rediscoverItems.length === 0 && forgottenItems.length === 0 && !insight ? (
             <View style={styles.welcomeCard}>
               <View style={styles.welcomeIconWrap}>

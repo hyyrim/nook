@@ -1,4 +1,4 @@
-type Listener = () => void;
+type Listener = (payload?: unknown) => void;
 const listeners: Record<string, Set<Listener>> = {};
 
 export function on(event: string, listener: Listener) {
@@ -7,8 +7,8 @@ export function on(event: string, listener: Listener) {
   return () => { listeners[event].delete(listener); };
 }
 
-export function emit(event: string) {
-  listeners[event]?.forEach(fn => fn());
+export function emit(event: string, payload?: unknown) {
+  listeners[event]?.forEach(fn => fn(payload));
 }
 
 // 비동기 AI 분류가 진행 중인 콘텐츠 ID 추적.

@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-02 (27차 — 재발견/잊고있던 전체 화면 + 더보기 진입점)
+최종 업데이트: 2026-07-02 (28차 — 재발견/잊고있던 세션 안정성)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
 > Phase 1 완료 기록은 `docs/archive/progress-phase-1.md`에 보관합니다.
@@ -10,7 +10,7 @@
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.0 |
-| 최근 앱 작업 | 27차 — 재발견/잊고있던 전체 화면 + 더보기 진입점 |
+| 최근 앱 작업 | 28차 — 재발견/잊고있던 세션 안정성 |
 | 최근 문서 작업 | 25차 — 문서 로그 archive 정리 |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
@@ -111,16 +111,18 @@
 | 루트의 `decisions.md`, `ai-usage-log.md`, `progress.md`는 현재 Phase 기록용으로 경량화 | ✅ |
 | `AGENTS.md` 문서 운영 규칙을 archive 구조에 맞게 업데이트 | ✅ |
 
-## 완료 (27차 — 재발견/잊고있던 전체 화면 + 더보기 진입점)
+## 완료 (28차 — 재발견/잊고있던 세션 안정성)
 
 | 항목 | 상태 |
 |------|------|
-| `app/rediscover.tsx` 신규 — `getRediscoverContents(20)` 세로 리스트 전체 화면 (→ 결정 074) | ✅ |
-| `app/forgotten.tsx` 신규 — `getForgottenContents(20)` 세로 리스트 전체 화면 | ✅ |
-| `components/HorizontalMoreCard.tsx` 신규 — 원형 chevron 아이콘 + "더보기" 라벨 카드. 배경 투명, 폭 56, height 183 고정 | ✅ |
-| `app/(tabs)/index.tsx` — 발견/잊고있던 FlatList에 `ListFooterComponent`로 더보기 카드 부착 | ✅ |
-| `app/_layout.tsx` — `rediscover`, `forgotten` Stack Screen 등록 (`slide_from_right`) | ✅ |
-| 큐레이션 로직(카테고리당 최대 2개 다양성) 유지 | ✅ |
+| `app/(tabs)/index.tsx` — `loadData`를 `loadFresh`(최근 + Insight) / `loadDiscovery`(발견 + 잊고있던)로 분리 (→ 결정 075) | ✅ |
+| `useFocusEffect`는 `loadFresh`만 실행. discovery는 `discoveryLoadedRef` false일 때만 (세션 첫 마운트) | ✅ |
+| `content-saved` / `content-classified` 이벤트: `loadFresh`만 (discovery는 `minAgeDays`/14일 조건상 재페치 무의미) | ✅ |
+| `content-deleted` 이벤트: payload id들로 로컬 배열 filter (서버 왕복 없음) | ✅ |
+| AppState 리스너 — 30분 이상 백그라운드 후 active 복귀 시 `loadDiscovery` 재실행 | ✅ |
+| `RefreshControl` — pull-to-refresh로 fresh + discovery 병렬 재페치 | ✅ |
+| `lib/events.ts` — `emit(event, payload?)` 시그니처 확장 (하위 호환) | ✅ |
+| `lib/api.ts` — `deleteContent(id)` → `emit('content-deleted', [id])`, `deleteContents(ids)` → `emit('content-deleted', ids)` | ✅ |
 | TypeScript 검증 통과 | ✅ |
 
 ## Phase 2 범위
