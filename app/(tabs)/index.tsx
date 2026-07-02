@@ -6,6 +6,7 @@ import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { RediscoverCard } from '@/components/RediscoverCard';
+import { HorizontalMoreCard } from '@/components/HorizontalMoreCard';
 import { SectionHeader } from '@/components/SectionHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
@@ -245,6 +246,9 @@ export default function HomeScreen() {
                         })}
                       />
                     )}
+                    ListFooterComponent={
+                      <HorizontalMoreCard onPress={() => router.push('/rediscover')} />
+                    }
                   />
                 </View>
               )}
@@ -276,6 +280,9 @@ export default function HomeScreen() {
                         })}
                       />
                     )}
+                    ListFooterComponent={
+                      <HorizontalMoreCard onPress={() => router.push('/forgotten')} />
+                    }
                   />
                 </View>
               )}

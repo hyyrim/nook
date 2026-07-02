@@ -446,3 +446,26 @@ Archived records:
 - `AGENTS.md`의 문서 운영 규칙도 archive 구조에 맞게 업데이트한다.
 
 **교훈**: 문서는 정리되어야 하지만, 기록 습관을 방해하면 안 된다. 자주 쓰는 파일은 그대로 두고 완료된 구간만 archive로 보내는 방식이 운영 비용이 가장 낮다.
+
+---
+
+## 074. 재발견/잊고있던 콘텐츠 전체 화면 + 더보기 진입점 (2026-07-02)
+
+**결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 가로 스크롤 마지막에 "더보기" 카드 진입점을 두고, `/rediscover`, `/forgotten` 세로 리스트 전체 화면(각 20개, 큐레이션 로직 유지)을 추가한다.
+
+**배경**: 홈에서 가로 스크롤 10개만 보이는 구조로는 사용자가 전체 후보 콘텐츠를 파악하기 어렵다는 피드백. 최근 저장(Recent Saved)이 이미 `/recent-saved`로 전체 리스트를 제공하듯, 발견/잊고있던도 동일 패턴으로 확장.
+
+**결과**:
+- `app/rediscover.tsx` 신규 — `getRediscoverContents(20)` 세로 리스트. NavHeader "발견된 콘텐츠". empty/error/loading 상태 처리.
+- `app/forgotten.tsx` 신규 — `getForgottenContents(20)` 세로 리스트. NavHeader "잊고 있던 콘텐츠".
+- `components/HorizontalMoreCard.tsx` 신규 — 가로 스크롤 끝에 붙는 원형 chevron 아이콘 + "더보기" 라벨 카드. 폭 56, height 183 고정(RediscoverCard 높이와 일치). 배경 투명, 아이콘 원만 `Colors.surface`.
+- `app/(tabs)/index.tsx` — 발견/잊고있던 FlatList에 `ListFooterComponent`로 `HorizontalMoreCard` 부착.
+- `app/_layout.tsx` — `rediscover`, `forgotten` Stack Screen을 `slide_from_right`로 등록.
+- 큐레이션 로직(카테고리당 최대 2개 다양성 제한)은 유지 — "전체 보기"라는 라벨보다 "더보기"로 톤 다운.
+
+**대안 검토**:
+- **(a) SectionHeader 우측에 아이콘 진입점** — 처음 시도한 방향이지만 "평소보다 늘었어요"(Interest Insight) 카드의 chevron 위치와 세로 정렬이 어긋나 이질감. 진입점을 콘텐츠 스크롤 끝에 두는 편이 자연스러움.
+- **(b) 큐레이션 로직 해제 (제한 없이 전체 후보)** — "전체 보기"라는 이름에 더 부합하지만 발견/잊고있던의 정의(균형있게 큐레이션된 재발견)가 흐려짐. 20개 상한 + 다양성 유지가 UX 정체성에 맞음.
+- **(c) 필터/정렬 옵션 추가** — 필요할 때 후속으로. 1차는 세로 리스트만.
+
+**교훈**: 진입점 아이콘 위치는 인접 카드의 정렬 축과 함께 봐야 한다. 섹션 헤더 우측 아이콘은 논리적으로 자연스러워도 다른 카드의 시각적 흐름과 어긋나면 이질감을 만든다. 콘텐츠 스크롤의 끝에서 이어지는 "더보기" 카드는 "다 보고 나서 더" 라는 자연스러운 인지 흐름을 만든다.

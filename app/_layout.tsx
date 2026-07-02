@@ -132,6 +132,14 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="rediscover"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="forgotten"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="search"
           options={{ animation: 'slide_from_right' }}
         />
