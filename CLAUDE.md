@@ -159,7 +159,7 @@ Border:          #E5E5E5
 Accent (Red):    #E5251A  ← 재발견 닷, CTA에만 절제 사용
 Success (Green): #34C759
 
-Font: Pretendard
+Font: iOS 시스템 기본 폰트 (한글: Apple SD Gothic Neo)
 - Page Title (1depth):  700 / 26px  ← 탭 화면 (홈, 폴더, 리포트, 프로필)
 - Nav Title (2depth):   600 / 17px  ← 하위 화면 (카테고리 상세, 계정 설정 등)
 - Title:   700 / 20px
