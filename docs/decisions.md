@@ -449,6 +449,29 @@ Archived records:
 
 ---
 
+## 073. 카테고리 콘텐츠 뷰 타입 토글 (2026-07-02)
+
+**결정**: Category Detail에서 콘텐츠 리스트를 list ↔ grid로 사용자가 토글할 수 있게 한다. 프리퍼런스는 SecureStore에 저장해 다음 진입 시에도 유지한다. 기본값은 `list`.
+
+**배경**: 폴더 안 콘텐츠가 쌓이면 list 뷰는 스캔이 느리고, 이미지 중심 소스(Instagram, YouTube 등)는 썸네일 grid가 훨씬 빠르게 훑어진다. 사용자 선호가 폴더 성격에 따라 다르지만, 1차에서는 전역 프리퍼런스로 시작한다.
+
+**결과**:
+- `lib/preferences.ts` — SecureStore 기반 `ContentViewType` (`'list' | 'grid'`) get/set 함수. IO 실패는 silent, unknown 값은 `list` fallback.
+- `components/GridContentCard.tsx` — 2열 그리드용 카드. 폭 48%, aspect ratio 4:3 썸네일, 선택 모드 체크박스, Notion 도메인 아이콘 지원.
+- `app/category/[id].tsx` — 헤더 `{count}개 저장됨` 옆에 `list-outline` / `grid-outline` 토글 버튼. 선택 모드에서는 숨김. 토글 시 상태 즉시 반영 + SecureStore 비동기 저장.
+- 리스트 렌더링부는 `commonProps` 추출 후 `viewType === 'grid'` 분기로 `GridContentCard` vs `ContentCard`.
+
+**대안 검토**:
+- **(a) 전역 뷰 설정 (Recent Saved / Search / Category 통합)** — 스코프 확장 부담과 검색 결과 grid의 유용성 논쟁이 있어 1차에서는 Category Detail만.
+- **(b) 폴더 단위 개별 저장** — 폴더마다 다른 뷰 타입. 데이터 모델 확장 필요, 사용 패턴 근거 부족.
+- **(c) AsyncStorage 저장** — 기존 세션/프리퍼런스가 SecureStore에 있어 저장 계층 일관성 유지 목적으로 SecureStore 채택.
+
+**제약 / 트레이드오프**: 뷰 타입은 전역 프리퍼런스라 폴더별 최적 뷰가 달라도 하나만 선택 가능. 사용자 요청이 쌓이면 폴더별 저장으로 확장할 수 있게 함수 시그니처를 열어둠.
+
+**교훈**: 개인 아카이브의 뷰 옵션은 콘텐츠 특성(썸네일 존재 여부, 도메인 다양성)에 따라 선호가 갈린다. 사용자에게 선택권을 주되 기본값(list)은 텍스트 스캔에 강한 쪽을 유지한다.
+
+---
+
 ## 074. 재발견/잊고있던 콘텐츠 전체 화면 + 더보기 진입점 (2026-07-02)
 
 **결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 가로 스크롤 마지막에 "더보기" 카드 진입점을 두고, `/rediscover`, `/forgotten` 세로 리스트 전체 화면(각 20개, 큐레이션 로직 유지)을 추가한다.
