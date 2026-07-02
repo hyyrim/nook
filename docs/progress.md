@@ -118,6 +118,20 @@
 | `app/search.tsx` — 검색 박스에 `height: 40` 고정 + `TextInput`에 `padding: 0`. 값 입력 시 intrinsic height 변동으로 박스가 흔들리는 문제 해소 | ✅ |
 | `app/(tabs)/report.tsx` — 리포트 기간 필터 라벨 `'14일'` → `'2주'`. 홈 Interest Insight의 "최근 2주" 표기와 통일, 리포트 내부 `일주일 / 2주 / 한달` 자연 단위로 일관 | ✅ |
 
+## 완료 (28차 — 재발견/잊고있던 세션 안정성)
+
+| 항목 | 상태 |
+|------|------|
+| `app/(tabs)/index.tsx` — `loadData`를 `loadFresh`(최근 + Insight) / `loadDiscovery`(발견 + 잊고있던)로 분리 (→ 결정 075) | ✅ |
+| `useFocusEffect`는 `loadFresh`만 실행. discovery는 `discoveryLoadedRef` false일 때만 (세션 첫 마운트) | ✅ |
+| `content-saved` / `content-classified` 이벤트: `loadFresh`만 (discovery는 `minAgeDays`/14일 조건상 재페치 무의미) | ✅ |
+| `content-deleted` 이벤트: payload id들로 로컬 배열 filter (서버 왕복 없음) | ✅ |
+| AppState 리스너 — 30분 이상 백그라운드 후 active 복귀 시 `loadDiscovery` 재실행 | ✅ |
+| `RefreshControl` — pull-to-refresh로 fresh + discovery 병렬 재페치 | ✅ |
+| `lib/events.ts` — `emit(event, payload?)` 시그니처 확장 (하위 호환) | ✅ |
+| `lib/api.ts` — `deleteContent(id)` → `emit('content-deleted', [id])`, `deleteContents(ids)` → `emit('content-deleted', ids)` | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
 ## Phase 2 범위
 
 ### A. Phase 1 검토 발견 이슈 (우선순위 후보)
@@ -127,7 +141,7 @@
 | 온보딩 화면에서 카테고리 직접 추가 | ✅ 22차 완료 (결정 069). "+ 직접 추가" 칩 + CategoryBottomSheet 재사용 |
 | 카테고리 순서 변경 | ✅ 24차 완료 (결정 071). 수동 정렬만 도입. 편집 전용 2depth 화면 + `react-native-draggable-flatlist` 세로 리스트 드래그. 자동 정렬 옵션(이름순/저장순/최근순)은 백로그 유지 |
 | Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
-| 리스트 viewType 설정 (콘텐츠) | 미완료. Category Detail / Recent Saved / Search 등 콘텐츠 리스트에서 그리드 ↔ 리스트 전환 옵션 |
+| 리스트 viewType 설정 (콘텐츠) | ✅ 26차 Category Detail 1차 완료 (결정 073). Recent Saved / Search 등 다른 리스트 확장은 필요 시 후속 |
 | 폴더 목록 뷰 토글 (카테고리) | 미완료. 폴더 탭 자체를 그리드(현재) ↔ 리스트로 전환. 컬러/아이콘 시스템 도입 후 리스트에서도 시각 구분 유지 가능. v1.1.0 스코프에서는 제외 |
 | 카테고리 아이콘 세트 교체 검토 | 미완료. 현재 Ionicons `-outline` 28개. 웹 배포까지 통일된 톤을 위해 Lucide(웹 호환) 또는 Feather로 교체 검토. SF Symbols는 iOS 전용이라 배제 |
 | 오래된 링크 정리 제안 | 검토 필요. 링크 앱 특성상 저장된 링크의 수명 관리가 중요함. 자동 삭제보다는 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향이 안전 |
