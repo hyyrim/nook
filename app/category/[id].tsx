@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, Alert, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
@@ -325,41 +325,52 @@ export default function CategoryDetailScreen() {
         </View>
       </SafeAreaView>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={[
+      <FlatList
+        // viewType 전환 시 numColumns가 바뀌면 FlatList가 remount 되어야 함.
+        key={viewType}
+        data={loading || loadError ? [] : filtered}
+        keyExtractor={(a) => a.id}
+        numColumns={viewType === 'grid' ? 2 : 1}
+        columnWrapperStyle={viewType === 'grid' ? styles.gridRow : undefined}
+        style={styles.scroll}
+        contentContainerStyle={[
           styles.list,
           selectionMode && styles.listSelectionMode,
-          viewType === 'grid' && filtered.length > 0 && styles.listGrid,
-        ]}>
-          {loading ? (
+        ]}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        renderItem={({ item: a }) => {
+          const commonProps = {
+            title: a.title ?? a.url,
+            source: formatSource(a.domain),
+            thumbnailUrl: a.thumbnail_url,
+            thumbnailColor: THUMBNAIL_PLACEHOLDER,
+            savedAt: formatRelativeTime(a.saved_at),
+            isClassifying: isClassifying(a.id),
+            selectionMode,
+            selected: selectedIds.has(a.id),
+            onPress: () =>
+              selectionMode
+                ? toggleSelect(a.id)
+                : router.push({
+                    pathname: '/content/[id]' as const,
+                    params: { id: a.id, source: 'category' },
+                  }),
+          };
+          return viewType === 'grid' ? (
+            <GridContentCard {...commonProps} />
+          ) : (
+            <ContentCard {...commonProps} tags={a.tags} />
+          );
+        }}
+        ListEmptyComponent={
+          loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : loadError ? (
             <ErrorState onRetry={loadData} />
-          ) : filtered.length > 0 ? (
-            filtered.map(a => {
-              const commonProps = {
-                title: a.title ?? a.url,
-                source: formatSource(a.domain),
-                thumbnailUrl: a.thumbnail_url,
-                thumbnailColor: THUMBNAIL_PLACEHOLDER,
-                savedAt: formatRelativeTime(a.saved_at),
-                isClassifying: isClassifying(a.id),
-                selectionMode,
-                selected: selectedIds.has(a.id),
-                onPress: () =>
-                  selectionMode
-                    ? toggleSelect(a.id)
-                    : router.push({
-                        pathname: '/content/[id]' as const,
-                        params: { id: a.id, source: 'category' },
-                      }),
-              };
-              return viewType === 'grid' ? (
-                <GridContentCard key={a.id} {...commonProps} />
-              ) : (
-                <ContentCard key={a.id} {...commonProps} tags={a.tags} />
-              );
-            })
           ) : articles.length === 0 ? (
             <EmptyState
               icon="document-text-outline"
@@ -372,9 +383,9 @@ export default function CategoryDetailScreen() {
               title="검색 결과가 없어요"
               subtitle="다른 검색어를 입력해보세요"
             />
-          )}
-        </View>
-      </ScrollView>
+          )
+        }
+      />
 
       {selectionMode && (
         <SafeAreaView edges={['bottom']} style={styles.bulkBar}>
@@ -485,9 +496,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 32,
   },
-  listGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  gridRow: {
     justifyContent: 'space-between',
   },
   listSelectionMode: {
