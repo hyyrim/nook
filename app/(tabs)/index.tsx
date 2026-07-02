@@ -96,11 +96,22 @@ export default function HomeScreen() {
     }, [loadFresh, loadDiscovery])
   );
 
+  // saveContent 이후 content-saved → content-classified가 짧은 간격으로 이어져
+  // loadFresh가 두 번 도는 걸 250ms 디바운스로 병합.
+  const loadFreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleLoadFresh = useCallback(() => {
+    if (loadFreshTimerRef.current) clearTimeout(loadFreshTimerRef.current);
+    loadFreshTimerRef.current = setTimeout(() => {
+      loadFreshTimerRef.current = null;
+      void loadFresh();
+    }, 250);
+  }, [loadFresh]);
+
   // 삭제된 id는 로컬 배열에서만 제거 (서버 재페치 안 함 — 재발견 안정성 유지).
   useEffect(() => {
     if (!session) return;
-    const offSaved = on('content-saved', () => { void loadFresh(); });
-    const offClassified = on('content-classified', () => { void loadFresh(); });
+    const offSaved = on('content-saved', scheduleLoadFresh);
+    const offClassified = on('content-classified', scheduleLoadFresh);
     const offDeleted = on('content-deleted', (payload) => {
       const ids = Array.isArray(payload) ? (payload as string[]) : [];
       if (ids.length > 0) {
@@ -109,14 +120,18 @@ export default function HomeScreen() {
         setRediscoverItems((prev) => prev.filter((it) => !drop.has(it.id)));
         setForgottenItems((prev) => prev.filter((it) => !drop.has(it.id)));
       }
-      void loadFresh();
+      scheduleLoadFresh();
     });
     return () => {
       offSaved();
       offClassified();
       offDeleted();
+      if (loadFreshTimerRef.current) {
+        clearTimeout(loadFreshTimerRef.current);
+        loadFreshTimerRef.current = null;
+      }
     };
-  }, [session, loadFresh]);
+  }, [session, scheduleLoadFresh]);
 
   // AppState: 30분 이상 백그라운드 후 복귀하면 discovery 새로고침.
   useEffect(() => {
