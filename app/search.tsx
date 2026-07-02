@@ -166,10 +166,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    // TextInput intrinsic 높이 변동으로 박스가 흔들리는 문제 방지 위해 fixed height.
+    height: 40,
     backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingHorizontal: 13,
-    paddingVertical: 10,
     gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -182,6 +183,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14.5,
+    padding: 0,
     color: Colors.primary,
   },
   clearButton: {

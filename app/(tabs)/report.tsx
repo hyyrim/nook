@@ -28,7 +28,7 @@ import {
 
 const REPORT_WINDOW_OPTIONS = [
   { key: 'oneWeek', label: '일주일', days: 7 },
-  { key: 'twoWeeks', label: '14일', days: 14 },
+  { key: 'twoWeeks', label: '2주', days: 14 },
   { key: 'oneMonth', label: '한달', days: 30 },
 ] as const;
 type ReportWindowOption = (typeof REPORT_WINDOW_OPTIONS)[number];
