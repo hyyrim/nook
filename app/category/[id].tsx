@@ -6,6 +6,7 @@ import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { getCategoryIcon } from '@/constants/categoryStyle';
 import { ContentCard } from '@/components/ContentCard';
+import { GridContentCard } from '@/components/GridContentCard';
 import { SearchBar } from '@/components/SearchBar';
 import { ActionSheet } from '@/components/ActionSheet';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
@@ -26,6 +27,7 @@ import {
 } from '@/lib/api';
 import { isClassifying, on, emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
+import { getContentViewType, setContentViewType, type ContentViewType } from '@/lib/preferences';
 import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Category, Content } from '@/types';
 
@@ -57,8 +59,19 @@ export default function CategoryDetailScreen() {
   const [count, setCount] = useState(0);
   const [articles, setArticles] = useState<Content[]>([]);
   const [allCategoryNames, setAllCategoryNames] = useState<string[]>([]);
+  const [viewType, setViewType] = useState<ContentViewType>('list');
 
   const isUncategorized = id === 'uncategorized';
+
+  useEffect(() => {
+    void getContentViewType().then(setViewType);
+  }, []);
+
+  const handleToggleViewType = () => {
+    const next: ContentViewType = viewType === 'list' ? 'grid' : 'list';
+    setViewType(next);
+    void setContentViewType(next);
+  };
 
   const loadData = useCallback(async () => {
     if (isAuthLoading) return;
@@ -285,7 +298,22 @@ export default function CategoryDetailScreen() {
         )}
 
         <View style={styles.headerSection}>
-          <Text style={styles.subtitle}>{count}개 저장됨</Text>
+          <View style={styles.subtitleRow}>
+            <Text style={styles.subtitle}>{count}개 저장됨</Text>
+            {!selectionMode && (
+              <Pressable
+                onPress={handleToggleViewType}
+                hitSlop={8}
+                style={styles.viewToggle}
+              >
+                <Ionicons
+                  name={viewType === 'grid' ? 'list-outline' : 'grid-outline'}
+                  size={19}
+                  color={Colors.secondary}
+                />
+              </Pressable>
+            )}
+          </View>
           {!selectionMode && (
             <SearchBar
               placeholder="이 폴더에서 찾기"
@@ -298,34 +326,40 @@ export default function CategoryDetailScreen() {
       </SafeAreaView>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={[styles.list, selectionMode && styles.listSelectionMode]}>
+        <View style={[
+          styles.list,
+          selectionMode && styles.listSelectionMode,
+          viewType === 'grid' && filtered.length > 0 && styles.listGrid,
+        ]}>
           {loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : loadError ? (
             <ErrorState onRetry={loadData} />
           ) : filtered.length > 0 ? (
-            filtered.map(a => (
-              <ContentCard
-                key={a.id}
-                title={a.title ?? a.url}
-                source={formatSource(a.domain)}
-                tags={a.tags}
-                thumbnailUrl={a.thumbnail_url}
-                thumbnailColor={THUMBNAIL_PLACEHOLDER}
-                savedAt={formatRelativeTime(a.saved_at)}
-                isClassifying={isClassifying(a.id)}
-                selectionMode={selectionMode}
-                selected={selectedIds.has(a.id)}
-                onPress={() =>
+            filtered.map(a => {
+              const commonProps = {
+                title: a.title ?? a.url,
+                source: formatSource(a.domain),
+                thumbnailUrl: a.thumbnail_url,
+                thumbnailColor: THUMBNAIL_PLACEHOLDER,
+                savedAt: formatRelativeTime(a.saved_at),
+                isClassifying: isClassifying(a.id),
+                selectionMode,
+                selected: selectedIds.has(a.id),
+                onPress: () =>
                   selectionMode
                     ? toggleSelect(a.id)
                     : router.push({
-                        pathname: '/content/[id]',
+                        pathname: '/content/[id]' as const,
                         params: { id: a.id, source: 'category' },
-                      })
-                }
-              />
-            ))
+                      }),
+              };
+              return viewType === 'grid' ? (
+                <GridContentCard key={a.id} {...commonProps} />
+              ) : (
+                <ContentCard key={a.id} {...commonProps} tags={a.tags} />
+              );
+            })
           ) : articles.length === 0 ? (
             <EmptyState
               icon="document-text-outline"
@@ -430,10 +464,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
   subtitle: {
     fontSize: 13,
     color: Colors.secondary,
-    marginBottom: 14,
+  },
+  viewToggle: {
+    padding: 4,
   },
   scroll: {
     flex: 1,
@@ -442,6 +484,11 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 12,
     paddingBottom: 32,
+  },
+  listGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   listSelectionMode: {
     paddingBottom: 110,
