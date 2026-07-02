@@ -113,6 +113,7 @@ export default function ContentDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<ContentWithCategory | null>(null);
   const [related, setRelated] = useState<ContentWithCategory[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -123,12 +124,17 @@ export default function ContentDetailScreen() {
       }
 
       let cancelled = false;
+      // 이전 콘텐츠의 related가 순간적으로 잔상으로 보이지 않도록 초기화.
+      setRelated([]);
+      setRelatedLoading(true);
+
       (async () => {
         try {
           const content = await getContentById(id);
           if (cancelled) return;
           setItem(content);
           setDescriptionExpanded(false);
+          setLoading(false);
 
           if (shouldRefreshMetadata(content)) {
             refreshContentMetadata(content)
@@ -138,17 +144,25 @@ export default function ContentDetailScreen() {
               .catch((error) => console.warn('Metadata refresh failed:', error));
           }
 
-          // 관련 콘텐츠: 카테고리 +3, 태그 겹침 ×2, 같은 도메인 +1
-          const relatedItems = await getRelatedContents(content, 2);
-          if (!cancelled) setRelated(relatedItems);
+          // 관련 콘텐츠(카테고리 +3, 태그 겹침 ×2, 같은 도메인 +1)는 본문 렌더를 막지 않도록 fire-and-forget.
+          getRelatedContents(content, 2)
+            .then((relatedItems) => {
+              if (!cancelled) setRelated(relatedItems);
+            })
+            .catch((error) => console.warn('Related load failed:', error))
+            .finally(() => {
+              if (!cancelled) setRelatedLoading(false);
+            });
 
           // viewed_at 업데이트 + content_opened 발화 (analytics §12.5)
           markContentViewed(id).catch(() => {});
           void analytics.contentOpened(id, source);
         } catch (e) {
           console.error('Content load error:', e);
-        } finally {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            setLoading(false);
+            setRelatedLoading(false);
+          }
         }
       })();
       return () => { cancelled = true; };
@@ -298,27 +312,46 @@ export default function ContentDetailScreen() {
             </View>
           ) : null}
 
-          {/* 관련 콘텐츠 */}
-          {related.length > 0 && (
+          {/* 관련 콘텐츠 — 본문과 분리해서 lazy 로딩. 로딩 중엔 skeleton. */}
+          {(relatedLoading || related.length > 0) && (
             <View style={styles.relatedSection}>
               <View style={styles.relatedHeader}>
                 <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
                 <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
               </View>
               <View style={styles.relatedList}>
-                {related.map(r => (
-                  <RelatedCard
-                    key={r.id}
-                    title={r.title ?? r.url}
-                    source={formatSource(r.domain)}
-                    thumbnailUrl={r.thumbnail_url}
-                    thumb={THUMBNAIL_PLACEHOLDER}
-                    onPress={() => router.push({
-                      pathname: '/content/[id]',
-                      params: { id: r.id, source: 'related' },
-                    })}
-                  />
-                ))}
+                {relatedLoading && related.length === 0 ? (
+                  <>
+                    <View style={[styles.relatedCard, styles.relatedSkeletonCard]}>
+                      <View style={[styles.relatedThumb, styles.relatedSkeletonThumb]} />
+                      <View style={styles.relatedText}>
+                        <View style={styles.relatedSkeletonLine} />
+                        <View style={[styles.relatedSkeletonLine, styles.relatedSkeletonLineShort]} />
+                      </View>
+                    </View>
+                    <View style={[styles.relatedCard, styles.relatedSkeletonCard]}>
+                      <View style={[styles.relatedThumb, styles.relatedSkeletonThumb]} />
+                      <View style={styles.relatedText}>
+                        <View style={styles.relatedSkeletonLine} />
+                        <View style={[styles.relatedSkeletonLine, styles.relatedSkeletonLineShort]} />
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  related.map(r => (
+                    <RelatedCard
+                      key={r.id}
+                      title={r.title ?? r.url}
+                      source={formatSource(r.domain)}
+                      thumbnailUrl={r.thumbnail_url}
+                      thumb={THUMBNAIL_PLACEHOLDER}
+                      onPress={() => router.push({
+                        pathname: '/content/[id]',
+                        params: { id: r.id, source: 'related' },
+                      })}
+                    />
+                  ))
+                )}
               </View>
             </View>
           )}
@@ -572,5 +605,21 @@ const styles = StyleSheet.create({
   relatedSource: {
     fontSize: 11,
     color: Colors.secondary,
+  },
+  relatedSkeletonCard: {
+    opacity: 0.7,
+  },
+  relatedSkeletonThumb: {
+    backgroundColor: Colors.border,
+  },
+  relatedSkeletonLine: {
+    height: 10,
+    borderRadius: 4,
+    backgroundColor: Colors.border,
+    width: '90%',
+  },
+  relatedSkeletonLineShort: {
+    width: '55%',
+    marginTop: 6,
   },
 });
