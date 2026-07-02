@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-01 (23차 — 카테고리 폴더 색상/아이콘 시스템)
+최종 업데이트: 2026-07-01 (24차 — 카테고리 순서 수동 편집)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
 
@@ -324,6 +324,22 @@
 | 홈 섹션 간격 정리 + 폴더 카드 press scale 제거로 미세한 버벅임 완화 | ✅ |
 | TypeScript 검증 통과 | ✅ |
 
+## 완료 (24차 — 카테고리 순서 수동 편집)
+
+| 항목 | 상태 |
+|------|------|
+| `supabase/migrations/005_add_category_sort_order.sql` — `categories.sort_order integer nullable` + user별 `created_at` 순 backfill + `(user_id, sort_order)` 인덱스 | ✅ |
+| `types/Category.sort_order` nullable 필드 추가 | ✅ |
+| `getCategories` / `getCategoriesWithCounts` 정렬 → `sort_order NULLS LAST, created_at` | ✅ |
+| `createCategory` — 신규 카테고리에 `max(sort_order) + 1` 자동 부여 (맨 뒤 추가) | ✅ |
+| `createInitialCategories` — 삽입 순서대로 sort_order 부여 | ✅ |
+| `reorderCategories(orderedIds)` 신규 — 일괄 sort_order 업데이트 (병렬 UPDATE) | ✅ |
+| `app/reorder-categories.tsx` 신규 — `react-native-draggable-flatlist` 세로 리스트 드래그 편집 화면 (→ 결정 071) | ✅ |
+| 폴더 탭 헤더 우상단 "순서 편집" 텍스트 버튼 (카테고리 2개 이상일 때 노출) | ✅ |
+| 자동 정렬은 배제, 수동 순서 편집만 도입 (개인 아카이브 앱 특성) (→ 결정 071) | ✅ |
+| 취소는 확인 Alert 없이 즉시 뒤로가기 | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
 ## 완료 (출시 전 회귀 — 2026-06-25 이전)
 
 | 항목 | 상태 |
@@ -344,11 +360,10 @@
 | 항목 | 상태 / 비고 |
 |------|------|
 | 온보딩 화면에서 카테고리 직접 추가 | ✅ 22차 완료 (결정 069). "+ 직접 추가" 칩 + CategoryBottomSheet 재사용 |
-| 카테고리 순서 변경 | 미완료. 사용자가 폴더 순서를 직접 정렬. UX는 미정 (드래그 vs 정렬 옵션 필터). DB 스키마 `categories.sort_order` 컬럼 필요 |
+| 카테고리 순서 변경 | ✅ 24차 완료 (결정 071). 수동 정렬만 도입. 편집 전용 2depth 화면 + `react-native-draggable-flatlist` 세로 리스트 드래그. 자동 정렬 옵션(이름순/저장순/최근순)은 백로그 유지 |
 | Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
 | 리스트 viewType 설정 (콘텐츠) | 미완료. Category Detail / Recent Saved / Search 등 콘텐츠 리스트에서 그리드 ↔ 리스트 전환 옵션 |
 | 폴더 목록 뷰 토글 (카테고리) | 미완료. 폴더 탭 자체를 그리드(현재) ↔ 리스트로 전환. 컬러/아이콘 시스템 도입 후 리스트에서도 시각 구분 유지 가능. v1.1.0 스코프에서는 제외 |
-| 카테고리 아이콘 세트 교체 검토 | 미완료. 현재 Ionicons `-outline` 28개. 웹 배포까지 통일된 톤을 위해 Lucide(웹 호환) 또는 Feather로 교체 검토. SF Symbols는 iOS 전용이라 배제 |
 | 오래된 링크 정리 제안 | 검토 필요. 링크 앱 특성상 저장된 링크의 수명 관리가 중요함. 자동 삭제보다는 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향이 안전 |
 
 ### B. CLAUDE.md 2차 범위 (1차 완료 + 남은 항목)
