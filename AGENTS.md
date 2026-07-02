@@ -380,11 +380,11 @@ Use for:
 
 Documentation Convention
 
-This project maintains two documentation files. All AI agents (Claude Code, Codex, ChatGPT) must follow this convention.
+This project maintains current working logs at the root of `docs/` and archives completed periods under `docs/archive/`. All AI agents (Claude Code, Codex, ChatGPT) must follow this convention.
 
 ### 1. 의사결정 로그: `docs/decisions.md`
 
-모든 기술/디자인/UX 의사결정을 기록하는 단일 파일입니다.
+현재 진행 중인 Phase의 기술/디자인/UX 의사결정을 기록합니다. 완료된 Phase의 긴 기록은 `docs/archive/decisions-*.md`로 이동합니다.
 
 포맷:
 ```
@@ -398,14 +398,17 @@ This project maintains two documentation files. All AI agents (Claude Code, Code
 
 규칙:
 * 번호는 순차 증가 (현재 마지막 번호 확인 후 +1)
+* archive 파일의 마지막 번호도 확인하고, 번호는 전체 문서에서 중복 없이 이어서 사용
 * 날짜는 `YYYY-MM-DD` 형식
 * 한글로 작성, 기술 용어는 영어 허용
 * 대안 검토가 있었다면 `**대안 검토**` 항목 추가
 * 이전 결정을 고도화한 경우 `> 참고: 이후 NNN에서 고도화됨` 표시
+* 완료된 Phase를 정리할 때만 `docs/archive/decisions-phase-N.md`로 이동
+* 평소 새 결정은 `docs/decisions.md`에만 추가
 
 ### 2. AI 사용 로그: `docs/ai-usage-log.md`
 
-AI 도구 사용 내역을 한 줄로 기록합니다. 상세 내용은 `decisions.md`를 참고.
+현재 기간의 AI 도구 사용 내역을 한 줄로 기록합니다. 상세 내용은 `decisions.md`를 참고. 완료된 기간의 긴 로그는 `docs/archive/ai-usage-log-*.md`로 이동합니다.
 
 포맷:
 ```
@@ -417,6 +420,17 @@ AI 도구 사용 내역을 한 줄로 기록합니다. 상세 내용은 `decisio
 * 테이블 형식, 한 줄에 하나의 작업
 * 관련 의사결정이 있으면 `(→ 결정 NNN)` 링크 추가
 * 의사결정과 내용을 중복 작성하지 않음
+* 평소 새 로그는 `docs/ai-usage-log.md`에만 추가
+* 월 또는 Phase가 끝나 문서가 길어졌을 때만 archive로 이동
+
+### 3. 진행 상태: `docs/progress.md`
+
+현재 Phase의 완료 항목, 다음 범위, 보류/기술 메모를 기록합니다. 완료된 Phase의 긴 진행 기록은 `docs/archive/progress-*.md`로 이동합니다.
+
+규칙:
+* `docs/progress.md`는 현재 상태를 빠르게 파악할 수 있게 유지
+* 완료된 오래된 차수는 Phase 종료 또는 문서 정리 시점에 archive로 이동
+* archive 이동은 기록 비용을 늘리지 않도록 자주 하지 않음
 
 ### 폐기된 파일
 
