@@ -111,12 +111,28 @@
 | 루트의 `decisions.md`, `ai-usage-log.md`, `progress.md`는 현재 Phase 기록용으로 경량화 | ✅ |
 | `AGENTS.md` 문서 운영 규칙을 archive 구조에 맞게 업데이트 | ✅ |
 
-## 완료 (29차 — UI 폴리시)
+## 완료 (26차 — 카테고리 콘텐츠 뷰 타입 토글)
 
 | 항목 | 상태 |
 |------|------|
-| `app/search.tsx` — 검색 박스에 `height: 40` 고정 + `TextInput`에 `padding: 0`. 값 입력 시 intrinsic height 변동으로 박스가 흔들리는 문제 해소 | ✅ |
-| `app/(tabs)/report.tsx` — 리포트 기간 필터 라벨 `'14일'` → `'2주'`. 홈 Interest Insight의 "최근 2주" 표기와 통일, 리포트 내부 `일주일 / 2주 / 한달` 자연 단위로 일관 | ✅ |
+| `lib/preferences.ts` 신규 — SecureStore 기반 `ContentViewType` (`'list' \| 'grid'`) get/set (→ 결정 073) | ✅ |
+| `components/GridContentCard.tsx` 신규 — 2열 grid, aspect ratio 4:3 썸네일, 선택 모드 체크박스 | ✅ |
+| `app/category/[id].tsx` — 헤더 우상단 `list-outline` / `grid-outline` 토글 아이콘 (선택 모드에서는 숨김) | ✅ |
+| 마운트 시 프리퍼런스 로드 → 토글 시 즉시 반영 + 비동기 저장 | ✅ |
+| 리스트 렌더링 `commonProps` 추출 + `viewType === 'grid'` 분기 | ✅ |
+| TypeScript 검증 통과 | ✅ |
+
+## 완료 (27차 — 재발견/잊고있던 전체 화면 + 더보기 진입점)
+
+| 항목 | 상태 |
+|------|------|
+| `app/rediscover.tsx` 신규 — `getRediscoverContents(20)` 세로 리스트 전체 화면 (→ 결정 074) | ✅ |
+| `app/forgotten.tsx` 신규 — `getForgottenContents(20)` 세로 리스트 전체 화면 | ✅ |
+| `components/HorizontalMoreCard.tsx` 신규 — 원형 chevron 아이콘 + "더보기" 라벨 카드. 배경 투명, 폭 56, height 183 고정 | ✅ |
+| `app/(tabs)/index.tsx` — 발견/잊고있던 FlatList에 `ListFooterComponent`로 더보기 카드 부착 | ✅ |
+| `app/_layout.tsx` — `rediscover`, `forgotten` Stack Screen 등록 (`slide_from_right`) | ✅ |
+| 큐레이션 로직(카테고리당 최대 2개 다양성) 유지 | ✅ |
+| TypeScript 검증 통과 | ✅ |
 
 ## 완료 (28차 — 재발견/잊고있던 세션 안정성)
 
@@ -131,6 +147,13 @@
 | `lib/events.ts` — `emit(event, payload?)` 시그니처 확장 (하위 호환) | ✅ |
 | `lib/api.ts` — `deleteContent(id)` → `emit('content-deleted', [id])`, `deleteContents(ids)` → `emit('content-deleted', ids)` | ✅ |
 | TypeScript 검증 통과 | ✅ |
+
+## 완료 (29차 — UI 폴리시)
+
+| 항목 | 상태 |
+|------|------|
+| `app/search.tsx` — 검색 박스에 `height: 40` 고정 + `TextInput`에 `padding: 0`. 값 입력 시 intrinsic height 변동으로 박스가 흔들리는 문제 해소 | ✅ |
+| `app/(tabs)/report.tsx` — 리포트 기간 필터 라벨 `'14일'` → `'2주'`. 홈 Interest Insight의 "최근 2주" 표기와 통일, 리포트 내부 `일주일 / 2주 / 한달` 자연 단위로 일관 | ✅ |
 
 ## Phase 2 범위
 
