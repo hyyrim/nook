@@ -301,24 +301,20 @@ export async function saveContent(
   void analytics.saveAttempted(entrySource);
 
   let saved: Content;
-  let metaDescription: string | undefined;
 
   try {
     const userId = await requireUserId();
-
     const normalizedUrl = normalizeUrl(input.url);
-    const metadata = await fetchLinkMetadata(normalizedUrl, {
-      shareIntentMeta: options?.shareIntentMeta,
-    });
+
+    // 저장 UX 지연 방지: OG 메타데이터 fetch를 저장 이후로 미루고 URL/제공된 정보만으로 즉시 insert.
+    // 제목/썸네일/설명은 backfillMetadataAndClassify가 백그라운드에서 채운다.
     const contentInput = {
-      ...input,
       url: normalizedUrl,
-      title: input.title ?? metadata.title,
-      description: metadata.description ?? null,
-      thumbnail_url: input.thumbnail_url ?? metadata.thumbnail_url,
-      domain: input.domain ?? metadata.domain,
+      title: input.title ?? null,
+      thumbnail_url: input.thumbnail_url ?? null,
+      domain: input.domain ?? null,
+      description: null,
     };
-    metaDescription = metadata.description;
 
     const { data, error } = await supabase
       .from('contents')
@@ -333,18 +329,63 @@ export async function saveContent(
     throw err;
   }
 
-  // 비동기 AI 분류 (저장 UX와 분리, 실패해도 저장은 유지).
-  // markClassifying은 saveContent return 전에 동기로 수행되어
-  // 호출자가 emit('content-saved')로 화면을 갱신할 때 "분류 중" 상태가 반영되도록 보장.
+  // 저장 성공 → 메타데이터 백필 + AI 분류를 백그라운드에서 순차 실행.
+  // markClassifying은 return 전에 동기로 수행되어 호출자가 emit('content-saved')로
+  // 화면을 갱신할 때 "분류 중" 상태가 반영되도록 보장.
   markClassifying(saved.id);
-  classifyAndUpdate(saved, metaDescription)
-    .catch(err => console.warn('AI classification failed:', err))
-    .finally(() => {
-      markClassified(saved.id);
-      emit('content-classified');
-    });
+  void backfillMetadataAndClassify(saved, options?.shareIntentMeta ?? null);
 
   return saved;
+}
+
+async function backfillMetadataAndClassify(
+  saved: Content,
+  shareIntentMeta: Record<string, string | undefined> | null,
+) {
+  let enriched: Content = saved;
+  let metaDescription: string | undefined;
+
+  try {
+    const metadata = await fetchLinkMetadata(saved.url, { shareIntentMeta });
+    metaDescription = metadata.description;
+
+    const updates: {
+      title?: string;
+      description?: string | null;
+      thumbnail_url?: string;
+      domain?: string;
+    } = {};
+    if (!saved.title && metadata.title) updates.title = metadata.title;
+    if (!saved.thumbnail_url && metadata.thumbnail_url) updates.thumbnail_url = metadata.thumbnail_url;
+    if (!saved.domain && metadata.domain) updates.domain = metadata.domain;
+    if (metadata.description) updates.description = metadata.description;
+
+    if (Object.keys(updates).length > 0) {
+      const { data, error } = await supabase
+        .from('contents')
+        .update(updates)
+        .eq('id', saved.id)
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) {
+        enriched = data as Content;
+        // 홈/리스트가 새 메타로 다시 렌더되도록 이벤트 재발화.
+        emit('content-saved');
+      }
+    }
+  } catch (err) {
+    console.warn('Metadata backfill failed:', err);
+  }
+
+  try {
+    await classifyAndUpdate(enriched, metaDescription);
+  } catch (err) {
+    console.warn('AI classification failed:', err);
+  } finally {
+    markClassified(enriched.id);
+    emit('content-classified');
+  }
 }
 
 export async function refreshContentMetadata(
