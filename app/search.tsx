@@ -1,7 +1,7 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRouter } from 'expo-router';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
@@ -25,9 +25,22 @@ export default function SearchScreen() {
   const { session, isLoading: isAuthLoading } = useAuth();
   const [allItems, setAllItems] = useState<ContentWithCategory[]>([]);
   const [query, setQuery] = useState('');
+  // query 변경 시마다 필터가 즉시 돌지 않도록 250ms 디바운스.
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed === '') {
+      // 빈 상태는 힌트 화면이라 즉시 반영해 잔상 없앰.
+      setDebouncedQuery('');
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedQuery(trimmed), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const loadData = useCallback(async () => {
     if (isAuthLoading || !session) {
@@ -68,15 +81,16 @@ export default function SearchScreen() {
     return unsubscribe;
   }, [navigation]);
 
-  const filtered = query.trim().length === 0
-    ? []
-    : allItems.filter((item) => {
-        const q = query.toLowerCase();
-        const title = (item.title ?? '').toLowerCase();
-        const domain = (item.domain ?? '').toLowerCase();
-        const tags = (item.tags ?? []).join(' ').toLowerCase();
-        return title.includes(q) || domain.includes(q) || tags.includes(q);
-      });
+  const filtered = useMemo(() => {
+    if (debouncedQuery.length === 0) return [];
+    const q = debouncedQuery.toLowerCase();
+    return allItems.filter((item) => {
+      const title = (item.title ?? '').toLowerCase();
+      const domain = (item.domain ?? '').toLowerCase();
+      const tags = (item.tags ?? []).join(' ').toLowerCase();
+      return title.includes(q) || domain.includes(q) || tags.includes(q);
+    });
+  }, [allItems, debouncedQuery]);
 
   return (
     <View style={styles.container}>
@@ -106,41 +120,47 @@ export default function SearchScreen() {
         </View>
       </SafeAreaView>
 
-      <ScrollView
+      <FlatList
+        data={loading || loadError ? [] : filtered}
+        keyExtractor={(item) => item.id}
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.list,
+          filtered.length === 0 && styles.listEmpty,
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-      >
-        <View style={[styles.list, query.trim().length === 0 && !loading && styles.emptySearchList]}>
-          {loading ? (
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        renderItem={({ item }) => (
+          <ContentCard
+            title={item.title ?? item.url}
+            source={formatSource(item.domain)}
+            tags={item.tags}
+            thumbnailUrl={item.thumbnail_url}
+            thumbnailColor={THUMBNAIL_PLACEHOLDER}
+            savedAt={formatRelativeTime(item.saved_at)}
+            isClassifying={isClassifying(item.id)}
+            onPress={() => router.push({
+              pathname: '/content/[id]',
+              params: { id: item.id, source: 'search' },
+            })}
+          />
+        )}
+        ListEmptyComponent={
+          loading ? (
             <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginTop: 40 }} />
           ) : loadError ? (
             <ErrorState onRetry={loadData} />
-          ) : query.trim().length === 0 ? (
+          ) : debouncedQuery.length === 0 ? (
             <Text style={styles.hintText}>제목, 출처, 태그로 찾아보세요</Text>
-          ) : filtered.length > 0 ? (
-            filtered.map(item => (
-              <ContentCard
-                key={item.id}
-                title={item.title ?? item.url}
-                source={formatSource(item.domain)}
-                tags={item.tags}
-                thumbnailUrl={item.thumbnail_url}
-                thumbnailColor={THUMBNAIL_PLACEHOLDER}
-                savedAt={formatRelativeTime(item.saved_at)}
-                isClassifying={isClassifying(item.id)}
-                onPress={() => router.push({
-                  pathname: '/content/[id]',
-                  params: { id: item.id, source: 'search' },
-                })}
-              />
-            ))
           ) : (
-            <Text style={styles.emptyText}>"{query}"에 대한 결과가 없어요</Text>
-          )}
-        </View>
-      </ScrollView>
+            <Text style={styles.emptyText}>"{debouncedQuery}"에 대한 결과가 없어요</Text>
+          )
+        }
+      />
     </View>
   );
 }
@@ -195,16 +215,13 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
   list: {
     padding: 16,
     paddingBottom: 36,
+    flexGrow: 1,
   },
-  emptySearchList: {
-    flex: 1,
-    paddingTop: 118,
+  listEmpty: {
+    justifyContent: 'flex-start',
   },
   hintText: {
     fontSize: 13,
