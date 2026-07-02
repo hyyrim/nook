@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-01 (25차 — 문서 로그 archive 정리)
+최종 업데이트: 2026-07-02 (29차 — UI 폴리시)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
 > Phase 1 완료 기록은 `docs/archive/progress-phase-1.md`에 보관합니다.
@@ -10,7 +10,7 @@
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.0 |
-| 최근 앱 작업 | 24차 — 카테고리 순서 수동 편집 |
+| 최근 앱 작업 | 29차 — 검색 박스 고정 높이 + 리포트 기간 라벨 통일 |
 | 최근 문서 작업 | 25차 — 문서 로그 archive 정리 |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
@@ -110,6 +110,13 @@
 | `docs/archive/progress-phase-1.md` — Phase 1 완료 기록과 출시 전 회귀 기록 보존 | ✅ |
 | 루트의 `decisions.md`, `ai-usage-log.md`, `progress.md`는 현재 Phase 기록용으로 경량화 | ✅ |
 | `AGENTS.md` 문서 운영 규칙을 archive 구조에 맞게 업데이트 | ✅ |
+
+## 완료 (29차 — UI 폴리시)
+
+| 항목 | 상태 |
+|------|------|
+| `app/search.tsx` — 검색 박스에 `height: 40` 고정 + `TextInput`에 `padding: 0`. 값 입력 시 intrinsic height 변동으로 박스가 흔들리는 문제 해소 | ✅ |
+| `app/(tabs)/report.tsx` — 리포트 기간 필터 라벨 `'14일'` → `'2주'`. 홈 Interest Insight의 "최근 2주" 표기와 통일, 리포트 내부 `일주일 / 2주 / 한달` 자연 단위로 일관 | ✅ |
 
 ## Phase 2 범위
 
