@@ -11,7 +11,7 @@ import { NavHeader } from '@/components/NavHeader';
 import { getRediscoverContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
+import { displayTitle, formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -67,7 +67,7 @@ export default function RediscoverScreen() {
             items.map(item => (
               <ContentCard
                 key={item.id}
-                title={item.title ?? item.url}
+                title={displayTitle(item)}
                 source={formatSource(item.domain)}
                 tags={item.tags}
                 thumbnailUrl={item.thumbnail_url}

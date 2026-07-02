@@ -11,7 +11,7 @@ import { TagsSheet } from '@/components/TagsSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatSource, THUMBNAIL_PLACEHOLDER, openInAppOrBrowser } from '@/lib/utils';
+import { displayTitle, formatSource, THUMBNAIL_PLACEHOLDER, openInAppOrBrowser } from '@/lib/utils';
 import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
 import { analytics, type ContentOpenedSource } from '@/lib/analytics';
 
@@ -276,7 +276,7 @@ export default function ContentDetailScreen() {
                   <Text style={styles.originalLink}>원문 바로가기 →</Text>
                 </Pressable>
               </View>
-              <Text style={styles.title}>{item.title ?? item.url}</Text>
+              <Text style={styles.title}>{displayTitle(item)}</Text>
             </View>
           </View>
 
@@ -341,7 +341,7 @@ export default function ContentDetailScreen() {
                   related.map(r => (
                     <RelatedCard
                       key={r.id}
-                      title={r.title ?? r.url}
+                      title={displayTitle(r)}
                       source={formatSource(r.domain)}
                       thumbnailUrl={r.thumbnail_url}
                       thumb={THUMBNAIL_PLACEHOLDER}

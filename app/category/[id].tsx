@@ -28,7 +28,7 @@ import {
 import { isClassifying, on, emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { getContentViewType, setContentViewType, type ContentViewType } from '@/lib/preferences';
-import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
+import { displayTitle, formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Category, Content } from '@/types';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -344,7 +344,7 @@ export default function CategoryDetailScreen() {
         windowSize={7}
         renderItem={({ item: a }) => {
           const commonProps = {
-            title: a.title ?? a.url,
+            title: displayTitle(a),
             source: formatSource(a.domain),
             thumbnailUrl: a.thumbnail_url,
             thumbnailColor: THUMBNAIL_PLACEHOLDER,

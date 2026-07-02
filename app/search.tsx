@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
-import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
+import { displayTitle, formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -136,7 +136,7 @@ export default function SearchScreen() {
         windowSize={7}
         renderItem={({ item }) => (
           <ContentCard
-            title={item.title ?? item.url}
+            title={displayTitle(item)}
             source={formatSource(item.domain)}
             tags={item.tags}
             thumbnailUrl={item.thumbnail_url}

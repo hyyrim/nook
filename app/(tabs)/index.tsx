@@ -16,7 +16,7 @@ import { getRecentContents, getRediscoverContents, getForgottenContents, getInte
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { analytics } from '@/lib/analytics';
-import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
+import { displayTitle, formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
@@ -245,7 +245,7 @@ export default function HomeScreen() {
                   visibleRecentItems.map((item) => (
                     <ContentCard
                       key={item.id}
-                      title={item.title ?? item.url}
+                      title={displayTitle(item)}
                       source={formatSource(item.domain)}
                       tags={item.tags}
                       thumbnailUrl={item.thumbnail_url}
@@ -303,7 +303,7 @@ export default function HomeScreen() {
                     onViewableItemsChanged={onViewableItemsChanged}
                     renderItem={({ item }) => (
                       <RediscoverCard
-                        title={item.title ?? item.url}
+                        title={displayTitle(item)}
                         source={formatSource(item.domain)}
                         hint={item.categories?.name ?? '미분류'}
                         thumbnailUrl={item.thumbnail_url}
@@ -337,7 +337,7 @@ export default function HomeScreen() {
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                       <RediscoverCard
-                        title={item.title ?? item.url}
+                        title={displayTitle(item)}
                         source={formatSource(item.domain)}
                         hint={item.categories?.name ?? '미분류'}
                         thumbnailUrl={item.thumbnail_url}

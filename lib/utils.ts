@@ -233,3 +233,24 @@ export function formatSource(domain?: string): string {
   return DOMAIN_LABELS[host] ?? domain.replace(/^www\./, '');
 }
 
+/**
+ * 카드/상세에서 보여줄 제목. AI 분류/메타 백필 이전에도 URL 원문이 노출되지 않도록 도메인 라벨로 fallback.
+ */
+export function displayTitle(content: {
+  title?: string | null;
+  domain?: string | null;
+  url?: string | null;
+}): string {
+  const trimmed = content.title?.trim();
+  if (trimmed) return trimmed;
+  if (content.domain) return formatSource(content.domain);
+  if (content.url) {
+    try {
+      return formatSource(new URL(content.url).hostname);
+    } catch {
+      /* URL 파싱 실패 시 아래 fallback */
+    }
+  }
+  return '링크';
+}
+
