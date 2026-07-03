@@ -297,10 +297,16 @@ export default function CategoryDetailScreen() {
           />
         )}
 
-        <View style={styles.headerSection}>
-          <View style={styles.subtitleRow}>
-            <Text style={styles.subtitle}>{count}개 저장됨</Text>
-            {!selectionMode && (
+        {!selectionMode && (
+          <View style={styles.headerSection}>
+            <SearchBar
+              placeholder="이 폴더에서 찾기"
+              value={query}
+              onChangeText={setQuery}
+              editable
+            />
+            <View style={styles.subtitleRow}>
+              <Text style={styles.subtitle}>{count}개 저장됨</Text>
               <Pressable
                 onPress={handleToggleViewType}
                 hitSlop={8}
@@ -312,17 +318,9 @@ export default function CategoryDetailScreen() {
                   color={Colors.secondary}
                 />
               </Pressable>
-            )}
+            </View>
           </View>
-          {!selectionMode && (
-            <SearchBar
-              placeholder="이 폴더에서 찾기"
-              value={query}
-              onChangeText={setQuery}
-              editable
-            />
-          )}
-        </View>
+        )}
       </SafeAreaView>
 
       <FlatList
@@ -479,7 +477,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginTop: 12,
   },
   subtitle: {
     fontSize: 13,
