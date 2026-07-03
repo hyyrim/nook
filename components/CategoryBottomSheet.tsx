@@ -345,10 +345,12 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: Colors.background,
     borderRadius: Radius.md,
+    height: 44,
     paddingHorizontal: 13,
-    paddingVertical: 12,
+    paddingVertical: 0,
     fontSize: 14,
     color: Colors.primary,
+    textAlignVertical: 'center',
   },
   swatchRow: {
     flexDirection: 'row',

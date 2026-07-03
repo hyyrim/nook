@@ -153,15 +153,20 @@ export async function reorderCategories(orderedIds: string[]) {
   const userId = await requireUserId();
   if (orderedIds.length === 0) return;
 
-  await Promise.all(
+  const results = await Promise.all(
     orderedIds.map((id, index) =>
       supabase
         .from('categories')
         .update({ sort_order: index + 1 })
         .eq('user_id', userId)
-        .eq('id', id),
+        .eq('id', id)
+        .select('id')
+        .single(),
     ),
   );
+
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw failed.error;
 }
 
 export async function updateCategory(
