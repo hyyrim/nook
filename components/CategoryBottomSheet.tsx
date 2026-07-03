@@ -7,10 +7,10 @@ import {
   CATEGORY_DEFAULT_BG,
   CATEGORY_ICON_PRESETS,
   getCategoryColor,
-  type CategoryIconName,
 } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './PrimaryButton';
+import { CategoryIcon } from './CategoryIcon';
 
 type CategorySubmitData = {
   name: string;
@@ -106,7 +106,10 @@ export function CategoryBottomSheet({
   const title = isEdit ? '카테고리 수정' : '카테고리 추가';
   const cta = isEdit ? '수정' : '추가';
   const maxSheetHeight = windowHeight * 0.82;
-  const maxScrollHeight = Math.max(220, maxSheetHeight - 168);
+  // 이름/색상/CTA는 고정, 아이콘 그리드만 별도 스크롤.
+  // 3.5행(≈ 3.5 × 46px = 161)만 노출해 4번째 행이 절반만 잘려 보이게 하는 peek 패턴.
+  // 잘린 행이 "더 있음"을 시각적으로 알린다.
+  const iconScrollMaxHeight = Math.min(161, maxSheetHeight - 360);
 
   const handleValueChange = (text: string) => {
     setValue(text);
@@ -158,101 +161,97 @@ export function CategoryBottomSheet({
               </Pressable>
             </View>
 
-            <View style={[styles.scrollFrame, { maxHeight: maxScrollHeight }]}>
-              <ScrollView
-                style={styles.scroll}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.field}>
-                  <Text style={styles.label}>이름</Text>
-                  <TextInput
-                    ref={inputRef}
-                    style={styles.input}
-                    placeholder="예) AI, 디자인, 여행..."
-                    placeholderTextColor={Colors.tertiary}
-                    value={value}
-                    onChangeText={handleValueChange}
-                  />
-                  {error ? <Text style={Typography.errorText}>{error}</Text> : null}
-                </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>이름</Text>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                placeholder="예) AI, 디자인, 여행..."
+                placeholderTextColor={Colors.tertiary}
+                value={value}
+                onChangeText={handleValueChange}
+              />
+              {error ? <Text style={Typography.errorText}>{error}</Text> : null}
+            </View>
 
-                <View style={styles.field}>
-                  <Text style={styles.label}>색상</Text>
-                  <View style={styles.swatchRow}>
+            <View style={styles.field}>
+              <Text style={styles.label}>색상</Text>
+              <View style={styles.swatchRow}>
+                <Pressable
+                  key="no-color"
+                  onPress={() => {
+                    dismissKeyboardOnPickerTap();
+                    setColor(null);
+                  }}
+                  style={[
+                    styles.swatch,
+                    styles.swatchNoColor,
+                    color === null && styles.swatchSelected,
+                  ]}
+                >
+                  <Ionicons name="close" size={14} color={Colors.tertiary} />
+                </Pressable>
+                {CATEGORY_COLOR_PRESETS.map((preset) => {
+                  const selected = color === preset.key;
+                  return (
                     <Pressable
-                      key="no-color"
+                      key={preset.key}
                       onPress={() => {
                         dismissKeyboardOnPickerTap();
-                        setColor(null);
+                        setColor(preset.key);
                       }}
                       style={[
                         styles.swatch,
-                        styles.swatchNoColor,
-                        color === null && styles.swatchSelected,
+                        { backgroundColor: preset.bg },
+                        selected && styles.swatchSelected,
                       ]}
                     >
-                      <Ionicons name="close" size={14} color={Colors.tertiary} />
+                      {selected && <Ionicons name="checkmark" size={14} color={Colors.primary} />}
                     </Pressable>
-                    {CATEGORY_COLOR_PRESETS.map((preset) => {
-                      const selected = color === preset.key;
-                      return (
-                        <Pressable
-                          key={preset.key}
-                          onPress={() => {
-                            dismissKeyboardOnPickerTap();
-                            setColor(preset.key);
-                          }}
-                          style={[
-                            styles.swatch,
-                            { backgroundColor: preset.bg },
-                            selected && styles.swatchSelected,
-                          ]}
-                        >
-                          {selected && <Ionicons name="checkmark" size={14} color={Colors.primary} />}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
+                  );
+                })}
+              </View>
+            </View>
 
-                <View style={styles.field}>
-                  <Text style={styles.label}>아이콘</Text>
-                  <View style={styles.iconGrid}>
+            <View style={styles.iconField}>
+              <Text style={styles.label}>아이콘</Text>
+              <ScrollView
+                style={[styles.iconScroll, { maxHeight: iconScrollMaxHeight }]}
+                contentContainerStyle={styles.iconGrid}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <Pressable
+                  key="no-icon"
+                  onPress={() => {
+                    dismissKeyboardOnPickerTap();
+                    setIcon(null);
+                  }}
+                  style={[
+                    styles.iconTile,
+                    icon === null && styles.iconTileSelected,
+                  ]}
+                >
+                  <Ionicons name="close" size={15} color={Colors.tertiary} />
+                </Pressable>
+                {CATEGORY_ICON_PRESETS.map((iconName) => {
+                  const selected = icon === iconName;
+                  return (
                     <Pressable
-                      key="no-icon"
+                      key={iconName}
                       onPress={() => {
                         dismissKeyboardOnPickerTap();
-                        setIcon(null);
+                        setIcon(iconName);
                       }}
                       style={[
                         styles.iconTile,
-                        icon === null && styles.iconTileSelected,
+                        selected && styles.iconTileSelected,
                       ]}
                     >
-                      <Ionicons name="close" size={15} color={Colors.tertiary} />
+                      <CategoryIcon name={iconName} size={17} color={Colors.secondary} />
                     </Pressable>
-                    {CATEGORY_ICON_PRESETS.map((iconName) => {
-                      const selected = icon === iconName;
-                      return (
-                        <Pressable
-                          key={iconName}
-                          onPress={() => {
-                            dismissKeyboardOnPickerTap();
-                            setIcon(iconName);
-                          }}
-                          style={[
-                            styles.iconTile,
-                            selected && styles.iconTileSelected,
-                          ]}
-                        >
-                          <Ionicons name={iconName as CategoryIconName} size={17} color={Colors.secondary} />
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
+                  );
+                })}
               </ScrollView>
             </View>
 
@@ -323,19 +322,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollFrame: {
-    flexShrink: 1,
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  scroll: {
-    flexGrow: 0,
-  },
-  scrollContent: {
-    paddingBottom: 8,
-  },
   field: {
     marginBottom: 18,
+  },
+  iconField: {
+    marginBottom: 8,
+  },
+  iconScroll: {
+    flexGrow: 0,
   },
   label: {
     fontSize: 12,

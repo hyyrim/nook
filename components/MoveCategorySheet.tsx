@@ -5,6 +5,7 @@ import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategories, createCategory } from '@/lib/api';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import type { Category } from '@/types';
 
@@ -127,7 +128,7 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
                   const isSelected = opt.id === currentCategoryId;
                   const isUncategorized = opt.id === null;
                   const { bg } = getCategoryColor(opt.color);
-                  const iconName = isUncategorized ? 'file-tray-outline' : getCategoryIcon(opt.icon);
+                  const iconName = isUncategorized ? 'inbox' : getCategoryIcon(opt.icon);
                   return (
                     <Pressable
                       key={opt.id ?? 'uncategorized'}
@@ -137,7 +138,7 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
                       <View style={styles.optionLeft}>
                         {iconName ? (
                           <View style={[styles.optionIconWrap, { backgroundColor: bg }]}>
-                            <Ionicons name={iconName} size={16} color={Colors.primary} />
+                            <CategoryIcon name={iconName} size={16} color={Colors.primary} />
                           </View>
                         ) : null}
                         <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
