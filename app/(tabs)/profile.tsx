@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   },
   userCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

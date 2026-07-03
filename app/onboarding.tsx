@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useGoogleAuth, signInWithApple } from '@/lib/auth';
 
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 15,
   },
   appleButtonPressed: {
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 15,
   },
   googleButtonPressed: {

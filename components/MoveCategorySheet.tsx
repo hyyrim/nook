@@ -1,6 +1,6 @@
 import { Animated, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategories, createCategory } from '@/lib/api';
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 36,
     height: 4,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     backgroundColor: '#DCDCDC',
     alignSelf: 'center',
     marginBottom: 18,

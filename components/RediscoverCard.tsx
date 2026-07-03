@@ -1,5 +1,5 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type RediscoverCardProps = {
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   container: {
     width: 188,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     // 흰 배경 + 다크 글자 — 연한 placeholder/임의 색상의 썸네일 모두에서 읽힘
     backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },

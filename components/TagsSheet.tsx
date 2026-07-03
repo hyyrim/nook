@@ -1,7 +1,7 @@
 import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
-import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
+import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type TagsSheetProps = {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 36,
     height: 4,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     backgroundColor: '#DCDCDC',
     alignSelf: 'center',
     marginBottom: 18,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: Colors.background,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingLeft: 11,
     paddingRight: 9,
     paddingVertical: 6,
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: Colors.background,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 13,
     paddingVertical: 12,
     fontSize: 14,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   addButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: 'center',
   },

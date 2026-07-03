@@ -2,7 +2,7 @@ import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Activity
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
-import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Typography } from '@/constants';
+import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { analytics } from '@/lib/analytics';
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 36,
     height: 4,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     backgroundColor: '#DCDCDC',
     alignSelf: 'center',
     marginBottom: 18,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: Colors.background,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 13,
     paddingVertical: 12,
     fontSize: 14,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   pasteButton: {
     backgroundColor: Colors.background,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: 'center',
   },

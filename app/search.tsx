@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRouter } from 'expo-router';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     // TextInput intrinsic 높이 변동으로 박스가 흔들리는 문제 방지 위해 fixed height.
     height: 40,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 13,
     gap: 8,
     shadowColor: '#000',

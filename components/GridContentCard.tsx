@@ -1,6 +1,6 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 
 type GridContentCardProps = {
   title: string;
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   container: {
     width: '48%',
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     overflow: 'hidden',
     marginBottom: 14,
     shadowColor: '#000',
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: Colors.background,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 7,
     paddingVertical: 2.5,
     alignSelf: 'flex-start',

@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { NavHeader } from '@/components/NavHeader';
 import { supabase } from '@/lib/supabase';
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Text, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 
 export type ToastType = 'success' | 'error' | 'loading';
 
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
