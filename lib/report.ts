@@ -89,10 +89,6 @@ export function countCategorized(items: ReportItem[]): number {
   return items.filter((item) => !!item.category_id).length;
 }
 
-export function countUncategorized(items: ReportItem[]): number {
-  return items.filter((item) => !item.category_id).length;
-}
-
 // 7일 vs 30일 분기 — 클라이언트에서 한 번의 30일 fetch 결과를 in-memory로 자른다.
 export function filterWithinDays(items: ReportItem[], days: number): ReportItem[] {
   const since = Date.now() - days * 24 * 60 * 60 * 1000;
