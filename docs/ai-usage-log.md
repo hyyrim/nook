@@ -18,4 +18,12 @@ Archived records:
 
 | AI 도구 | 작업 내용 |
 |---------|----------|
-| Codex | App Store 출시 전 개인정보처리방침/서비스 이용약관 문구를 실제 앱 데이터 처리 범위에 맞게 정리 |
+| Claude Code | Anthropic API 키 서버 이전 — Supabase Edge Function classify로 AI 분류 호출 마이그레이션 (→ 결정 077) |
+| Claude Code | Content Detail 뒤로가기 복귀 시 관련 콘텐츠 깜빡거림 회귀 수정 (→ 결정 078) |
+| Codex | 리포트 미분류 카운트를 기간과 무관한 전체 기준으로 표시 (→ 결정 079) |
+| Codex | MoveCategorySheet fetch를 등장 애니메이션 이후로 지연해 시트 진입 프레임 안정화 (→ 결정 080) |
+| Codex | Radius 시맨틱 스케일 도입 + Colors.pressOverlay 추가 (→ 결정 081) |
+| Codex | PrimaryButton 공통 CTA 컴포넌트 추출 + 주요 시트/화면 CTA 마이그레이션 (→ 결정 082) |
+| Codex | App Store 출시 전 개인정보처리방침/서비스 이용약관 문구를 실제 앱 데이터 처리 범위에 맞게 정리 (→ 결정 083) |
+| Codex | Category Detail 헤더 검색 영역 재배치 + 선택 모드 보조 헤더 미노출 처리 (→ 결정 084) |
+| Codex | 카테고리 순서 편집 저장/드래그 안정화 + 카테고리 바텀시트 input 높이 고정 (→ 결정 085) |

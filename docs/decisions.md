@@ -6,539 +6,177 @@
 
 Archived records:
 - Phase 1: `docs/archive/decisions-phase-1.md` (001~054)
+- Phase 2 part 1: `docs/archive/decisions-phase-2-part-1.md` (055~076)
 
 ---
 
-## 055. 홈에 Forgotten Content 섹션 추가 (2026-06-25)
+## 077. Anthropic API 키 서버 이전 — Edge Function classify (2026-07-03)
 
-**결정**: 홈 화면에 "잊고 있던 콘텐츠" 섹션을 추가한다. 한 번이라도 열어봤지만 14일 이상 다시 보지 않은 콘텐츠를 viewed_at ASC 순으로 최대 10개 노출. (기본값 30일 → 14일로 조정, 정식 출시 직후 데이터 양 고려)
+**결정**: 클라이언트 번들에 노출되던 Anthropic API 호출을 Supabase Edge Function `classify`로 이전하고, 앱에서는 `supabase.functions.invoke('classify')`만 호출한다.
 
-**배경**: 정식 출시 후 2차 범위로 명시되어 있던 Forgotten Content를 1차 후속 업데이트 핵심 기능으로 채택. 기존 Rediscover(한 번도 안 본 콘텐츠)와 명확히 구분되는 별개 섹션이 필요했다.
-
-**결과**:
-- `lib/api.ts`에 `getForgottenContents(limit = 10, days = 30)` 추가 — `viewed_at IS NOT NULL AND viewed_at < now() - 30 days` 조건, viewed_at 오름차순 (가장 오래 잊혀진 순)
-- `lib/analytics.ts` `ContentOpenedSource`에 `'forgotten'` 추가
-- `app/content/[id].tsx` `CONTENT_OPENED_SOURCES` 화이트리스트에도 추가
-- 홈 섹션 렌더링: `app/(tabs)/index.tsx`에서 `최근 저장 → 발견된 콘텐츠(Rediscover) → 잊고 있던 콘텐츠(Forgotten)` 순. 데이터 없으면 섹션 숨김
-- 시각 디자인은 `RediscoverCard` 재사용 — 가로 스크롤 카드 통일, 디자인 시스템 일관성 유지. 구분은 SectionHeader 라벨/아이콘(`hourglass-outline`)으로
-
-**구분 정의**:
-- **Rediscover**: `viewed_at IS NULL` + 최근 14일 이내 저장. 한 번도 안 본 콘텐츠
-- **Forgotten**: `viewed_at IS NOT NULL` + `viewed_at < 14일 전`. 봤지만 오래 안 본 콘텐츠 (사용 데이터 쌓이면 30일로 재조정 검토)
-
-**고려한 대안**:
-- (a) **ForgottenCard 별도 컴포넌트** — 시각적으로 더 강하게 구분 가능하지만 단일 PR 범위 초과, 디자인 시스템 분기 위험
-- (b) **Rediscover와 통합한 단일 '재발견' 섹션** — 정의가 모호해져 사용자 인지 부담 ↑
-- (c) **Forgotten 클릭 시 별도 source 안 잡고 'rediscover' 재사용** — 분석상 두 경로의 사용자 행동을 구분 못 함. content_opened source는 따로 잡음
-
-**교훈**: 새 데이터 섹션 추가 시 `ContentOpenedSource` 타입 + `CONTENT_OPENED_SOURCES` 화이트리스트 둘 다 갱신해야 한다. 화이트리스트가 누락되면 클릭은 동작하지만 analytics가 `direct`로 잘못 기록된다.
-
-## 056. Phase 2 리포트 1차 — 관심사 회고 화면 (2026-06-25)
-
-**결정**: 리포트 탭을 "저장량 대시보드"가 아니라 "요즘 무엇에 관심 두는지" 회고 화면으로 채운다. 1차는 AI 호출 없이 단순 집계만으로 카테고리/분포/관련 주제를 보여준다. 기간은 최근 7일 우선, 데이터 부족 시 30일로 자동 fallback.
-
-**배경**: CLAUDE.md에 2차로 명시된 Report. codex가 작성한 `docs/report-phase-2-proposal.md` 제안서를 Claude Code가 검토하고 1차/2차 범위를 좁힌 결과 — 데이터가 부족한 출시 직후에는 "관심사 흐름"이나 AI 코멘트가 오히려 신뢰도를 깎을 수 있어, 단순 집계만으로 안전하게 시작.
+**배경**: `EXPO_PUBLIC_ANTHROPIC_API_KEY`는 Expo 빌드 시 앱 번들에 인라인되므로 secret 저장에 부적합하다. Codex/Claude 보안 리뷰에서 IPA 추출 가능성이 확인되어 기존 키를 revoke하고 서버 전용 키로 교체해야 했다.
 
 **결과**:
-- `lib/api.ts`에 `getRecentContentsForReport(days)` + `ReportItem` 타입 추가 — 단일 fetch 30일치 가져오기
-- `lib/report.ts` 신규 — 순수 함수 모듈:
-  - `aggregateByCategory` (분류된 콘텐츠만, count desc)
-  - `computeDistribution` (% 합산 100 보장, 마지막 항목 잔여 보정)
-  - `topTagsPerCategory` (카테고리당 Top 3, category 이름과 같은 tag는 제외)
-  - `countCategorized` / `countUncategorized`
-  - `filterWithinDays` (7일/30일 in-memory 분기용)
-- `app/(tabs)/report.tsx` 전면 개편:
-  - 마운트 시 30일 단일 fetch → 7일/30일 in-memory derive
-  - 7일 분류된 ≥ 3 → 7일 기준 + subtitle "최근 7일 기준"
-  - 부족 → 30일 fallback + subtitle "최근 한 달 기준" + 작은 배너
-  - 30일도 부족 → 부족 상태 안내
-  - 미분류 콘텐츠 있으면 별도 안내 (Top 카테고리에는 미포함)
-
-**고려한 대안**:
-- (a) **AI 코멘트 1차 포함** — 비용/캐싱/재생성 정책 검토 필요. 1차에선 제외하고 별도 PR로
-- (b) **관심사 흐름 (week-over-week)** — 출시 1주차에는 비교 기준 데이터 부족, "늘었다/줄었다"가 오히려 신뢰 깎을 위험. 2차로 분리
-- (c) **Supabase RPC/Edge Function 집계** — 단일 사용자 수십~수백 row 집계는 클라이언트가 더 빠르고 단순. 캐싱 도입 시 재고
-- (d) **`reports` 테이블 캐싱** — 1차엔 매 진입 시 30일 fetch (ms 단위). AI 코멘트 도입 시 입력 hash 기반 캐싱 도입 예정
-- (e) **미분류를 Top 카테고리에 포함** — "미분류"는 카테고리가 아니라 상태. 별도 안내로 분리해 제품 원칙 유지
-
-**기술 결정**:
-- KST 고정 (analytics-queries 패턴 일관)
-- 단일 fetch + 클라이언트 derive (중복 쿼리 0)
-- 외부 전송 데이터 0 (AI 호출 없음)
-- 모든 쿼리 `user_id` 스코프, `categories(name)` join
-
-**교훈**: 제품 원칙에서 흔히 미끄러지는 지점은 "있는 모든 데이터를 다 보여주는" 유혹이다. "관심사 회고"라는 화면 정의를 정한 뒤로는 미분류/저장량/AI 자유 코멘트 등 모두 "정의에 맞지 않음" 한 마디로 1차 범위에서 빠질 수 있었다. 화면 정의가 곧 가장 강한 우선순위 필터.
-
-## 057. 리포트 카테고리 집계 중복 제거 (2026-06-26)
-
-**결정**: 리포트 화면에서 "많이 저장한 카테고리" 섹션을 제거하고, "관심 분포"와 "관련 주제" 2단 구조로 단순화한다.
-
-**배경**: "많이 저장한 카테고리"는 카테고리별 저장 개수 랭킹이고, "관심 분포"는 같은 데이터를 퍼센트 bar로 보여준다. 특히 초기 데이터가 적을 때 두 섹션이 거의 같은 정보를 반복해 리포트 화면의 밀도와 명확성을 떨어뜨렸다.
-
-**결과**:
-- `app/(tabs)/report.tsx`에서 "많이 저장한 카테고리" 섹션 제거
-- `topCategories` 파생 데이터와 `CategoryListCard` 제거
-- 리포트 흐름을 `관심 분포 → 관련 주제 → 미분류 안내`로 정리
+- 기존 Anthropic 키를 revoke하고 EAS production env 및 로컬 `.env`에서 public 키를 제거했다.
+- 새 서버 전용 키를 Supabase Edge Function secret으로 등록했다.
+- `supabase/functions/classify/index.ts`를 추가해 JWT 인증, 사용자 카테고리 조회, 프롬프트 구성, Anthropic 호출, 결과 파싱을 서버에서 처리한다.
+- `lib/ai.ts`는 직접 Anthropic fetch 대신 `classify` Edge Function 호출로 변경했다.
+- 클라이언트에서 API 키와 프롬프트 로직을 제거했고, 기존 fail-silent 계약은 유지했다.
 
 **대안 검토**:
-- (a) **두 섹션 유지 + 설명으로 차이 보강** — 데이터 의미가 여전히 같아 중복 문제를 해결하지 못함.
-- (b) **많이 저장한 카테고리 유지, 관심 분포 제거** — progress bar 애니메이션과 "관심사 회고" 화면 정의가 약해짐.
+- 클라이언트 키 유지: 보안상 불가.
+- EAS Update만으로 hotfix: 이미 노출된 키는 revoke가 필요하고, 바이너리 내 public env 구조 자체를 제거해야 하므로 서버 이전이 필요.
 
-**교훈**: 리포트 화면에서는 같은 데이터를 다른 시각화로 반복하는 것보다, 한 시각화가 다음 섹션의 해석으로 자연스럽게 이어지는 구조가 더 명확하다.
-
-## 058. 리포트 개발 모드 더미 케이스 선택기 검증 후 제거 (2026-06-26)
-
-**결정**: 리포트 화면 검증에 사용한 `__DEV__` 전용 더미 데이터 선택기를 제거하고, 리포트 화면은 실제 사용자 데이터만 사용하게 한다.
-
-**배경**: 출시 초기에는 사용자별 저장 데이터가 적어 리포트의 7일 기준, 30일 fallback, 부족 상태, 미분류 안내, progress bar 애니메이션을 실제 데이터만으로 반복 검증하기 어렵다. Supabase에 테스트 레코드를 직접 넣는 방식은 사용자 데이터 격리와 테스트 후 정리 부담이 있다.
-
-**결과**:
-- 리포트 주요 상태 검증 후 `app/(tabs)/report.tsx`에서 개발 모드 더미 선택기 제거
-- `ReportDemoCase`, `REPORT_DEMO_CASES`, `makeReportDemoItems`, `demoCase`, `isUsingDemoData`, `ReportDemoSelector` 제거
-- 리포트 데이터 흐름을 `getRecentContentsForReport(MAX_WINDOW_DAYS)` 단일 실제 fetch로 단순화
-
-**대안 검토**:
-- (a) **Supabase seed 데이터 생성** — 실제 DB에 테스트 데이터가 남고 사용자별 RLS/정리 부담이 큼.
-- (b) **별도 mock screen 추가** — MVP 화면 범위와 라우팅 구조를 늘림.
-- (c) **고정 더미 데이터만 표시** — 여러 상태 검증이 어려워 선택형 케이스가 더 적합.
-
-**교훈**: 데이터가 적은 초기 제품에서는 UI 검증용 더미 케이스도 제품 안정화 도구다. 단, 검증이 끝나면 실제 데이터 흐름만 남겨 코드 복잡도와 UX 판단 혼선을 줄이는 편이 좋다.
-
-## 059. 리포트 기간 라벨과 섹션 헤더 정렬 개선 (2026-06-26)
-
-**결정**: 리포트의 기간 기준 라벨을 페이지 제목 옆 badge로 배치하고, 섹션 헤더 아이콘을 고정 크기 박스에 넣어 제목/설명 라인을 정렬한다.
-
-**배경**: 기존 "최근 7일 기준/최근 한 달 기준" 라벨은 제목 아래에 작고 옅게 표시되어 가독성이 낮았다. 또한 Ionicons glyph마다 실제 시각 폭이 달라 "관심 분포"와 "관련 주제" 아이콘이 같은 세로 라인에서 벗어나 보였다.
-
-**결과**:
-- 7일 기준 라벨을 제목 옆 `surface` badge로 변경
-- 30일 fallback 상태는 제목 옆 badge를 숨기고 안내 배너에 "최근 한 달 기준" 설명을 통합
-- header 하단 여백과 scroll 시작 여백 조정
-- 섹션 아이콘을 16x22 고정 박스로 감싸 시각적 기준선을 통일
-
-**교훈**: outline icon은 같은 size 값을 써도 glyph별 내부 여백이 달라 보일 수 있다. 텍스트 기준선과 맞춰야 하는 헤더에서는 아이콘 자체보다 아이콘 컨테이너를 정렬 기준으로 삼는 편이 안정적이다.
-
-## 060. 리포트 기간 선택 직접 제어 (2026-06-26)
-
-**결정**: 리포트 기간 기준을 자동 fallback 방식에서 사용자 선택 방식으로 변경한다. 화면에는 `최근`을 고정 텍스트로 두고, 사용자는 뒤의 `일주일`, `14일`, `한달` 드롭다운만 변경해 해당 기간 기준의 관심 분포와 관련 주제를 본다.
-
-**배경**: 기존 구조는 7일 데이터가 부족하면 30일로 자동 전환해 빈 화면을 피했다. 하지만 리포트가 "요즘 관심사 회고" 화면이라면 사용자가 직접 기간을 바꿔 비교하는 것이 더 자연스럽고, 제목 badge와 fallback 안내 배너가 겹쳐 보이는 문제도 있었다.
-
-**결과**:
-- `app/(tabs)/report.tsx`에 `최근` 고정 텍스트 + 기간 텍스트형 드롭다운 추가
-- 기간 옵션은 `일주일`, `14일`, `한달`로 정리
-- `deriveReportView(items, selectedWindow)`로 선택 기간 기준 집계
-- 네트워크 fetch는 최대 기간인 30일 1회 유지, 선택 기간 필터링은 클라이언트에서 수행
-- 자동 fallback 배너와 기간 badge 제거
-- 부족 상태 문구를 선택 기간 기준으로 변경
-- 개발 모드 더미 케이스의 `30일` 라벨을 `긴 기록`으로 변경해 기간 선택 UI와 혼동을 줄임
-
-**대안 검토**:
-- (a) **기존 자동 fallback 유지** — 초기 데이터에는 친절하지만 사용자가 기간을 탐색할 수 없고 기간 정보 UI가 중복됨.
-- (b) **기간 선택 + 부족 시 자동 확장** — 사용자가 고른 기준을 앱이 몰래 바꾸는 셈이라 리포트 신뢰도가 낮아짐.
-- (c) **3일/7일/14일/30일 segmented control** — 선택지는 명확하지만 `3일`은 리포트 회고 기준으로 너무 짧고, 화면 상단에서 버튼이 차지하는 밀도가 높음.
-- (d) **이번 주/지난 2주/이번 달** — 자연어 느낌은 좋지만 `이번`과 `지난`이 섞여 기준 표현의 결이 달라짐.
-- (e) **최근 + 1주/2주/1달** — 짧지만 숫자 단위가 다소 도구적으로 보여 최종 표기는 `일주일/14일/한달`로 조정.
-
-**교훈**: 리포트의 기간 기준은 앱이 자동으로 보정하기보다 사용자가 명시적으로 선택하게 하는 편이 화면의 의미와 데이터 신뢰를 더 잘 드러낸다.
-
-## 061. 리포트 관심 분포 Top 카테고리 강조 테스트 원복 (2026-06-26)
-
-**결정**: 관심 분포 리스트의 첫 번째 항목 강조 테스트를 원복하고, 모든 row를 같은 스타일로 유지한다.
-
-**배경**: 리포트 화면이 단조로워 보여 최상위 카테고리를 강조하는 방식을 테스트했다. 별도 요약 row는 중복으로 보였고, 첫 번째 row만 크기와 bar 높이를 키우는 방식은 오류처럼 보여 리스트의 일관성을 해쳤다.
-
-**결과**:
-- `app/(tabs)/report.tsx`의 `DistributionCard`에서 첫 번째 row 전용 스타일 제거
-- 모든 관심 분포 row의 텍스트 크기, 굵기, progress bar 높이를 동일하게 유지
-- Top 강조는 추후 별도 방식이 필요할 때 재검토
-
-**교훈**: 리스트 안에서 한 항목만 크기를 바꾸면 강조보다 시각적 불일치로 인식될 수 있다. 강조가 필요하면 리스트 바깥의 요약, 작은 badge, 또는 별도 섹션처럼 구조적으로 분리된 방법을 다시 검토해야 한다.
-
-## 062. 홈 Forgotten Content 14일 기준 단일화 (2026-06-26)
-
-**결정**: Codex handoff 첫 작업 요청에 따라 홈 Forgotten Content의 코드/주석/문서 일관성을 점검한다. `lib/api.ts`의 `getForgottenContents` default를 30일에서 14일로 변경해 호출부와 통일한다. 단일 진실의 원천(single source) 패턴을 회복.
-
-**배경**: PR #24(§055)에서 정식 출시 직후 데이터 양을 고려해 호출부 인자를 14일로 명시했고 함수 default는 30일을 유지했다. 두 값이 어긋난 채 두면:
-- 호출부에서 `getForgottenContents(10, 14)` 형태로 default override가 항상 보임 → "왜 같이 안 통일했지?" 의문 유발
-- §055 본문의 "30일 재조정 검토"는 가능성 메모일 뿐이고, 실제로 30일 복귀가 확정된 상태도 아님
-- 30일 복귀가 결정되면 그 자체가 새 결정 사안이라 별도 commit/PR로 다루는 게 추적성에도 좋음
-
-**결과**:
-- `lib/api.ts` `getForgottenContents` default `30` → `14`. 함수 정의 주석에 "사용 데이터가 충분히 쌓여 30일이 더 적절해지면 별도 결정으로 변경" 명시
-- `app/(tabs)/index.tsx` 호출부 `getForgottenContents(10, 14)` → `getForgottenContents(10)`. default를 그대로 사용
-- 섹션 주석을 "14일 이상 다시 보지 않은 콘텐츠 (§055, §062)"로 정리
-- 다른 우려 사항은 코드 검토로 정상 확인:
-  - 쿼리: `requireUserId()` + `.eq('user_id', userId)` (RLS 일관)
-  - Rediscover vs Forgotten 명확 구분 (`viewed_at IS NULL` vs `viewed_at < 14일`)
-  - analytics `source='forgotten'`: 홈 → router params → Content Detail 화이트리스트까지 정상 전달
-
-**고려한 대안**:
-- (a) **default 30 유지** — §055의 "30일 복귀 검토" 의도를 default에 남겨두는 보수적 안. 다만 default override가 호출부에 항상 노출돼 일관성 의문이 반복됨
-- (b) **주석 위치를 함수 정의 본문으로 이동** — 호출부 의도가 보이지 않아 다음 작업자가 14가 어디서 왔는지 추적 어려움
-
-**교훈**: "혹시 모를 미래 변경"을 위해 default에 다른 값을 남겨두면 호출부에서 매번 override가 보이는 형태로 빚이 생긴다. 30일 복귀가 정말 일어나면 그것 자체가 별도 결정 사안이므로, 현재 시점의 의도(14일)를 default에 두는 게 코드와 결정의 결을 맞춘다.
-
-## 063. Rediscover 저장 직후 노출과 즉시 사라짐 완화 (2026-06-26)
-
-**결정**: Rediscover 후보에 저장 후 3일 이상의 최소 숙성 기간을 적용하고, Rediscover 카드로 상세 화면에 들어간 콘텐츠는 현재 홈 세션에서 즉시 사라지지 않도록 유지한다.
-
-**배경**: 직접 사용 중 방금 저장한 콘텐츠가 Recent와 Rediscover에 동시에 보이고, Rediscover 카드를 누른 뒤 `viewed_at` 업데이트로 홈 복귀 시 카드가 바로 사라지는 흐름이 당황스럽게 느껴졌다. Rediscover는 저장 직후 추천보다 시간이 조금 지난 미열람 콘텐츠를 다시 꺼내주는 경험에 가까워야 한다.
-
-**결과**:
-- `getRediscoverContents(limit, minAgeDays = 3, maxAgeDays = 14)`로 후보 기간을 `3일 이상 14일 이내 저장 + viewed_at IS NULL`로 조정
-- 홈 Rediscover 카드 탭 시 해당 content_id를 현재 홈 컴포넌트 세션에 보관
-- 홈 재조회 결과에서 해당 카드가 `viewed_at` 때문에 빠져도 기존 화면 목록에는 한 번 유지
-- 콘텐츠 삭제 시 `content-deleted` 이벤트로 홈을 재조회하고 세션 보관 목록을 비워 삭제된 카드가 남지 않도록 처리
-- Rediscover 빈 상태 문구를 "저장한 지 며칠 지난 미열람 콘텐츠" 기준으로 수정
-
-**대안 검토**:
-- (a) **최소 숙성 기간 1일** — 방금 저장과의 중복은 줄지만 여전히 Recent와 감정적으로 겹칠 가능성이 큼
-- (b) **최소 숙성 기간 7일** — Rediscover의 의미는 더 선명하지만 초기 사용자에게 섹션 노출이 너무 늦어질 수 있음
-- (c) **카드 탭 즉시 목록에서 제거 유지** — 데이터 규칙은 단순하지만 사용자가 화면 변화 원인을 이해하기 어렵다
-
-**교훈**: 알고리즘상 중복이 없더라도 사용자가 보는 섹션 간 시간감이 겹치면 같은 정보처럼 느껴질 수 있다. Rediscover는 데이터 조건뿐 아니라 "조금 시간이 지난 뒤 다시 만남"이라는 체감 기준을 함께 가져야 한다.
-
-## 064. Forgotten Content 다양성 제약 추가 (2026-06-26)
-
-**결정**: Forgotten Content는 기존처럼 `viewed_at`이 오래된 순서를 기준으로 하되, 카테고리당 최대 2개까지만 홈에 노출한다. 미분류 콘텐츠도 하나의 가상 카테고리처럼 취급해 같은 제한을 적용한다.
-
-**배경**: Forgotten은 이미 한 번 본 콘텐츠를 다시 꺼내주는 섹션이므로 Rediscover처럼 관심도 점수 모델을 섞기보다 "얼마나 오래 다시 안 봤는지"가 핵심이다. 다만 단순 `viewed_at ASC`만 쓰면 같은 카테고리 콘텐츠가 연달아 나와 홈 화면의 탐색감이 약해질 수 있다.
-
-**결과**:
-- `getForgottenContents(limit = 10, days = 14, maxPerCategory = 2)`로 14일 기준과 카테고리 다양성 제약을 함께 적용
-- Supabase에서는 `viewed_at ASC`로 후보를 넉넉히 가져오고, 클라이언트에서 카테고리별 카운트를 적용해 최대 `limit`개 반환
-- 홈 호출부는 `getForgottenContents(10)`로 default 14일 기준과 최대 10개 노출 정책을 사용
-
-**대안 검토**:
-- (a) **Rediscover와 같은 관심도 × age score 적용** — 알고리즘은 정교해지지만 Forgotten의 "오래 안 본 것"이라는 설명 가능성이 약해짐
-- (b) **기존 단순 정렬 유지** — 구현은 단순하지만 한 카테고리가 화면을 점유할 수 있음
-- (c) **카테고리별 별도 쿼리** — 다양성은 보장되지만 쿼리 수가 늘고 MVP 범위 대비 복잡함
-
-**교훈**: Forgotten은 추천 알고리즘보다 회상 큐레이션에 가깝다. 점수 모델을 추가하기 전에 단순한 다양성 제약만으로도 화면 품질을 개선할 수 있다.
-
-## 065. 홈 재발견 섹션 설명 문구 추가 (2026-06-26)
-
-**결정**: 홈의 "발견된 콘텐츠"와 "잊고 있던 콘텐츠" 섹션에 짧은 subtitle을 추가한다. 문구 톤은 Content Detail의 "관련 콘텐츠 / 같은 관심사와 관련된 저장 콘텐츠"와 맞춰 부드러운 설명형 문장으로 통일한다.
-
-**배경**: Rediscover와 Forgotten은 데이터 기준으로는 `viewed_at` 유무와 시간 조건이 달라 겹치지 않지만, 사용자가 보는 제목만으로는 둘 다 재발견/잊음 계열로 느껴져 차이가 약했다.
-
-**결과**:
-- 발견된 콘텐츠: "아직 열어보지 않은 관심 콘텐츠예요"
-- 잊고 있던 콘텐츠: "다시 꺼내보기 좋은 콘텐츠예요"
-- 기존 `SectionHeader`의 `subtitle` prop을 사용해 새 UI 컴포넌트 없이 홈 화면 문맥만 보강
-
-**교훈**: 알고리즘을 고쳤더라도 사용자가 그 차이를 바로 읽을 수 있어야 한다. 섹션 제목은 감성을 맡고, subtitle은 데이터 기준을 짧게 설명하는 역할로 나누는 편이 안정적이다.
-
-## 066. 홈 데이터 상태별 밀도 조절과 dev 케이스 검증 (2026-06-26)
-
-**결정**: 홈에 새 주요 섹션을 추가하지 않고, Rediscover/Forgotten 노출 여부에 따라 최근 저장 노출 개수를 조절한다. 최근 저장으로도 화면 밀도가 부족한 경우에는 작은 보조 카드를 표시한다. 개발 모드 케이스 preview로 여러 상태를 검증한 뒤, 출시 코드에서는 preview UI를 제거한다.
-
-**배경**: Rediscover와 Forgotten은 기준을 만족해야만 나오는 섹션이라, 최근 저장만 있거나 보조 섹션이 하나만 있는 상태에서 화면 하단이 비어 보일 수 있었다. 그렇다고 알고리즘 기준을 낮추거나 새 기능 섹션을 추가하면 홈의 의미가 흐려질 수 있다.
-
-**결과**:
-- `getRecentContents(6)`으로 최근 저장을 넉넉히 가져오고, 렌더링에서 보조 섹션 개수에 따라 노출 수를 조절
-- Rediscover/Forgotten 둘 다 없음 → 최근 저장 최대 6개
-- 둘 중 하나만 있음 → 최근 저장 최대 4개
-- 둘 다 있음 → 최근 저장 최대 3개
-- 실제 최근 저장 개수가 목표 노출 수보다 적으면 보조 카드 표시
-  - 제목: "더 많은 콘텐츠를 모아보세요"
-  - 설명: "저장한 콘텐츠가 쌓이면 홈에서 다시 보여드려요"
-- 보조 카드는 border 박스보다 기존 콘텐츠 카드와 가까운 낮은 shadow 카드로 표시
-- 보조 카드 아이콘은 Rediscover의 `sparkles`와 의미가 겹치지 않도록 `bookmark-outline` 사용
-- 기존 Rediscover 빈 placeholder는 제거해 빈 상태 자체를 강조하지 않도록 조정
-- 발견된 콘텐츠의 active dot은 다른 홈 섹션과 패턴이 맞지 않아 제거
-- 최근 저장 다음 섹션과 Rediscover 다음 Forgotten 섹션 간격은 28px로 맞추고, 마지막 discovery 섹션 하단은 24px로 유지
-- 검증 중 `__DEV__`에서 `Live`, `빈 홈`, `최근 적음`, `최근 충분`, `발견만`, `잊음만`, `전체` 케이스를 확인
-- 홈 상태 검수가 끝난 뒤 dev preview 칩과 더미 데이터 코드를 제거해 출시 코드 복잡도를 낮춤
-
-**대안 검토**:
-- (a) **새 홈 섹션 추가** — Library/Report와 역할이 겹치고 홈의 "최근 + 다시 꺼내기" 구조가 흐려질 수 있음
-- (b) **Rediscover/Forgotten 기준 완화** — 화면은 채워지지만 저장 직후 추천처럼 느껴져 알고리즘 의미가 약해짐
-- (c) **Rediscover 카드를 2줄로 확대** — 발견 섹션이 홈의 주인공처럼 커져 최근 저장보다 무거워질 수 있음
-
-**교훈**: 홈의 빈 느낌은 반드시 새 데이터 섹션으로 해결할 필요가 없다. 섹션 의미는 유지하고, 데이터 상태에 따라 기존 섹션의 밀도를 조절하는 편이 MVP 구조를 더 단단하게 유지한다. 데이터가 적은 초기 제품에서는 dev preview가 빠른 시각 검증에 유용하지만, 검증이 끝나면 실제 데이터 흐름만 남겨야 한다.
-
-## 067. 재발견 정의 변경 — viewed 무관 + 망각도 기준 변경 (2026-06-29)
-
-**결정**: Rediscover의 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경. viewed 무관, 망각도는 `lastInteraction = viewed_at ?? saved_at` 기준. 최소 숙성 기간 3 → 2일, `retainedRediscoverIdsRef` 세션 유지 로직 제거.
-
-**배경**: §063(3일 숙성 + 탭 후 세션 유지) 적용 이후에도 사용자 보고로 두 증상이 남아 있었다.
-1. 저장 직후 Recent 섹션과 시간대 겹침 — Recent는 최근 6개를 무제한 시간으로 보여주므로 4~6일 된 콘텐츠가 양쪽에 보일 수 있음
-2. 카드 탭 후 viewed_at이 갱신되면 retained 보관은 되지만, `[...rediscover, ...retained]` 머지에서 카드가 새 fetched 뒤에 붙어 위치가 맨 끝으로 밀려 "사라진 것처럼" 보임
-
-사용자 멘탈 모델 재정립:
-- "재발견 = 안 본 것"이 아니라 "**저장했는지 까먹은 것 → 추천받아 다시 발견**"
-- viewed 여부는 부차적, 시간감과 관심도가 핵심
-- "사람들은 저장하고 다시 잘 안 열어봐" → 추천 알고리즘이 매우 중요
-
-**결과**:
-- `getRediscoverContents`:
-  - `viewed_at IS NULL` 필터 제거 → 본 적 있는 콘텐츠도 후보
-  - `minAgeDays` 기본값 3 → 2
-  - 망각도 = `daysSinceLastInteraction / 7`, `lastInteraction = viewed_at ?? saved_at` — 본 적 있어도 본 지 오래되면 점수 ↑
-  - 다양성(카테고리당 2개)·관심도(카테고리 viewed/total)·최대 14일 풀 유지
-- `app/(tabs)/index.tsx`: `retainedRediscoverIdsRef` + retain 머지 로직 제거. viewed_at 갱신돼도 풀에 그대로 남고, 다음 진입 시 망각도 점수가 0에 가까워져 자연스럽게 뒤로 밀림 — 의도된 동작
-- 라벨 "발견된 콘텐츠" 유지, subtitle만 "한동안 안 들여다본 관심 콘텐츠예요"로 변경
-- 시간대 분리:
-  - Recent: 시간 무관, 최근 6개
-  - Rediscover: 2~14일 저장 (viewed 무관)
-  - Forgotten: viewed_at 14일+
-  - Recent와 Rediscover의 시간대 일부 중첩(2~6일)은 남지만, 2일 숙성으로 즉시성 문제는 해소
-
-**대안 검토**:
-- (a) **viewed 콘텐츠를 포함하되 별도 가중치(예: viewed면 점수 0.5배)** — 모델 복잡, 의미 약함. 망각도 자체가 자연 가중 역할
-- (b) **Recent를 시간 기반 필터로 분리("최근 N일 이내")** — 큰 변경. 향후 별건 검토
-- (c) **§063 그대로 두고 retain 위치만 prev index 유지** — 한 증상(위치 밀림)만 부분 해결. 정의 어긋남은 그대로
-
-**교훈**: 알고리즘의 "필터 조건"만 만지기보다 "정의" 자체를 다시 살펴봐야 할 때가 있다. §063은 두 증상 모두를 필터(3일 숙성 + retain)로 해결하려 했지만, 사용자의 멘탈 모델("저장 까먹은 것 추천")과 코드의 정의("안 본 것")가 어긋난 게 본질이었다. 정의를 바꾸면 두 증상 모두 자연 해결됨.
-
-## 068. Interest Insight — 카테고리 급부상 시그널 (2026-06-29)
-
-**결정**: 홈 화면에 Interest Insight 카드 추가. 최근 14일 vs 이전 14일 카테고리별 저장 수를 비교해 평소보다 늘어난 Top 1 카테고리를 표시. 클릭 시 해당 폴더로 이동. 임계값 미달이면 카드 숨김(강요 X).
-
-**배경**: CLAUDE.md Phase 2 후보의 Interest Insight를 홈에 추가. Report 1차의 "관심 분포"는 정적 분석이라 변화·트렌드를 직관적으로 보여주지 못함. 사용자가 깨닫지 못한 관심사 변화를 홈에서 즉시 시각화하는 게 가장 강력한 발견 경험.
-
-**결과**:
-- `getInterestInsight(windowDays = 14)` 함수 (`lib/api.ts`):
-  - 최근 14일 + 이전 14일 콘텐츠 한 번에 fetch, 클라이언트에서 카테고리별 집계
-  - 임계값: `delta >= 3` AND (`이전==0`이면 `최근>=3` / 그 외엔 `최근/이전 >= 2배`) — 노이즈 차단
-  - delta 기준 정렬 후 Top 1 반환, 없으면 `null`
-  - 미분류(category_id NULL)는 제외
-- `components/InterestInsightCard.tsx` 신규:
-  - trending-up 아이콘 + "최근 2주 **[카테고리]** 저장이 평소보다 늘었어요"
-  - subtitle: "이전 2주 N개 → 이번 2주 M개"
-  - chevron-forward 아이콘으로 탐색 가능성 시그널
-  - densityHintCard와 동일한 카드 스타일 (디자인 시스템 일관)
-- 홈 섹션 순서: 최근 저장 → **Interest Insight (있을 때)** → 발견된 콘텐츠 → 잊고 있던 콘텐츠
-- 클릭 → `/category/[id]`로 이동, 해당 카테고리의 전체 콘텐츠 확인
-
-**대안 검토**:
-- (a) **다중 카테고리 표시 (Top 2~3)** — 홈이 무거워짐. Top 1만이 강조 효과 큼
-- (b) **시그널을 viewed 기반(조회 증가)으로** — 저장 행동이 더 강한 관심 표명. 조회는 우연일 수 있음
-- (c) **임시 뷰("최근 2주 [카테고리] 콘텐츠 리스트")로 이동** — 새 화면 필요. 기존 폴더 화면 재사용이 더 깔끔
-- (d) **Report 1차에 추가** — 발견성 ↓ (Report 탭까지 들어가야 봄). 홈 카드가 더 강력. Report는 정적 분석 역할 유지
-- (e) **재발견과 통합 ("AI에 관심 늘었어요" + 관련 콘텐츠 5개)** — 카드 디자인 새로 필요, 변화 시그널과 추천 콘텐츠가 한 카드에 섞여 의미 약해짐. 두 섹션 분리가 명확
-
-**임계값 근거**:
-- `delta >= 3`: 절대수 증가가 작으면 노이즈로 판단 (저장 0→1, 1→2 같은 케이스 차단)
-- 이전 0 + 최근 3+: 새로 관심 생긴 카테고리. "급부상" 의미에 부합
-- 이전 >=1 + 비율 2배+: 기존 관심사가 갑자기 늘어난 경우
-- 이 두 조건 모두 만족해야 카드 노출 → 노이즈 강력 차단, 진짜 급부상만 보여줌
-
-**교훈**: 사용자가 깨닫지 못한 패턴은 별도 화면에서 발견하기 어렵다. 정적 분석은 Report에, 변화/트렌드는 홈 카드로 분리해 발견성과 분석 깊이를 모두 잡는다. 임계값은 보수적으로(노이즈 차단) 잡아 카드가 자주 안 떠도 OK — 떠야 할 때 신뢰도 있게 뜨는 게 더 중요.
-
-## 069. 온보딩 카테고리 직접 추가 (2026-06-29)
-
-**결정**: 온보딩 카테고리 선택 화면(`app/choose-interests.tsx`)에 사용자 정의 카테고리 추가를 허용. 진입점은 칩 그리드 끝의 "+ 직접 추가" dashed-border 칩. 추가된 커스텀 칩은 우측 작은 ×로 제거 가능.
-
-**배경**: 온보딩 화면이 기본 12개 옵션 중에서만 선택을 강제했다. 사용자의 관심사가 12개 카테고리에 정확히 매칭되지 않을 수 있고, 본인이 만들고 싶은 카테고리(예: "주식", "독서", "캠핑")가 있을 때 폴더 탭까지 들어가 추가해야 하는 우회 경로가 있었다. Phase 1 검토에서 발견된 이슈 중 하나.
-
-**결과**:
-- `app/choose-interests.tsx` 전면 정리:
-  - `PRESET_CATEGORIES` (기본 12개) + `customCategories` state로 분리
-  - 칩 영역을 `ScrollView`로 변경 — 칩이 많아져도 하단 CTA가 가려지지 않음
-  - "+ 직접 추가" 칩: dashed border + add 아이콘 + "직접 추가" 텍스트. 그리드 끝에 위치
-  - 커스텀 칩: 기본 칩과 같은 스타일 + 우측 작은 × 버튼 (`hitSlop`으로 터치 영역 확장)
-  - × 탭 시 `handleRemoveCustom` → customCategories에서 제거 + selected에서도 제거
-- `CategoryBottomSheet` (mode=add) 그대로 재사용:
-  - `existingNames` = preset + custom 전체 → 중복 차단 (case-insensitive)
-  - 추가 후 `handleAddCustom`이 customCategories에 push + 선택 여유 있으면 (`< MAX_SELECT`) 자동 선택
-  - 선택 가득 차 있으면 (`>= 6`) 칩만 추가, 자동 선택 안 함 — 사용자가 기존 칩을 해제하고 새 칩을 직접 선택해야 함
-- `createInitialCategories(selected)` 함수는 그대로 — preset/custom 구분 없이 names 배열만 전달
-
-**대안 검토**:
-- (a) **그리드 아래 별도 "+ 카테고리 추가" 텍스트 버튼** — 시각적으로 분리되지만 발견성 ↓. 칩 그리드 끝이 더 자연스러움
-- (b) **커스텀 칩과 preset 칩 시각적으로 동일하게 (× 없음)** — 오타나 변심 시 온보딩 다시 해야 함. ×가 안전망
-- (c) **온보딩 단계에서 직접 추가 막고 폴더 탭에서만 허용** — 기존 동작. 우회 경로 부담 그대로
-- (d) **커스텀 칩 dashed border 등 시각 구분** — 기능적 동일성 흐려짐. preset과 동일 + × 버튼만으로 구분 충분
-
-**제약 / 트레이드오프**:
-- `customCategories`는 컴포넌트 state에만 존재 — `createInitialCategories` 호출 전 화면을 떠나면 사라짐 (의도된 동작, 온보딩 화면 진입은 1회성)
-- 자동 선택 로직: 선택 가득 차면 추가만 되고 선택 안 됨 — 사용자가 "추가했는데 안 선택됨" 헷갈릴 수 있으나, 대안(이미 선택된 칩을 자동 해제)이 더 혼란스러움
-- × 버튼은 hit area를 18×18 + hitSlop 8로 잡아 모바일 터치 정확도 확보. 칩 자체 탭(toggle)과 × 탭이 명확히 구분되도록 `Pressable` nested 구조
-
-**교훈**: 사용자 정의 카테고리 추가는 UX 측면에서 작은 변경(칩 1개 + bottom sheet 재사용)이지만 사용자 자유도에 큰 차이를 만든다. 기존 컴포넌트(`CategoryBottomSheet`) 재사용으로 새 코드는 최소화하고, 진입점 위치(그리드 끝)와 시각(dashed border)만 결정으로 추가했다.
-
-## 070. 카테고리 폴더 색상/아이콘 시스템 (2026-07-01)
-
-**결정**: 카테고리에 선택 가능한 색상과 아이콘을 추가한다. 색상은 폴더 카드의 배경/탭과 카테고리 변경 시트의 시각 앵커로 사용하고, 아이콘은 사용자가 선택한 경우에만 표시한다. 아이콘 미선택 상태는 기본 폴더 아이콘을 자동 노출하지 않고 `NULL`로 유지한다.
-
-**배경**: Phase 2 백로그의 "카테고리 폴더 컬러칩"을 1차 구현했다. 기존 폴더 탭은 모든 카테고리가 같은 흰색 카드로 보여 스캔성이 낮았고, 카테고리 변경 시트에서도 텍스트만으로 원하는 폴더를 찾기 어려웠다. 다만 Nook의 전체 디자인 방향은 무채색 기반 + 제한적 accent이므로, 강한 색상 팔레트가 아니라 낮은 채도/높은 명도의 "폴더 종이색" 팔레트가 필요했다.
-
-**결과**:
-- `supabase/migrations/004_add_category_color_icon.sql` 추가:
-  - `categories.color text`
-  - `categories.icon text`
-  - 기본 12개 카테고리 이름과 정확히 일치하는 기존 row에 기본 icon backfill
-- `types/Category`에 `color`, `icon` nullable 필드 추가
-- `constants/categoryStyle.ts` 추가:
-  - `CATEGORY_COLOR_PRESETS` — gray/sand/peach/pink/mauve/lavender/blue/mint/slate 흐름
-  - `getCategoryColor` — 알 수 없는 key나 null이면 기본 폴더 색상 반환
-  - `getCategoryIcon` — null이면 null 반환. 기본 폴더 아이콘 자동 대체 없음
-  - `PRESET_CATEGORY_ICON_MAP` — 온보딩 기본 12개 카테고리에만 icon 자동 지정
-- `createCategory`, `updateCategory`, `createInitialCategories`에서 color/icon 저장 지원
-- `CategoryBottomSheet`:
-  - 이름 + 색상 + 아이콘 선택 UI
-  - 색상/아이콘 picker 탭 시 키보드 dismiss
-  - 긴 icon grid와 CTA가 겹치지 않도록 scroll 영역 높이 분리
-- `FolderCard`:
-  - color가 있으면 폴더 카드 bg/tab 색상 반영
-  - icon이 있으면 기존 아이콘 위치에 `[아이콘] [폴더명]`
-  - icon이 없으면 폴더명만 표시
-  - press scale 제거로 그리드 미세 흔들림 완화
-- `MoveCategorySheet`:
-  - 컬러 배경 + icon 표시
-  - icon이 없는 카테고리는 텍스트만 표시. 별도 기본 아이콘 강제 없음
-- `Category Detail`:
-  - 상단 제목 옆에 선택 icon 표시
-  - 로딩 중 `"Category"` fallback 노출 제거
-- `ActionSheet` 핸드오프:
-  - Category Detail의 "카테고리 수정"도 Content Detail과 동일한 `handoffDelay=320ms` 적용
-
-**대안 검토**:
-- (a) **아이콘 없는 카테고리에 기본 folder 아이콘 표시** — 비어 보이지는 않지만 사용자가 선택하지 않은 아이콘이 생긴 것처럼 보임. icon nullable 의미가 약해짐.
-- (b) **카테고리 변경 시트에서 배경색 없이 아이콘만 표시** — 아이콘 없는 카테고리는 자연스러우나, 색상 선택의 효용과 스캔성이 낮아짐.
-- (c) **아이콘 없는 카테고리에 컬러 dot 표시** — 시각 앵커는 유지되지만 현재 폴더 카드의 "아이콘 미선택은 아무것도 표시하지 않음" 원칙과 다름. 1차에서는 보류.
-- (d) **강한 rainbow 팔레트** — 폴더 구분은 쉽지만 Nook의 무채색 기반 디자인과 충돌. 낮은 채도/높은 명도 팔레트로 조정.
-
-**제약 / 트레이드오프**:
-- DB에는 기존 key(`red`, `pink` 등)를 유지했다. 저장된 값 호환을 위해 key rename은 하지 않고 색상값만 조정했다.
-- 컬러/아이콘은 카테고리 정렬, 폴더 리스트 뷰, 데스크탑 웹 확장 시각 시스템과 연결될 수 있다. 1차에서는 폴더 카드/변경 시트/수정 시트에만 반영한다.
-- 미분류는 가상 폴더이므로 별도 category row를 만들지 않는다. color/icon 저장 대상도 아니다.
-
-**교훈**: 색상/아이콘은 단순 장식이 아니라 목록 스캔성의 정보 구조다. 다만 기본값을 과하게 채우면 "사용자가 선택한 의미"와 "시스템이 임의로 채운 의미"가 섞인다. 선택하지 않은 것은 비워두고, 선택한 색상/아이콘만 일관되게 보여주는 쪽이 장기적으로 명확하다.
-
-## 071. 카테고리 순서 수동 편집 (2026-07-01)
-
-**결정**: 카테고리 폴더 순서는 자동 정렬이 아니라 사용자가 직접 편집하는 수동 정렬 방식으로 도입한다. 별도 2depth 화면에서 드래그로 순서를 변경하고, 새 카테고리는 기본적으로 맨 뒤에 추가한다.
-
-**배경**: Nook은 개인 아카이브 앱이므로 폴더 순서가 단순 이름순이나 저장 수보다 사용자의 기억 구조에 더 가깝다. 카테고리 색상/아이콘 시스템이 추가되면서 폴더 목록을 사용자가 원하는 흐름으로 배열할 필요가 커졌다.
-
-**결과**:
-- `categories.sort_order` 컬럼과 `(user_id, sort_order)` 인덱스를 추가했다.
-- 기존 카테고리는 user별 `created_at` 순으로 sort_order를 backfill한다.
-- `getCategories`, `getCategoriesWithCounts`는 `sort_order NULLS LAST, created_at` 기준으로 정렬한다.
-- `createCategory`, `createInitialCategories`는 새 카테고리의 sort_order를 명시적으로 저장한다.
-- `reorderCategories(orderedIds)`로 변경된 순서를 일괄 업데이트한다.
-- `app/reorder-categories.tsx`에서 `react-native-draggable-flatlist` 기반 세로 드래그 편집 화면을 제공한다.
-
-**대안 검토**:
-- 이름순 자동 정렬: 예측 가능하지만 개인적 우선순위를 반영하지 못함.
-- 저장 수/최근 저장순 자동 정렬: 동적으로 바뀌어 폴더 위치 기억이 어려워짐.
-- 폴더 탭에서 직접 드래그: 빠르지만 일반 탐색 화면과 편집 모드가 섞여 오작동 가능성이 커짐.
-
-**교훈**: 개인 아카이브의 정렬 기준은 효율보다 기억의 안정성이 중요하다. 자동 정렬은 보조 옵션으로 남기고, 기본 구조는 사용자가 직접 정한 순서를 존중하는 편이 맞다.
+**교훈**: Expo public env는 설정값용이지 secret 저장소가 아니다. AI 호출처럼 키가 필요한 기능은 MVP라도 서버 경유 구조로 두는 편이 안전하다.
 
 ---
 
-## 072. 문서 로그 archive 구조 정리 (2026-07-01)
+## 078. Content Detail 관련 콘텐츠 복귀 깜빡임 제거 (2026-07-03)
 
-**결정**: `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md`는 현재 작업용 파일로 유지하고, 완료된 긴 기록은 `docs/archive/`로 이동한다.
+**결정**: Content Detail의 콘텐츠/관련 콘텐츠 로드는 id 변경 시에만 실행하고, `viewed_at` 업데이트와 `content_opened` 이벤트만 focus 진입마다 유지한다.
 
-**배경**: 의사결정 로그와 진행 로그가 길어져 현재 작업 맥락을 찾는 비용이 커졌다. 다만 매 작업마다 index와 실제 로그를 동시에 수정하는 구조는 기록 부담을 늘리므로 피해야 한다.
+**배경**: PR #48에서 `useFocusEffect`로 로드를 묶으면서, 관련 콘텐츠 상세로 들어갔다가 뒤로가기 했을 때 이전 화면의 관련 콘텐츠가 `setRelated([])`로 비워진 뒤 다시 렌더링되어 skeleton 깜빡임이 보였다.
 
 **결과**:
-- Phase 1 의사결정은 `docs/archive/decisions-phase-1.md`로 이동했다.
-- 2026년 6월 AI 사용 로그는 `docs/archive/ai-usage-log-2026-06.md`로 이동했다.
-- Phase 1 진행 기록은 `docs/archive/progress-phase-1.md`로 이동했다.
-- 루트의 세 문서는 현재 Phase 2 작업을 기록하는 위치로 유지한다.
-- `AGENTS.md`의 문서 운영 규칙도 archive 구조에 맞게 업데이트한다.
+- 콘텐츠 본문과 관련 콘텐츠 로드는 `useEffect([id, session, isAuthLoading])` 기반으로 이동했다.
+- `viewed_at` 업데이트와 analytics 이벤트는 `useFocusEffect`에 남겨 focus 진입마다 동작하게 했다.
+- 뒤로가기 복귀 시 이전 상세 화면의 관련 콘텐츠 리스트가 유지된다.
 
-**교훈**: 문서는 정리되어야 하지만, 기록 습관을 방해하면 안 된다. 자주 쓰는 파일은 그대로 두고 완료된 구간만 archive로 보내는 방식이 운영 비용이 가장 낮다.
+**교훈**: focus마다 실행해야 하는 부수효과와 id 변경 때만 필요한 데이터 로드는 분리해야 한다. 같은 화면에 있어도 UX 안정성 요구가 다르다.
 
 ---
 
-## 073. 카테고리 콘텐츠 뷰 타입 토글 (2026-07-02)
+## 079. 리포트 미분류 카운트 전체 기준 고정 (2026-07-03)
 
-**결정**: Category Detail에서 콘텐츠 리스트를 list ↔ grid로 사용자가 토글할 수 있게 한다. 프리퍼런스는 SecureStore에 저장해 다음 진입 시에도 유지한다. 기본값은 `list`.
+**결정**: 리포트의 미분류 알림 카운트는 기간 필터와 무관하게 현재 전체 미분류 개수를 표시한다.
 
-**배경**: 폴더 안 콘텐츠가 쌓이면 list 뷰는 스캔이 느리고, 이미지 중심 소스(Instagram, YouTube 등)는 썸네일 grid가 훨씬 빠르게 훑어진다. 사용자 선호가 폴더 성격에 따라 다르지만, 1차에서는 전역 프리퍼런스로 시작한다.
+**배경**: 미분류 알림 CTA는 전체 미분류 폴더(`/category/uncategorized`)로 이동하지만, 기존 카운트는 선택 기간 내 미분류만 집계했다. 그 결과 오래된 미분류가 있어도 `일주일` 같은 짧은 기간에서는 알림이 사라지는 문제가 있었다.
 
 **결과**:
-- `lib/preferences.ts` — SecureStore 기반 `ContentViewType` (`'list' | 'grid'`) get/set 함수. IO 실패는 silent, unknown 값은 `list` fallback.
-- `components/GridContentCard.tsx` — 2열 그리드용 카드. 폭 48%, aspect ratio 4:3 썸네일, 선택 모드 체크박스, Notion 도메인 아이콘 지원.
-- `app/category/[id].tsx` — 헤더 `{count}개 저장됨` 옆에 `list-outline` / `grid-outline` 토글 버튼. 선택 모드에서는 숨김. 토글 시 상태 즉시 반영 + SecureStore 비동기 저장.
-- 리스트 렌더링부는 `commonProps` 추출 후 `viewType === 'grid'` 분기로 `GridContentCard` vs `ContentCard`.
+- `getUncategorizedCount` 경량 count 쿼리를 추가했다.
+- ReportView의 window 종속 `uncategorizedCount` 필드를 제거하고 별도 상태로 관리한다.
+- 기간 전환과 무관하게 미분류 알림 카운트가 전체 미분류 폴더 개수와 맞는다.
+- 기록 부족 상태에서는 기존 정책대로 알림을 숨긴다.
 
-**대안 검토**:
-- **(a) 전역 뷰 설정 (Recent Saved / Search / Category 통합)** — 스코프 확장 부담과 검색 결과 grid의 유용성 논쟁이 있어 1차에서는 Category Detail만.
-- **(b) 폴더 단위 개별 저장** — 폴더마다 다른 뷰 타입. 데이터 모델 확장 필요, 사용 패턴 근거 부족.
-- **(c) AsyncStorage 저장** — 기존 세션/프리퍼런스가 SecureStore에 있어 저장 계층 일관성 유지 목적으로 SecureStore 채택.
-
-**제약 / 트레이드오프**: 뷰 타입은 전역 프리퍼런스라 폴더별 최적 뷰가 달라도 하나만 선택 가능. 사용자 요청이 쌓이면 폴더별 저장으로 확장할 수 있게 함수 시그니처를 열어둠.
-
-**교훈**: 개인 아카이브의 뷰 옵션은 콘텐츠 특성(썸네일 존재 여부, 도메인 다양성)에 따라 선호가 갈린다. 사용자에게 선택권을 주되 기본값(list)은 텍스트 스캔에 강한 쪽을 유지한다.
+**교훈**: 알림의 숫자는 이동 대상과 같은 기준이어야 한다. CTA가 전체 폴더로 이동한다면 카운트도 전체 기준이어야 사용자가 납득한다.
 
 ---
 
-## 074. 재발견/잊고있던 콘텐츠 전체 화면 + 더보기 진입점 (2026-07-02)
+## 080. MoveCategorySheet fetch를 애니메이션 이후로 지연 (2026-07-03)
 
-**결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 가로 스크롤 마지막에 "더보기" 카드 진입점을 두고, `/rediscover`, `/forgotten` 세로 리스트 전체 화면(각 20개, 큐레이션 로직 유지)을 추가한다.
+**결정**: `MoveCategorySheet`가 열릴 때 카테고리 fetch를 즉시 실행하지 않고, `InteractionManager.runAfterInteractions`로 시트 등장 애니메이션 이후 실행한다.
 
-**배경**: 홈에서 가로 스크롤 10개만 보이는 구조로는 사용자가 전체 후보 콘텐츠를 파악하기 어렵다는 피드백. 최근 저장(Recent Saved)이 이미 `/recent-saved`로 전체 리스트를 제공하듯, 발견/잊고있던도 동일 패턴으로 확장.
+**배경**: 시트 진입과 동시에 `getCategories` fetch가 시작되면서 첫 등장 프레임과 경합해 바텀시트가 버벅여 보였다. 이 시트는 목록 fetch가 작으므로, 등장 애니메이션을 먼저 확보하는 편이 체감 품질에 유리하다.
 
 **결과**:
-- `app/rediscover.tsx` 신규 — `getRediscoverContents(20)` 세로 리스트. NavHeader "발견된 콘텐츠". empty/error/loading 상태 처리.
-- `app/forgotten.tsx` 신규 — `getForgottenContents(20)` 세로 리스트. NavHeader "잊고 있던 콘텐츠".
-- `components/HorizontalMoreCard.tsx` 신규 — 가로 스크롤 끝에 붙는 원형 chevron 아이콘 + "더보기" 라벨 카드. 폭 56, height 183 고정(RediscoverCard 높이와 일치). 배경 투명, 아이콘 원만 `Colors.surface`.
-- `app/(tabs)/index.tsx` — 발견/잊고있던 FlatList에 `ListFooterComponent`로 `HorizontalMoreCard` 부착.
-- `app/_layout.tsx` — `rediscover`, `forgotten` Stack Screen을 `slide_from_right`로 등록.
-- 큐레이션 로직(카테고리당 최대 2개 다양성 제한)은 유지 — "전체 보기"라는 라벨보다 "더보기"로 톤 다운.
+- `visible=true` 후 fetch를 interaction 완료 뒤 실행하도록 조정했다.
+- 시트가 빠르게 닫히면 cleanup에서 task를 cancel해 낭비와 경고를 방지한다.
+- Category Detail 선택 모드와 Content Detail 카테고리 변경 시트 모두 같은 체감 개선을 받는다.
 
 **대안 검토**:
-- **(a) SectionHeader 우측에 아이콘 진입점** — 처음 시도한 방향이지만 "평소보다 늘었어요"(Interest Insight) 카드의 chevron 위치와 세로 정렬이 어긋나 이질감. 진입점을 콘텐츠 스크롤 끝에 두는 편이 자연스러움.
-- **(b) 큐레이션 로직 해제 (제한 없이 전체 후보)** — "전체 보기"라는 이름에 더 부합하지만 발견/잊고있던의 정의(균형있게 큐레이션된 재발견)가 흐려짐. 20개 상한 + 다양성 유지가 UX 정체성에 맞음.
-- **(c) 필터/정렬 옵션 추가** — 필요할 때 후속으로. 1차는 세로 리스트만.
+- parent에서 categories prefetch 후 prop 전달: 가장 빠르지만 호출부 복잡도가 늘어난다. 현재는 fetch 지연만으로 충분한지 먼저 검증한다.
 
-**교훈**: 진입점 아이콘 위치는 인접 카드의 정렬 축과 함께 봐야 한다. 섹션 헤더 우측 아이콘은 논리적으로 자연스러워도 다른 카드의 시각적 흐름과 어긋나면 이질감을 만든다. 콘텐츠 스크롤의 끝에서 이어지는 "더보기" 카드는 "다 보고 나서 더" 라는 자연스러운 인지 흐름을 만든다.
+**교훈**: 작은 네트워크 요청도 애니메이션 첫 프레임과 겹치면 크게 느껴진다. 바텀시트는 데이터보다 진입 프레임을 먼저 안정화하는 편이 자연스럽다.
 
 ---
 
-## 075. 재발견/잊고있던 세션 안정성 — sticky + AppState 30분 + pull-to-refresh (2026-07-02)
+## 081. Radius 시맨틱 스케일과 press overlay 토큰 도입 (2026-07-03)
 
-**결정**: 홈의 발견된 콘텐츠/잊고 있던 콘텐츠 카드를 탭해 상세를 열고 돌아왔을 때 방금 본 카드가 그 자리에 남아있도록, discovery(발견/잊고있던) 페치를 세션 첫 마운트 + 앱 30분 백그라운드 후 복귀 + pull-to-refresh 3가지 트리거로 제한한다. 삭제 이벤트는 서버 재페치 없이 로컬 배열에서 해당 id만 제거.
+**결정**: 반복되는 borderRadius와 밝은 배경 pressed overlay를 토큰화해 디자인 시스템 기준으로 관리한다.
 
-**배경**: `getRediscoverContents`는 `interest × forgottenness` 점수로 랭킹하는데, 콘텐츠 상세를 열면 `viewed_at`이 갱신돼 forgottenness가 0.1 (최소값)로 떨어지고 상위 10위 안에서 밀림. `getForgottenContents`는 `viewed_at < 14일 전` 필터라 상세를 여는 순간 후보 풀에서 아예 빠짐. 결과적으로 사용자가 홈 → 카드 탭 → 상세 → 홈 복귀했을 때 방금 본 카드가 사라짐 → "왜 없어졌지?" 인지 이질감. 사용자 요청은 "탭하고 돌아왔을 때 안 없어졌으면 좋겠다".
+**배경**: 카드, 버튼, 시트, 칩 등에서 12/16/20/100 같은 반경 값이 하드코딩되어 있었다. PrimaryButton 등 공통 컴포넌트를 만들기 전에 반경과 pressed overlay 기준을 먼저 정리해야 했다.
 
 **결과**:
-- `app/(tabs)/index.tsx`:
-  - `loadData` 단일 loader를 `loadFresh`(최근 저장 + Interest Insight) / `loadDiscovery`(발견 + 잊고있던)로 분리
-  - `useFocusEffect`는 항상 `loadFresh`만 실행. discovery는 `discoveryLoadedRef`가 false일 때만(세션 첫 마운트) 실행.
-  - `content-saved` / `content-classified` 이벤트: `loadFresh`만 호출. discovery는 건드리지 않음 — Rediscover는 `minAgeDays: 2`, Forgotten은 `days: 14`라 방금 저장/분류된 콘텐츠는 어차피 후보가 될 수 없음.
-  - `content-deleted` 이벤트: 이벤트 payload로 넘긴 id들을 `recentItems` / `rediscoverItems` / `forgottenItems`에서 로컬 filter로 제거. 서버 왕복 없음. + `loadFresh`로 최근/insight 갱신.
-  - `AppState` change 리스너 추가: background 진입 시각을 ref에 기록, active로 복귀 시 30분(`STALE_MS = 30 * 60 * 1000`) 이상 지났으면 `loadDiscovery` 재실행.
-  - `<ScrollView>`에 `RefreshControl` 부착. `onRefresh`는 fresh + discovery 병렬 재페치.
-- `lib/events.ts`: `emit(event, payload?)` 시그니처 확장. 기존 리스너는 payload 무시로 하위 호환.
-- `lib/api.ts`: `deleteContent(id)` → `emit('content-deleted', [id])`, `deleteContents(ids)` → `emit('content-deleted', ids)`.
+- `constants/radius.ts`에 `xs/sm/md/lg/xl/pill` 시맨틱 스케일을 추가했다.
+- `Colors.pressOverlay`를 추가해 밝은 배경 위 pressed 상태를 공통 토큰으로 관리한다.
+- 버튼/카드/시트 중심의 20개 파일에서 의미가 명확한 radius 값을 토큰으로 이관했다.
+- 특수 시각 의도가 있는 edge 값은 raw 값으로 유지했다.
 
 **대안 검토**:
-- **(A) minimal — discovery 마운트 1회 + delete 로컬 filter만** — 가장 짧지만 장시간 세션에서 discovery가 stale. 며칠 앱 켜두면 새 후보가 안 뜨고 지난 후보도 안 사라짐.
-- **(B) 서버 sematics — viewed_at grace period** — `getRediscoverContents`/`getForgottenContents`에 "최근 5~10분 이내 조회는 미조회로 간주" 룰. 클라이언트 코드 최소지만 "방금 다시 본 걸 재발견에 두는 게 맞나?" 시맨틱 논쟁 여지. 사용자 요청과 부합도 애매.
-- **(C) sticky IDs 스냅샷** — 첫 로드 시 표시된 id를 스냅샷으로 저장, 리로드 시 fresh 후보와 union해 원래 위치 유지. 가장 강력하지만 로직 복잡도와 순서 관리 부담.
-- 최종은 **A안 + AppState 30분 룰 + pull-to-refresh**로 조합. A안의 stale 문제를 AppState 트리거로 자연스럽게 해소하고, 급할 때는 사용자가 명시적으로 새로고침 가능.
+- 모든 숫자 반경 일괄 치환: 특수 UI의 비율 의도를 깨뜨릴 수 있어 배제.
+- 토큰 없이 파일별 유지: 단기 변경은 적지만 디자인 drift가 계속 누적됨.
 
-**제약 / 트레이드오프**:
-- `save` / `classify` 이벤트에서 discovery를 안 건드리기 때문에, 만약 향후 `minAgeDays`가 0으로 낮아진다면 이 로직도 재검토 필요.
-- `content-deleted` payload 규약이 `string[]`로 고정됨. 향후 다른 이벤트가 payload를 쓴다면 타입 안전성을 위해 이벤트별 payload 타입 매핑을 도입해야 할 수 있음.
-- 세션 첫 마운트 트리거는 `discoveryLoadedRef`(ref). 하단 탭이 언마운트되지 않는 한 세션 내내 재로드 없음 — expo-router 탭의 기본 동작에 의존.
+**교훈**: 토큰화는 모든 숫자를 없애는 작업이 아니다. 의미가 반복되는 값만 이름을 주고, 특수한 값은 의도를 유지하는 균형이 필요하다.
 
-**교훈**: "새로고침"의 트리거 설계는 사용자 인지 흐름과 데이터 신선도 사이의 균형이다. 자동 트리거만 두면 UX 안정성이 흔들리고, 아무 트리거도 없으면 데이터가 얼어붙는다. **자동(수명 30분) + 명시(pull-to-refresh)의 이중 트리거**가 이 균형점을 안전하게 잡는다. 그리고 이벤트 페이로드는 "필요할 때" 미리 확장해두면 파급이 작다 — id 정보 하나 넘기는 것으로 서버 왕복 하나를 절약.
+---
 
-## 076. Pretendard 도입 취소 — iOS 시스템 폰트 사용 (2026-07-02)
+## 082. PrimaryButton 공통 CTA 컴포넌트 추출 (2026-07-03)
 
-**결정**: CLAUDE.md 디자인 시스템의 "Font: Pretendard" 규정을 취소하고 iOS 시스템 기본 폰트(한글: Apple SD Gothic Neo)를 사용한다. 이슈 #44는 not planned로 close.
+**결정**: 주요 CTA 버튼 스타일을 `components/PrimaryButton.tsx`로 공통화하고, 저장/수정/추가/재시도 등 반복되는 primary 액션을 해당 컴포넌트로 마이그레이션한다.
 
-**배경**: CLAUDE.md에는 Pretendard가 규정돼 있으나 실제 앱에는 `useFonts`/`loadAsync` 호출이 없어 폰트가 로드되지 않는 상태였다(코드베이스 감사에서 발견). 로드 로직을 넣으려던 중 번들 크기 트레이드오프 재검토.
+**배경**: SaveBottomSheet, CategoryBottomSheet, TagsSheet, ContentTitleSheet, choose-interests 등에서 CTA 스타일과 disabled/loading 처리가 중복되어 있었다. 반경 토큰과 press overlay가 정리된 뒤, CTA도 한 컴포넌트에서 크기와 상태를 관리하는 편이 유지보수에 안전하다.
 
 **결과**:
-- CLAUDE.md에서 폰트 라벨을 "iOS 시스템 기본 폰트 (한글: Apple SD Gothic Neo)"로 교체
-- Typography 스케일(700/26, 600/17, 700/20, 600/16, 400/14, 400/12)은 그대로 유지
-- 폰트 파일 추가 / expo-font 로드 로직 도입은 취소
+- `PrimaryButton`은 `variant`, `size`, `loading`, `disabled`, `fullWidth`, `style`, `labelStyle`을 지원한다.
+- large/small 두 사이즈로 시트 CTA와 small retry 버튼을 커버한다.
+- `accessibilityRole="button"`과 disabled/busy 상태를 컴포넌트 내부에서 자동 반영한다.
+- 기존 7개 시트/화면의 중복 CTA 스타일을 제거했다.
+- Apple/Google 로그인 버튼은 아이콘+텍스트가 결합된 auth provider 전용 패턴이라 이번 공통화 범위에서 제외했다.
 
-**고려한 대안**:
-- (a) **Full TTF 5개 로드 (~6MB 증가)** — 표준 방식이지만, iOS 전용인데 시스템 폰트(Apple SD Gothic Neo)가 Pretendard와 미학적으로 유사(모던 그로테스크) → 6MB 대비 시각적 이득이 은근함
-- (b) **Subset TTF 5개 (~2MB)** — 크기/안전 밸런스. 특수문자 fallback 필요
-- (c) **Variable Font 1개 (~1MB)** — RN에서 fontWeight 반영 이슈 이력 있음, 검증 부담
+**대안 검토**:
+- 각 화면 스타일 유지: 변경 범위는 작지만 disabled/loading/accessibility 정책이 계속 흩어짐.
+- icon slot까지 포함한 범용 버튼: 확장성은 높지만 현재 MVP 범위에서는 API가 과해짐. auth provider 버튼은 별도 컴포넌트로 남기는 편이 명확함.
 
-**교훈**: "디자인 시스템 규칙"과 "실제 적용" 사이의 갭은 코드에서 조용히 자랄 수 있다. Codex 리뷰로 발견되기 전까지 CLAUDE.md의 Pretendard 규정이 앱에 반영 안 된 상태로 유지됨. 규칙을 정할 때는 **로드/적용 방법까지 함께 결정**하거나, 이후 감사에서 규칙 자체를 수정해 갭을 없앤다. iOS 전용 앱은 시스템 폰트가 이미 준수한 경우가 많으니, 커스텀 폰트 도입 전 "정말 필요한가"를 한 번 더 묻는 것도 유효한 옵션.
+**교훈**: 버튼 공통화는 색상/반경 토큰 다음 단계에서 하는 편이 안정적이다. 토큰이 먼저 잡혀 있어야 공통 컴포넌트가 새 디자인 기준을 강제하는 역할을 할 수 있다.
+
+---
+
+## 083. 출시 전 정책 문서 정합성 정리 (2026-07-03)
+
+**결정**: App Store 제출 전 개인정보처리방침과 서비스 이용약관을 현재 앱의 실제 데이터 처리 범위와 계정 삭제 경로에 맞게 갱신한다.
+
+**배경**: Nook는 Supabase Auth/DB, Apple/Google 로그인, Anthropic 기반 AI 분류, 자체 분석 이벤트를 사용한다. 출시 문서는 실제 수집/처리/삭제 흐름과 맞아야 하며, 앱 내 계정 삭제 경로도 문서에 반영되어야 한다.
+
+**결과**:
+- 개인정보처리방침 최종 업데이트일을 2026-07-03으로 갱신했다.
+- 계정 정보, 저장 콘텐츠, 사용자 설정/카테고리, 분석 이벤트, AI 처리, 제3자 제공자 범위를 현재 구현 기준으로 정리했다.
+- 광고 식별자/제3자 광고 SDK 미사용, 개인정보 판매 미사용을 명시했다.
+- 서비스 이용약관에 링크 메타데이터 처리, AI 보조 기능, 제3자 콘텐츠, 계정 삭제 및 면책 범위를 보강했다.
+- 계정 삭제 경로를 `Profile → 계정 설정 → 계정 삭제하기`로 맞췄다.
+
+**교훈**: 정책 문서는 출시 직전 한 번 작성하고 끝나는 문서가 아니라, 실제 앱 기능과 데이터 흐름이 바뀔 때 함께 따라와야 하는 운영 문서다.
+
+---
+
+## 084. Category Detail 헤더 검색 영역 재배치 (2026-07-03)
+
+**결정**: Category Detail 일반 모드 헤더를 `NavHeader → SearchBar → 저장 개수/뷰 타입 버튼 → 콘텐츠 리스트` 순서로 재배치한다. 선택 모드에서는 검색/저장 개수/뷰 타입 영역을 숨기고 선택 액션 흐름만 보여준다.
+
+**배경**: 기존 배치는 저장 개수와 뷰 타입 버튼이 검색창보다 먼저 노출되어, 폴더 안에서 찾는 주요 행동보다 보조 정보가 먼저 보이는 느낌이 있었다. 사용자가 제시한 시뮬레이터 화면 기준으로 검색을 상단에 두고, 저장 개수와 뷰 타입은 그 아래 보조 줄로 두는 편이 시각 흐름이 자연스럽다.
+
+**결과**:
+- `app/category/[id].tsx`에서 일반 모드 headerSection 순서를 SearchBar 우선으로 변경했다.
+- 저장 개수와 grid/list 토글은 SearchBar 아래 한 줄에 유지했다.
+- 선택 모드에서는 headerSection 자체를 렌더링하지 않아 `취소 / 항목 선택 / 전체 선택` 아래로 바로 콘텐츠 리스트가 이어진다.
+- 검색 로직, 뷰 타입 저장 로직, 콘텐츠 리스트 렌더링 로직은 변경하지 않았다.
+
+**교훈**: 상세 화면의 헤더 보조 정보는 모드별 우선순위가 다르다. 일반 모드에서는 탐색/검색이 우선이고, 선택 모드에서는 선택 상태와 일괄 액션이 우선이다.
+
+---
+
+## 085. 카테고리 순서 편집 안정화와 입력창 높이 고정 (2026-07-03)
+
+**결정**: 카테고리 순서 편집에서 드래그 후 정렬 반영과 저장 안정성을 보강하고, 카테고리 추가/수정 바텀시트의 TextInput 높이를 고정한다.
+
+**배경**: `react-native-draggable-flatlist`는 `onDragEnd`를 드롭 애니메이션 완료 후 호출한다. 이 때문에 드래그 후 실제 상태 반영이 늦어 보이고, 사용자가 빠르게 저장할 경우 이전 순서가 저장될 위험이 있었다. 또한 CategoryBottomSheet의 TextInput은 고정 높이가 없어 입력 중 intrinsic height가 변하면서 시트가 흔들릴 수 있었다.
+
+**결과**:
+- `app/reorder-categories.tsx`:
+  - 드롭 spring 설정을 조정해 정렬 반영 지연 체감을 줄였다.
+  - 드래그 중에는 저장/취소 액션을 잠그고, `onDragEnd`에서 실제 순서를 반영한 뒤 잠금을 해제한다.
+  - dirty 계산에 length 비교를 포함했다.
+  - 인증 로딩 중 empty 상태가 먼저 보이지 않도록 `isAuthLoading` 분기를 조정했다.
+  - row와 헤더 버튼에 접근성 role/state/label을 보강했다.
+- `lib/api.ts`:
+  - `reorderCategories`가 Supabase update 결과의 `error`를 확인하고 실패 시 throw한다.
+  - 각 update에 `select('id').single()`을 붙여 실제 row 업데이트 여부를 확인한다.
+- `components/CategoryBottomSheet.tsx`:
+  - input에 `height: 44`, `paddingVertical: 0`, `textAlignVertical: 'center'`를 적용해 입력창 크기 변동을 막았다.
+- 취소 시 변경사항 버리기 Alert는 의도적으로 추가하지 않는다. 기존 UX처럼 저장 중/드래그 중이 아니면 바로 뒤로 간다.
+
+**대안 검토**:
+- `onRelease`에서 즉시 순서를 저장: 드롭 애니메이션 전 데이터와 시각 상태가 어긋날 수 있어 배제.
+- 저장 함수를 DB RPC로 원자화: 가장 안전하지만 스키마/함수 추가가 필요하다. MVP 안정화 범위에서는 클라이언트의 실패 감지를 먼저 보강했다.
+- 취소 전 확인 Alert: 이전에 제거한 UX라 다시 도입하지 않음.
+
+**교훈**: 드래그 UI는 손을 뗀 순간과 상태가 확정되는 순간이 다를 수 있다. 라이브러리의 이벤트 타이밍을 기준으로 저장 가능 시점을 잠그는 것이 시각 보정보다 중요하다.
