@@ -1,8 +1,7 @@
 import { supabase } from './supabase';
-import { isGenericPlatformTitle } from './metadata';
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
+// 프롬프트/모델은 supabase/functions/classify/index.ts로 이동.
+// 앱 번들에서 Anthropic API 키/직접 호출을 제거하기 위해 서버로 위임.
 export const CLASSIFY_PROMPT_VERSION = 'v1';
 
 type ClassifyResult = {
@@ -11,138 +10,37 @@ type ClassifyResult = {
   suggested_title?: string;
 };
 
+type ClassifyResponse = {
+  result: ClassifyResult | null;
+  prompt_version?: string;
+  error?: string;
+};
+
 export async function classifyContent(content: {
   url: string;
   title?: string;
   domain?: string;
   description?: string;
-}) {
-  if (!ANTHROPIC_API_KEY) {
-    console.warn('Anthropic API key not set, skipping classification');
-    return null;
-  }
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // 유저의 카테고리 목록 가져오기
-  const { data: categories, error: catError } = await supabase
-    .from('categories')
-    .select('name')
-    .eq('user_id', user.id);
-  if (catError) throw catError;
-
-  const categoryNames = (categories ?? []).map(c => c.name);
-  if (categoryNames.length === 0) return null;
-
-  const titleIsGeneric = !content.title || isGenericPlatformTitle(content.title);
-  const prompt = buildPrompt({
-    url: content.url,
-    title: content.title ?? '',
-    description: content.description ?? '',
-    categories: categoryNames,
-    needsTitle: titleIsGeneric,
-  });
-
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
+}): Promise<ClassifyResult | null> {
+  const { data, error } = await supabase.functions.invoke<ClassifyResponse>(
+    'classify',
+    {
+      body: {
+        url: content.url,
+        title: content.title,
+        domain: content.domain,
+        description: content.description,
+      },
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+  );
 
-  if (!response.ok) {
-    const errBody = await response.text();
-    console.error('Claude API error:', response.status, errBody);
+  if (error) {
+    console.warn('classify function error:', error);
     return null;
   }
-
-  const data = await response.json();
-  const text = data.content?.[0]?.text ?? '';
-
-  return parseClassifyResponse(text, categoryNames);
-}
-
-function buildPrompt(input: {
-  url: string;
-  title: string;
-  description: string;
-  categories: string[];
-  needsTitle: boolean;
-}): string {
-  // Keep this prompt contract in sync with prompts/classify/v1.txt.
-  return `You are a content classifier for a personal archive app.
-
-Given a URL and its metadata, you must:
-1. Generate 1-5 relevant tags (short keywords in the content's language)
-2. Classify the content into one of the user's categories, or null if none match
-3. If needs_title is true, generate suggested_title only when Description contains actual content. If Description is empty, set suggested_title to null.
-
-User's categories:
-${input.categories.join(', ')}
-
-Content to classify:
-- URL: ${input.url}
-- Title: ${input.title}
-- Description: ${input.description}
-- Needs title: ${input.needsTitle ? 'true' : 'false'}
-
-Rules:
-- Tags should be concise (1-2 words each), relevant to the content topic
-- For category, pick the BEST matching category from the user's list above
-- If no category is a good fit, return null
-- Do NOT create new categories
-- Do NOT generate a summary
-- suggested_title is optional and only for replacing generic platform titles
-- If Needs title is false, return suggested_title as null
-- Do NOT infer suggested_title from username, account bio, or profile name
-- Respond ONLY with valid JSON, no explanation
-
-Response format:
-{"tags": ["tag1", "tag2"], "category": "CategoryName or null", "suggested_title": "Title or null"}`;
-}
-
-function parseClassifyResponse(
-  text: string,
-  validCategories: string[],
-): ClassifyResult | null {
-  try {
-    // JSON 블록 추출 (```json ... ``` 또는 순수 JSON)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    const tags: string[] = Array.isArray(parsed.tags)
-      ? parsed.tags.filter((t: unknown) => typeof t === 'string').slice(0, 5)
-      : [];
-
-    let category: string | null = null;
-    if (parsed.category && parsed.category !== 'null') {
-      // 유저 카테고리 목록에 있는 경우만 허용
-      const match = validCategories.find(
-        c => c.toLowerCase() === String(parsed.category).toLowerCase(),
-      );
-      category = match ?? null;
-    }
-
-    const suggested_title =
-      typeof parsed.suggested_title === 'string'
-        && parsed.suggested_title.trim()
-        && parsed.suggested_title !== 'null'
-        ? parsed.suggested_title.trim()
-        : undefined;
-
-    return { tags, category, suggested_title };
-  } catch {
-    console.error('Failed to parse classify response:', text);
+  if (!data || data.error) {
+    if (data?.error) console.warn('classify server error:', data.error);
     return null;
   }
+  return data.result;
 }
