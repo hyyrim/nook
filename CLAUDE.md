@@ -15,7 +15,7 @@ Nook은 흩어진 콘텐츠를 빠르게 저장하고, AI가 자동으로 분류
 - Build:      Expo Development Build
 - Share:      expo-share-intent
 - Backend:    Supabase (Auth + DB + Storage)
-- AI:         Claude API - claude-haiku-4-5
+- AI:         Supabase Edge Function classify → Claude Haiku 4.5
 - Deploy:     EAS Build
 ```
 
@@ -30,7 +30,7 @@ Nook은 흩어진 콘텐츠를 빠르게 저장하고, AI가 자동으로 분류
 공유 버튼 → Share Extension → URL 전달
 → 백엔드에서 OG 메타데이터 추출 (title, thumbnail, domain)
 → 즉시 저장
-→ 비동기 AI 분류 (Haiku 단일 호출 → 태그 + 카테고리)
+→ 비동기 AI 분류 (Edge Function에서 Haiku 단일 호출 → 태그 + 카테고리)
    · 카테고리는 해당 유저의 카테고리 중 분류
    · 매칭 없으면 미분류 (category_id = NULL)
 → 폴더 자동 분류
@@ -123,6 +123,7 @@ contents
 **AI 단일 호출 원칙**
 
 - 태그 + 카테고리를 반드시 단일 프롬프트로 처리 (요약 생성 안 함)
+- 클라이언트에서 Anthropic API를 직접 호출하지 않음. `lib/ai.ts`는 Supabase Edge Function `classify` 호출 래퍼
 - 저장 UX와 AI 분류는 반드시 분리 (비동기)
 - 중복 URL은 unique(user_id, url) 제약으로 저장 시점에 차단 → AI 재호출 없음
 
@@ -186,7 +187,7 @@ nook/
 ├── components/           # 공통 컴포넌트
 ├── lib/
 │   ├── supabase.ts       # Supabase 클라이언트
-│   └── ai.ts             # Claude API 호출
+│   └── ai.ts             # classify Edge Function 호출 래퍼
 ├── prompts/              # AI 프롬프트 버전 관리
 │   └── classify/
 │       ├── v1.txt
@@ -201,6 +202,8 @@ nook/
 ## AI 프롬프트 구조
 
 **사용 모델**: `claude-haiku-4-5`
+
+**실행 위치**: Supabase Edge Function `classify` (클라이언트 직접 호출 금지)
 
 **입력**: URL + OG 메타데이터(title, description) + 해당 유저의 카테고리 목록
 
@@ -232,3 +235,5 @@ nook/
 
 - 진행 상태: `docs/progress.md`
 - 의사결정 로그: `docs/decisions.md`
+- AI 사용 로그: `docs/ai-usage-log.md`
+- 긴 기록과 문서 archive 규칙: `docs/archive/`, `AGENTS.md`

@@ -403,8 +403,10 @@ This project maintains current working logs at the root of `docs/` and archives 
 * 한글로 작성, 기술 용어는 영어 허용
 * 대안 검토가 있었다면 `**대안 검토**` 항목 추가
 * 이전 결정을 고도화한 경우 `> 참고: 이후 NNN에서 고도화됨` 표시
-* 완료된 Phase를 정리할 때만 `docs/archive/decisions-phase-N.md`로 이동
+* 완료된 Phase 또는 오래된 결정 묶음은 `docs/archive/decisions-phase-N*.md`로 이동
 * 평소 새 결정은 `docs/decisions.md`에만 추가
+* `docs/decisions.md`는 최근/활성 결정 위주로 유지한다. 기준: 루트 파일이 20개 결정을 넘거나 약 400줄을 넘으면 오래된 결정 10~20개 단위로 archive한다.
+* archive 후 `docs/decisions.md` 상단 Archived records에 파일명과 결정 번호 범위를 적는다.
 
 ### 2. AI 사용 로그: `docs/ai-usage-log.md`
 
@@ -421,7 +423,8 @@ This project maintains current working logs at the root of `docs/` and archives 
 * 관련 의사결정이 있으면 `(→ 결정 NNN)` 링크 추가
 * 의사결정과 내용을 중복 작성하지 않음
 * 평소 새 로그는 `docs/ai-usage-log.md`에만 추가
-* 월 또는 Phase가 끝나 문서가 길어졌을 때만 archive로 이동
+* 현재 주 또는 현재 작업 묶음만 루트에 유지한다. 기준: 루트 파일이 약 80줄을 넘거나 한 달이 끝나면 `docs/archive/ai-usage-log-YYYY-MM*.md`로 archive한다.
+* archive 후 `docs/ai-usage-log.md` 상단 Archived records에 파일명과 기간을 적는다.
 
 ### 3. 진행 상태: `docs/progress.md`
 
@@ -430,7 +433,25 @@ This project maintains current working logs at the root of `docs/` and archives 
 규칙:
 * `docs/progress.md`는 현재 상태를 빠르게 파악할 수 있게 유지
 * 완료된 오래된 차수는 Phase 종료 또는 문서 정리 시점에 archive로 이동
-* archive 이동은 기록 비용을 늘리지 않도록 자주 하지 않음
+* `docs/progress.md`는 대시보드로 유지한다. 기준: 완료 차수가 10개를 넘거나 약 250줄을 넘으면 오래된 완료 차수 묶음을 `docs/archive/progress-phase-N*.md`로 archive한다.
+* archive 후 `docs/progress.md` 상단 Archived records에 파일명과 완료 차수 범위를 적는다.
+
+### 4. 정기 문서 정리 기준
+
+목표는 루트 문서를 "현재 작업 대시보드"로 유지하고, 상세 이력은 archive에 보존하는 것입니다.
+
+정리 트리거:
+* `docs/decisions.md`가 20개 결정 또는 약 400줄을 초과
+* `docs/progress.md`가 완료 차수 10개 또는 약 250줄을 초과
+* `docs/ai-usage-log.md`가 약 80줄을 초과하거나 월/주 단위가 끝남
+* 큰 PR 묶음이 머지되어 루트 문서 읽기 비용이 커졌다고 판단될 때
+
+정리 절차:
+1. archive 파일의 마지막 번호/차수/기간을 확인한다.
+2. 오래된 완료 묶음을 `docs/archive/`에 새 파일로 이동한다.
+3. 루트 문서 상단의 Archived records를 갱신한다.
+4. 루트 문서에는 현재 상태, 최근 완료, 다음 작업, 활성 결정만 남긴다.
+5. `git diff --check`로 문서 공백 오류를 확인한다.
 
 ### 폐기된 파일
 
