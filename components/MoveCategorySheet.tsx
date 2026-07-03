@@ -21,7 +21,8 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   const [isMounted, setIsMounted] = useState(visible);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(360)).current;
+  // close target(300)과 동일하게 시작해 setValue 리셋 없이 값 동기화. 첫 open 프레임 점프 방지.
+  const sheetTranslateY = useRef(new Animated.Value(300)).current;
 
   const loadCategories = useCallback(() => {
     setLoading(true);
@@ -47,21 +48,19 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
 
   useEffect(() => {
     if (visible) {
-      // 초기값 리셋 후 애니메이션 시작
-      backdropOpacity.setValue(0);
-      sheetTranslateY.setValue(300);
       setIsMounted(true);
-      requestAnimationFrame(() => {
-        Animated.parallel([
-          Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-          Animated.timing(sheetTranslateY, {
-            toValue: 0,
-            duration: 280,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
+      // CategoryBottomSheet과 동일한 spring 파라미터로 통일해 등장 감을 자연스럽게.
+      // timing+cubic은 감쇠감이 약해 마지막 프레임이 툭 끊기는 인상.
+      Animated.parallel([
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.spring(sheetTranslateY, {
+          toValue: 0,
+          damping: 22,
+          stiffness: 230,
+          mass: 0.9,
+          useNativeDriver: true,
+        }),
+      ]).start();
       return;
     }
     Animated.parallel([
