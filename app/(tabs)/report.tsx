@@ -15,12 +15,11 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Typography } from '@/constants';
 import { ErrorState } from '@/components/ErrorState';
 import { useAuth } from '@/lib/AuthProvider';
-import { getRecentContentsForReport, type ReportItem } from '@/lib/api';
+import { getRecentContentsForReport, getUncategorizedCount, type ReportItem } from '@/lib/api';
 import {
   computeDistribution,
   topTagsPerCategory,
   countCategorized,
-  countUncategorized,
   filterWithinDays,
   type DistributionStat,
   type SubjectStat,
@@ -42,7 +41,6 @@ type ReportView = {
   windowDays: number;
   distribution: DistributionStat[];
   subjects: SubjectStat[];
-  uncategorizedCount: number;
 };
 
 function getReportWindowOption(key: ReportWindowKey): ReportWindowOption {
@@ -60,7 +58,6 @@ function deriveReportView(items: ReportItem[], window: ReportWindowOption): Repo
     windowDays,
     distribution: computeDistribution(active),
     subjects: topTagsPerCategory(active),
-    uncategorizedCount: countUncategorized(active),
   };
 }
 
@@ -68,6 +65,7 @@ export default function ReportScreen() {
   const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<ReportItem[] | null>(null);
+  const [uncategorizedCount, setUncategorizedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [entryAnimationKey, setEntryAnimationKey] = useState(0);
@@ -87,8 +85,12 @@ export default function ReportScreen() {
     }
     setLoadError(false);
     try {
-      const data = await getRecentContentsForReport(MAX_WINDOW_DAYS);
+      const [data, uncategorized] = await Promise.all([
+        getRecentContentsForReport(MAX_WINDOW_DAYS),
+        getUncategorizedCount(),
+      ]);
       setItems(data);
+      setUncategorizedCount(uncategorized);
     } catch (e) {
       console.error('Report load error:', e);
       setLoadError(true);
@@ -157,9 +159,9 @@ export default function ReportScreen() {
               </View>
             )}
 
-            {view.uncategorizedCount > 0 && (
+            {uncategorizedCount > 0 && (
               <UncategorizedNotice
-                count={view.uncategorizedCount}
+                count={uncategorizedCount}
                 onPressAction={() => router.push('/category/uncategorized')}
               />
             )}
