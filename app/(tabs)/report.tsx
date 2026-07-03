@@ -140,7 +140,7 @@ export default function ReportScreen() {
               <ReportSectionHeader
                 icon="pie-chart-outline"
                 label="관심 분포"
-                description="저장한 관심사가 어떻게 나뉘는지 보여줘요."
+                description="저장한 관심사가 어떻게 나뉘는지 보여줘요"
               />
               <DistributionCard
                 stats={view.distribution}
@@ -153,7 +153,7 @@ export default function ReportScreen() {
                 <ReportSectionHeader
                   icon="shapes-outline"
                   label="관련 주제"
-                  description="카테고리별로 자주 등장한 태그예요."
+                  description="카테고리별로 자주 등장한 태그예요"
                 />
                 <SubjectsCard stats={view.subjects} />
               </View>
