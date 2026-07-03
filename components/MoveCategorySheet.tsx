@@ -1,4 +1,4 @@
-import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator } from 'react-native';
+import { Animated, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
@@ -21,7 +21,9 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   const [isMounted, setIsMounted] = useState(visible);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(360)).current;
+  // 시트 max height(480)보다 크게 잡아 close 시 완전히 화면 밖으로 나간 뒤 unmount.
+  // CategoryBottomSheet과 동일한 값으로 맞춤.
+  const sheetTranslateY = useRef(new Animated.Value(600)).current;
 
   const loadCategories = useCallback(() => {
     setLoading(true);
@@ -36,34 +38,37 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   }, []);
 
   useEffect(() => {
-    if (visible) loadCategories();
+    if (!visible) return;
+    // 시트 등장 애니메이션과 fetch가 겹치면 첫 프레임이 잘려 버벅여 보인다.
+    // 상호작용(=애니메이션) 종료 후 fetch를 실행해 등장 프레임을 우선 확보.
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadCategories();
+    });
+    return () => task.cancel();
   }, [visible, loadCategories]);
 
   useEffect(() => {
     if (visible) {
-      // 초기값 리셋 후 애니메이션 시작
-      backdropOpacity.setValue(0);
-      sheetTranslateY.setValue(300);
       setIsMounted(true);
-      requestAnimationFrame(() => {
-        Animated.parallel([
-          Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-          Animated.timing(sheetTranslateY, {
-            toValue: 0,
-            duration: 280,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
+      // CategoryBottomSheet과 동일한 spring 파라미터로 통일해 등장 감을 자연스럽게.
+      // timing+cubic은 감쇠감이 약해 마지막 프레임이 툭 끊기는 인상.
+      Animated.parallel([
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.spring(sheetTranslateY, {
+          toValue: 0,
+          damping: 22,
+          stiffness: 230,
+          mass: 0.9,
+          useNativeDriver: true,
+        }),
+      ]).start();
       return;
     }
     Animated.parallel([
       Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
       Animated.timing(sheetTranslateY, {
-        toValue: 300,
+        toValue: 600,
         duration: 190,
-        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => { if (finished) setIsMounted(false); });
