@@ -1,7 +1,7 @@
 import { Image, View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
@@ -115,58 +115,63 @@ export default function ContentDetailScreen() {
   const [related, setRelated] = useState<ContentWithCategory[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
 
+  // 콘텐츠/관련 로드는 id가 바뀔 때만 실행.
+  // useFocusEffect로 두면 관련 콘텐츠 카드 → 뒤로가기 복귀 시에도 재발화되어
+  // related state가 비워지고 skeleton → 리스트 재렌더가 깜빡거려 보인다.
+  useEffect(() => {
+    if (isAuthLoading) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRelated([]);
+    setRelatedLoading(true);
+
+    (async () => {
+      try {
+        const content = await getContentById(id);
+        if (cancelled) return;
+        setItem(content);
+        setDescriptionExpanded(false);
+        setLoading(false);
+
+        if (shouldRefreshMetadata(content)) {
+          refreshContentMetadata(content)
+            .then((updated) => {
+              if (!cancelled) setItem(updated);
+            })
+            .catch((error) => console.warn('Metadata refresh failed:', error));
+        }
+
+        // 관련 콘텐츠(카테고리 +3, 태그 겹침 ×2, 같은 도메인 +1)는 본문 렌더를 막지 않도록 fire-and-forget.
+        getRelatedContents(content, 2)
+          .then((relatedItems) => {
+            if (!cancelled) setRelated(relatedItems);
+          })
+          .catch((error) => console.warn('Related load failed:', error))
+          .finally(() => {
+            if (!cancelled) setRelatedLoading(false);
+          });
+      } catch (e) {
+        console.error('Content load error:', e);
+        if (!cancelled) {
+          setLoading(false);
+          setRelatedLoading(false);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, session, isAuthLoading]);
+
+  // viewed_at 업데이트 + content_opened 발화는 focus 진입마다 유지 (§12.5).
   useFocusEffect(
     useCallback(() => {
-      if (isAuthLoading) return;
-      if (!session) {
-        setLoading(false);
-        return;
-      }
-
-      let cancelled = false;
-      // 이전 콘텐츠의 related가 순간적으로 잔상으로 보이지 않도록 초기화.
-      setRelated([]);
-      setRelatedLoading(true);
-
-      (async () => {
-        try {
-          const content = await getContentById(id);
-          if (cancelled) return;
-          setItem(content);
-          setDescriptionExpanded(false);
-          setLoading(false);
-
-          if (shouldRefreshMetadata(content)) {
-            refreshContentMetadata(content)
-              .then((updated) => {
-                if (!cancelled) setItem(updated);
-              })
-              .catch((error) => console.warn('Metadata refresh failed:', error));
-          }
-
-          // 관련 콘텐츠(카테고리 +3, 태그 겹침 ×2, 같은 도메인 +1)는 본문 렌더를 막지 않도록 fire-and-forget.
-          getRelatedContents(content, 2)
-            .then((relatedItems) => {
-              if (!cancelled) setRelated(relatedItems);
-            })
-            .catch((error) => console.warn('Related load failed:', error))
-            .finally(() => {
-              if (!cancelled) setRelatedLoading(false);
-            });
-
-          // viewed_at 업데이트 + content_opened 발화 (analytics §12.5)
-          markContentViewed(id).catch(() => {});
-          void analytics.contentOpened(id, source);
-        } catch (e) {
-          console.error('Content load error:', e);
-          if (!cancelled) {
-            setLoading(false);
-            setRelatedLoading(false);
-          }
-        }
-      })();
-      return () => { cancelled = true; };
-    }, [id, source, session, isAuthLoading])
+      if (!session) return;
+      markContentViewed(id).catch(() => {});
+      void analytics.contentOpened(id, source);
+    }, [id, source, session])
   );
 
   const handleMoveCategory = async (categoryId: string | null) => {
