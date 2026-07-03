@@ -7,6 +7,7 @@ import {
   getCategoryColor,
   getCategoryIcon,
 } from '@/constants/categoryStyle';
+import { CategoryIcon } from './CategoryIcon';
 
 type FolderCardProps = {
   name: string;
@@ -30,7 +31,9 @@ export function FolderCard({ name, count, color, icon, onPress }: FolderCardProp
         <View style={[styles.card, { backgroundColor: bg }]}>
           <View style={styles.nameRow}>
             {iconName ? (
-              <Ionicons name={iconName} size={17} color={Colors.primary} style={styles.icon} />
+              <View style={styles.icon}>
+                <CategoryIcon name={iconName} size={17} color={Colors.primary} />
+              </View>
             ) : null}
             <Text style={styles.name} numberOfLines={1}>{name}</Text>
           </View>

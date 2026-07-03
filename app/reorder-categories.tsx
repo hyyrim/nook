@@ -7,6 +7,7 @@ import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { getCategories, reorderCategories } from '@/lib/api';
 import { emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
@@ -91,11 +92,7 @@ export default function ReorderCategoriesScreen() {
         >
           <View style={styles.left}>
             <View style={[styles.iconWrap, { backgroundColor: bg }]}>
-              {iconName ? (
-                <Ionicons name={iconName} size={17} color={Colors.primary} />
-              ) : (
-                <Ionicons name="folder-outline" size={17} color={Colors.primary} />
-              )}
+              <CategoryIcon name={iconName ?? 'folder'} size={17} color={Colors.primary} />
             </View>
             <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
           </View>

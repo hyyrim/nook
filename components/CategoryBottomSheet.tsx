@@ -7,10 +7,10 @@ import {
   CATEGORY_DEFAULT_BG,
   CATEGORY_ICON_PRESETS,
   getCategoryColor,
-  type CategoryIconName,
 } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './PrimaryButton';
+import { CategoryIcon } from './CategoryIcon';
 
 type CategorySubmitData = {
   name: string;
@@ -247,7 +247,7 @@ export function CategoryBottomSheet({
                             selected && styles.iconTileSelected,
                           ]}
                         >
-                          <Ionicons name={iconName as CategoryIconName} size={17} color={Colors.secondary} />
+                          <CategoryIcon name={iconName} size={17} color={Colors.secondary} />
                         </Pressable>
                       );
                     })}

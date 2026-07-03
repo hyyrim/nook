@@ -28,3 +28,4 @@ Archived records:
 | Codex | Category Detail 헤더 검색 영역 재배치 + 선택 모드 보조 헤더 미노출 처리 (→ 결정 084) |
 | Codex | 카테고리 순서 편집 저장/드래그 안정화 + 카테고리 바텀시트 input 높이 고정 (→ 결정 085) |
 | Codex | 프로필 카드 계정 설정 진입 + 로그아웃/계정 삭제 액션 위치 정리 (→ 결정 086) |
+| Codex | 카테고리 아이콘을 lucide-react-native 기반 렌더링으로 전환하고 기존 Ionicons 저장값 호환 유지 (→ 결정 087) |

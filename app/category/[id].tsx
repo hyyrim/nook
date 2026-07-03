@@ -6,6 +6,7 @@ import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants';
 import { getCategoryIcon } from '@/constants/categoryStyle';
 import { ContentCard } from '@/components/ContentCard';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { GridContentCard } from '@/components/GridContentCard';
 import { SearchBar } from '@/components/SearchBar';
 import { ActionSheet } from '@/components/ActionSheet';
@@ -286,7 +287,7 @@ export default function CategoryDetailScreen() {
             onBack={() => router.back()}
             titleAccessory={
               !isUncategorized && categoryIcon
-                ? <Ionicons name={categoryIcon} size={15} color={Colors.primary} />
+                ? <CategoryIcon name={categoryIcon} size={15} color={Colors.primary} />
                 : undefined
             }
             rightAction={
