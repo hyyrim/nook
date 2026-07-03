@@ -217,3 +217,62 @@ Archived records:
 - DB 마이그레이션으로 기존 icon 값을 일괄 변경: 당장은 필요하지 않다. 렌더링 호환 매핑으로 기존 데이터를 보존하며 새 저장값만 lucide key로 전환한다.
 
 **교훈**: 아이콘 라이브러리 변경은 시각 교체보다 저장값 호환이 더 중요하다. UI 프리셋 key와 렌더링 컴포넌트를 분리하면 추후 아이콘 세트를 다시 조정해도 DB 영향을 줄일 수 있다.
+
+---
+
+## 088. lucide-react-native 0.577.0 다운그레이드 + 아이콘 세트 확장 (2026-07-03)
+
+**결정**: `lucide-react-native`를 `0.577.0`으로 다운그레이드해 정확 버전 pin, 카테고리 아이콘 프리셋을 12개 → 41개(도메인별 그룹)로 확장한다.
+
+**배경**: `1.23.0`을 도입했으나 배럴 모듈이 Expo SDK 56 / Metro 0.84 환경에서 번들 실패했다. 근본 원인은 세 겹.
+
+1. **`.mjs` 재export 사슬**: `dist/esm/lucide-react-native.mjs`가 `./icons/xxx.mjs`를 상대 경로로 재export 하는데, Metro 기본 `sourceExts`에 `mjs`가 빠져 있다.
+2. **`exports` 필드가 존재하지 않는 파일을 가리킴**: `package.json`의 `exports["./icons"]`가 `dist/esm/icons/index.mjs` / `dist/cjs/icons/index.js`로 정의됐지만 두 파일 모두 패키지에 포함돼 있지 않다 (배포 자체가 손상).
+3. **`unstable_enablePackageExports`가 default true (Metro 0.84)**: `exports` 필드가 강제되므로 `dist/cjs/icons/xxx.js` 같은 딥 import 우회도 리졸버 단계에서 차단된다.
+
+즉 `1.23.0`은 barrel도, 서브패스도, 딥 import도 전부 막혀 있어 실질적으로 사용 불가능한 상태.
+
+**결과**:
+- `lucide-react-native@0.577.0`로 다운그레이드 (`--save-exact`). 0.577.0은 마지막 pre-v1 stable로 `.js` 재export 사슬, 존재하는 `./icons` 서브패스, 정상 배럴을 가진다.
+- `CategoryIcon` 컴포넌트는 `import { Sparkles, Cpu, ... } from 'lucide-react-native'` 방식으로 필요한 43개(사용자 노출 41 + 내부용 `folder` / `inbox`)만 매핑. Metro tree-shaking으로 실제 번들에는 사용된 아이콘만 포함.
+- `metro.config.js` 불필요 (`.mjs` sourceExts 확장 롤백).
+- 아이콘 세트를 도메인별 12그룹으로 재구성: 콘텐츠 성격 / AI·개발 / 경제·비즈니스 / 커리어·학습 / 디자인·사진 / 주거 / 여행 / 음식 / 미디어 / 운동 / 자연·반려 / 쇼핑·취미.
+- 온보딩 12개 매핑은 그대로 유지.
+- **결정 087의 `LEGACY_IONICON_MAP`은 제거**. 카테고리 아이콘 기능(PR #31)이 v1.0.0(2026-06-25) 이후에 병합됐고, 이후 v1.1.x 빌드는 아직 배포 전이라 저자 테스트 계정 외에는 Ionicons 아이콘 값이 저장된 DB row가 없다. `getCategoryIcon`은 `CATEGORY_ICON_SET` 조회 한 갈래로 단순화.
+- **`CategoryIcon` 컴포넌트는 namespace import 사용**: `import * as Lucide from 'lucide-react-native'` 후 `Lucide.Bookmark` 형태로 참조. named import 시 Metro/Hermes 조합에서 모든 아이콘이 동일 컴포넌트로 리솔브되는 현상이 관찰돼 namespace import로 각 참조를 명시.
+- **카테고리 추가/수정 시트 레이아웃**: 아이콘 프리셋이 41개로 늘어 시트 전체가 지나치게 커지는 문제를 이름/색상/CTA는 고정, 아이콘 그리드만 자체 `ScrollView`로 분리해 해결. 상한은 `Math.min(161, maxSheetHeight - 360)` — 한 행 46px 기준 정확히 3.5행이 노출되게 잡아 4번째 행이 위쪽 절반만 보이는 **peek 패턴**을 만든다. 잘린 행이 "더 아래에 아이콘이 있다"는 시각적 힌트가 되어 별도 fade/스크롤바 조작 없이도 스크롤 가능성을 인지시킨다.
+
+**대안 검토**:
+- **`unstable_enablePackageExports: false` 전역 비활성화 + `1.23.0` 딥 import**: 리졸버 우회는 되지만 다른 패키지의 exports 필드도 함께 무시되어 리스크가 넓다.
+- **`.mjs` sourceExts 확장 + `1.23.0` barrel**: 원인 1은 해결되지만 원인 2 (존재하지 않는 파일)가 남는다. 실제로 유저 환경에서 캐시 클리어 후에도 재현.
+- **@expo/vector-icons Feather로 회귀**: `sparkles` 등 최신 아이콘 부재. 카테고리 표현력 감소.
+- **`1.23.0` 유지 + 커스텀 resolver hook으로 딥 import 강제**: 가능하지만 브로큰 패키지에 workaround를 얹는 형태라 유지보수 부담.
+
+**교훈**:
+- 새 패키지를 도입할 때 최신 major가 반드시 stable은 아니다. 특히 `exports` 필드는 배포 스크립트 실수로 존재하지 않는 파일을 가리킬 수 있고, 이 경우 딥 import 우회도 Metro packageExports에 막힌다.
+- 아이콘 라이브러리는 카테고리 UX의 확장성에 직접 영향. 초기 24~26개보다 도메인 그룹 40개 근처가 실제 유저 폴더 다양성을 흡수하기 좋다.
+
+---
+
+## 089. 카테고리 컬러칩 정리 (2026-07-03)
+
+**결정**: 9개 유지, `red` → `coral`, `slate` → `sage`로 이름·톤 함께 교체. 배열 순서는 뉴트럴 → 웜(coral/pink/peach/sand) → 그린(sage/mint) → 쿨(blue/lavender)로 재정렬.
+
+**배경**: 기존 9개 팔레트에서 두 가지 문제가 있었다.
+
+1. `red`의 실제 값(`#E8DDE2`)은 dusty mauve라 이름과 톤이 어긋났고 `pink`와 시각적으로 거의 구분되지 않았다.
+2. `slate`(`#DDE3E5`)는 `gray`(`#E8E8E8`)와 거의 같은 뉴트럴 계열이라 폴더 구분 용도로 기능이 약했다.
+
+또 웜 뉴트럴이 4종(sand/peach/pink/red)으로 편중된 반면 그린 계열은 mint 하나뿐이었다.
+
+**결과**:
+- `red` → `coral` (`bg #F5D5CE / tab #E8B4A8`) — 진짜 웜 코랄 톤. `pink`(`#F3DDDE`)와 색조가 분명히 구분되도록 오렌지 기미를 실었다.
+- `slate` → `sage` (`bg #DFE5D5 / tab #C6D0B5`) — 옐로우-그린 계열 sage. `mint`(`#DDEBDF`, 블루-그린 pastel)와 색조 차이가 명확하다.
+- `CategoryColorKey` union 및 `CATEGORY_COLOR_PRESETS` 배열 수정. 다른 상수·컴포넌트는 key 문자열만 참조하므로 재렌더링 외 영향 없음.
+- **DB 호환 매핑은 추가하지 않는다**. 카테고리 컬러 저장 기능도 카테고리 아이콘과 같은 미배포 시점(v1.1.x)에서 저자 테스트 계정에만 존재. 결정 087·088의 legacy 판단과 동일 근거.
+
+**대안 검토**:
+- 12개로 확장(옐로우/코랄/sage 추가, red·slate 제거): 색상환 균형은 좋지만 3×4 그리드 재배치·시트 높이 재조정 필요. 우선 이름 왜곡/중복 이슈만 해결.
+- red 톤만 진짜 붉게 조정(이름 유지): 브랜드 pastel 톤과 어긋난다. coral 정도가 상한.
+
+**교훈**: 팔레트에서는 key 이름과 실제 톤의 일치가 유저 예측 가능성에 직결된다. "red"가 실제 mauve로 저장되면 향후 다크 모드/컬러 로직 확장 시 혼란이 커진다.
