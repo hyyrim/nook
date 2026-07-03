@@ -1,4 +1,4 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, ActivityIndicator, Keyboard } from 'react-native';
+import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
@@ -8,6 +8,7 @@ import { isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { analytics } from '@/lib/analytics';
 import { emit } from '@/lib/events';
 import { useToast } from '@/lib/toast';
+import { PrimaryButton } from '@/components/PrimaryButton';
 
 type SaveBottomSheetProps = {
   visible: boolean;
@@ -171,16 +172,12 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
                 <Text style={styles.pasteText}>클립보드에서 붙여넣기</Text>
               </Pressable>
 
-              <Pressable
+              <PrimaryButton
+                label="저장"
                 onPress={handleSave}
-                style={[styles.saveButton, !url.trim() && styles.saveButtonDisabled]}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveButtonText}>저장</Text>
-                )}
-              </Pressable>
+                disabled={!url.trim()}
+                loading={saving}
+              />
             </View>
           </Reanimated.View>
         </Animated.View>
@@ -271,19 +268,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: Colors.secondary,
-  },
-  saveButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#C8C8C8',
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

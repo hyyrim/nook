@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
+import { PrimaryButton } from './PrimaryButton';
 
 type ContentTitleSheetProps = {
   visible: boolean;
@@ -104,12 +105,11 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
                 />
               </View>
 
-              <Pressable
+              <PrimaryButton
+                label="저장"
                 onPress={handleSubmit}
-                style={[styles.ctaButton, !trimmed && styles.ctaDisabled]}
-              >
-                <Text style={styles.ctaText}>저장</Text>
-              </Pressable>
+                disabled={!trimmed}
+              />
             </View>
           </Reanimated.View>
         </Animated.View>
@@ -189,19 +189,5 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     lineHeight: 20,
     textAlignVertical: 'top',
-  },
-  ctaButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  ctaDisabled: {
-    backgroundColor: '#C8C8C8',
-  },
-  ctaText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
+import { PrimaryButton } from './PrimaryButton';
 
 type TagsSheetProps = {
   visible: boolean;
@@ -178,9 +179,7 @@ export function TagsSheet({ visible, initialTags = [], onClose, onSubmit }: Tags
                 {error ? <Text style={Typography.errorText}>{error}</Text> : null}
               </View>
 
-              <Pressable onPress={handleSubmit} style={styles.ctaButton}>
-                <Text style={styles.ctaText}>저장</Text>
-              </Pressable>
+              <PrimaryButton label="저장" onPress={handleSubmit} />
             </View>
           </Reanimated.View>
         </Animated.View>
@@ -299,16 +298,5 @@ const styles = StyleSheet.create({
   },
   addButtonDisabled: {
     backgroundColor: '#C8C8C8',
-  },
-  ctaButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  ctaText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

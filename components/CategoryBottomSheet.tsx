@@ -10,6 +10,7 @@ import {
   type CategoryIconName,
 } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
+import { PrimaryButton } from './PrimaryButton';
 
 type CategorySubmitData = {
   name: string;
@@ -255,12 +256,12 @@ export function CategoryBottomSheet({
               </ScrollView>
             </View>
 
-            <Pressable
+            <PrimaryButton
+              label={cta}
               onPress={handleSubmit}
-              style={[styles.ctaButton, !value.trim() && styles.ctaDisabled]}
-            >
-              <Text style={styles.ctaText}>{cta}</Text>
-            </Pressable>
+              disabled={!value.trim()}
+              style={styles.ctaButton}
+            />
           </Reanimated.View>
         </Animated.View>
       </Pressable>
@@ -390,18 +391,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   ctaButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
     marginTop: 10,
-  },
-  ctaDisabled: {
-    backgroundColor: '#C8C8C8',
-  },
-  ctaText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants';
+import { PrimaryButton } from './PrimaryButton';
 
 type ErrorStateProps = {
   title?: string;
@@ -19,12 +20,12 @@ export function ErrorState({
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
       {onRetry && (
-        <Pressable
+        <PrimaryButton
+          label="다시 시도"
           onPress={onRetry}
-          style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
-        >
-          <Text style={styles.retryText}>다시 시도</Text>
-        </Pressable>
+          size="small"
+          style={styles.retryButton}
+        />
       )}
     </View>
   );
@@ -48,18 +49,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
     marginTop: 4,
-  },
-  retryButtonPressed: {
-    opacity: 0.7,
-  },
-  retryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });
