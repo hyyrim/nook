@@ -8,21 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
 import { deleteAccount } from '@/lib/api';
 
-function SettingRow({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: 'rgba(0,0,0,0.02)' }]}
-    >
-      <View style={styles.iconBubble}>
-        <Ionicons name={icon} size={16} color={Colors.secondary} />
-      </View>
-      <Text style={styles.settingLabel}>{label}</Text>
-      <Ionicons name="chevron-forward" size={14} color={Colors.tertiary} />
-    </Pressable>
-  );
-}
-
 function SectionLabel({ text }: { text: string }) {
   return <Text style={styles.sectionLabel}>{text}</Text>;
 }
@@ -37,16 +22,6 @@ export default function AccountSettingsScreen() {
   const email = session?.user?.email ?? '';
   const provider = session?.user?.app_metadata?.provider;
   const providerLabel = provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : '이메일';
-
-  const handleLogout = () => {
-    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃', style: 'destructive',
-        onPress: () => supabase.auth.signOut(),
-      },
-    ]);
-  };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -103,14 +78,6 @@ export default function AccountSettingsScreen() {
               </View>
             </View>
           </View>
-
-          {/* Account actions */}
-          <View>
-            <SectionLabel text="계정" />
-            <View style={styles.settingsCard}>
-              <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
-            </View>
-          </View>
         </View>
 
         {/* Delete account - low emphasis footer */}
@@ -157,13 +124,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    paddingVertical: 13,
-    borderRadius: 8,
-  },
   iconBubble: {
     width: 34,
     height: 34,
@@ -171,12 +131,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  settingLabel: {
-    flex: 1,
-    fontSize: 14.5,
-    fontWeight: '500',
-    color: Colors.primary,
   },
   infoRow: {
     flexDirection: 'row',
