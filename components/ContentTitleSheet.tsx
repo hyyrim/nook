@@ -1,7 +1,7 @@
 import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
-import { BOTTOM_SHEET_PADDING_BOTTOM, Colors } from '@/constants';
+import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type ContentTitleSheetProps = {
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 36,
     height: 4,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     backgroundColor: '#DCDCDC',
     alignSelf: 'center',
     marginBottom: 18,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 76,
     backgroundColor: Colors.background,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 13,
     paddingVertical: 12,
     fontSize: 14,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: 'center',
   },

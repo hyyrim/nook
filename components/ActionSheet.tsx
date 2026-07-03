@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import { useRef } from 'react';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 
 type ActionSheetAction = {
   label: string;
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   actionsCard: {
     backgroundColor: 'rgba(255,255,255,0.97)',
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionPressed: {
-    backgroundColor: 'rgba(0,0,0,0.04)',
+    backgroundColor: Colors.pressOverlay,
   },
   actionBorder: {
     borderBottomWidth: 0.5,
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: 'rgba(255,255,255,0.97)',
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     paddingVertical: 16,
     alignItems: 'center',
     shadowColor: '#000',

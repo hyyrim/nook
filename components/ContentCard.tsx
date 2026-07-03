@@ -1,6 +1,6 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 
 type ContentCardProps = {
   title: string;
@@ -63,7 +63,7 @@ export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailC
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     padding: 12,
     flexDirection: 'row',
     gap: 12,
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   tag: {
     backgroundColor: Colors.background,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 7,
     paddingVertical: 2.5,
   },
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: Colors.background,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 7,
     paddingVertical: 2.5,
   },

@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { ActionSheet } from '@/components/ActionSheet';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import { ContentTitleSheet } from '@/components/ContentTitleSheet';
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   },
   tagPill: {
     backgroundColor: Colors.surface,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 11,
     paddingVertical: 5,
     marginRight: 7,
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   relatedCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     flexDirection: 'row',
     gap: 11,
     padding: 11,

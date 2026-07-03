@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
 import { RediscoverCard } from '@/components/RediscoverCard';
 import { HorizontalMoreCard } from '@/components/HorizontalMoreCard';
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   searchButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: Radius.xl,
     backgroundColor: Colors.surface,
     borderWidth: 0.5,
     borderColor: 'rgba(0,0,0,0.07)',
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     padding: 24,
     alignItems: 'center',
     marginTop: 16,
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   tipIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, ScrollView
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { createInitialCategories } from '@/lib/api';
 import { analytics } from '@/lib/analytics';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     backgroundColor: Colors.surface,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 18,
     paddingVertical: 11,
     borderWidth: 1.5,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     backgroundColor: 'transparent',
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1.5,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 16,
     alignItems: 'center',
     width: '100%',

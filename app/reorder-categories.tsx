@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
 import { getCategories, reorderCategories } from '@/lib/api';
 import { emit } from '@/lib/events';
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     shadowColor: '#000',

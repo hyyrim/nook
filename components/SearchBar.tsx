@@ -1,5 +1,5 @@
 import { View, TextInput, Text, StyleSheet, Pressable } from 'react-native';
-import { Colors } from '@/constants';
+import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 
 type SearchBarProps = {
@@ -38,7 +38,7 @@ export function SearchBar({ placeholder = '저장한 콘텐츠 찾기', value, o
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 13,
     paddingVertical: 10,
     flexDirection: 'row',

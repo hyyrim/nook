@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Colors, Typography } from '@/constants';
+import { Colors, Radius, Typography } from '@/constants';
 import { ErrorState } from '@/components/ErrorState';
 import { useAuth } from '@/lib/AuthProvider';
 import { getRecentContentsForReport, getUncategorizedCount, type ReportItem } from '@/lib/api';
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     left: 0,
     minWidth: 112,
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 16,
     paddingVertical: 4,
     shadowColor: '#000',
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   tagChip: {
     backgroundColor: Colors.background,
-    borderRadius: 100,
+    borderRadius: Radius.pill,
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   },
   notice: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     padding: 14,
     marginTop: -6,
     borderWidth: StyleSheet.hairlineWidth,
