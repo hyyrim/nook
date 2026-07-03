@@ -12,6 +12,17 @@ import { emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import type { Category } from '@/types';
 
+// DraggableFlatList calls onDragEnd after the drop spring finishes.
+// Keep that spring tight so the visible order settles without a long pause.
+const DRAG_ANIMATION_CONFIG = {
+  damping: 32,
+  mass: 0.12,
+  stiffness: 420,
+  overshootClamping: true,
+  restSpeedThreshold: 0.8,
+  restDisplacementThreshold: 0.8,
+};
+
 export default function ReorderCategoriesScreen() {
   const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
@@ -19,9 +30,11 @@ export default function ReorderCategoriesScreen() {
   const [initialIds, setInitialIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const load = useCallback(async () => {
-    if (isAuthLoading || !session) {
+    if (isAuthLoading) return;
+    if (!session) {
       setLoading(false);
       return;
     }
@@ -40,10 +53,11 @@ export default function ReorderCategoriesScreen() {
     load();
   }, [load]);
 
-  const isDirty = items.some((c, i) => c.id !== initialIds[i]);
+  const isDirty = items.length !== initialIds.length || items.some((c, i) => c.id !== initialIds[i]);
+  const canSave = isDirty && !saving && !isDragging;
 
   const handleSave = async () => {
-    if (!isDirty || saving) return;
+    if (!canSave) return;
     setSaving(true);
     try {
       await reorderCategories(items.map((c) => c.id));
@@ -57,6 +71,7 @@ export default function ReorderCategoriesScreen() {
   };
 
   const handleCancel = () => {
+    if (saving || isDragging) return;
     router.back();
   };
 
@@ -68,7 +83,10 @@ export default function ReorderCategoriesScreen() {
         <Pressable
           onLongPress={drag}
           delayLongPress={180}
-          disabled={saving}
+          disabled={saving || isDragging}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name} 순서 변경`}
+          accessibilityHint="길게 누른 뒤 위아래로 끌어 카테고리 순서를 바꿉니다"
           style={[styles.row, isActive && styles.rowActive]}
         >
           <View style={styles.left}>
@@ -91,21 +109,32 @@ export default function ReorderCategoriesScreen() {
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
-          <Pressable onPress={handleCancel} hitSlop={8} style={styles.headerButton}>
-            <Text style={styles.headerButtonText}>취소</Text>
+          <Pressable
+            onPress={handleCancel}
+            hitSlop={8}
+            disabled={saving || isDragging}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving || isDragging }}
+            style={styles.headerButton}
+          >
+            <Text style={[styles.headerButtonText, (saving || isDragging) && styles.headerButtonDisabled]}>
+              취소
+            </Text>
           </Pressable>
           <Text style={styles.headerTitle}>카테고리 순서 편집</Text>
           <Pressable
             onPress={handleSave}
             hitSlop={8}
-            disabled={!isDirty || saving}
+            disabled={!canSave}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSave, busy: saving }}
             style={styles.headerButton}
           >
             <Text
               style={[
                 styles.headerButtonText,
                 styles.headerButtonPrimary,
-                (!isDirty || saving) && styles.headerButtonDisabled,
+                !canSave && styles.headerButtonDisabled,
               ]}
             >
               저장
@@ -122,11 +151,16 @@ export default function ReorderCategoriesScreen() {
         ) : (
           <DraggableFlatList
             data={items}
-            onDragEnd={({ data }) => setItems(data)}
+            onDragBegin={() => setIsDragging(true)}
+            onDragEnd={({ data }) => {
+              setItems(data);
+              setIsDragging(false);
+            }}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             activationDistance={8}
+            animationConfig={DRAG_ANIMATION_CONFIG}
           />
         )}
       </SafeAreaView>
