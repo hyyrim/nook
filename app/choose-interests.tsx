@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -6,6 +6,7 @@ import { Colors, Radius } from '@/constants';
 import { createInitialCategories } from '@/lib/api';
 import { analytics } from '@/lib/analytics';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Ionicons } from '@expo/vector-icons';
 
 const PRESET_CATEGORIES = [
@@ -131,23 +132,14 @@ export default function ChooseInterestsScreen() {
           <Text style={styles.counter}>
             {selected.length} / {MAX_SELECT}개 선택됨
           </Text>
-          <Pressable
+          <PrimaryButton
+            label="시작하기"
             onPress={handleGetStarted}
             disabled={!canProceed}
-            style={({ pressed }) => [
-              styles.cta,
-              !canProceed && styles.ctaDisabled,
-              pressed && canProceed && styles.ctaPressed,
-            ]}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color={Colors.surface} />
-            ) : (
-              <Text style={[styles.ctaText, !canProceed && styles.ctaTextDisabled]}>
-                시작하기
-              </Text>
-            )}
-          </Pressable>
+            loading={saving}
+            style={styles.cta}
+            labelStyle={styles.ctaText}
+          />
         </View>
       </View>
 
@@ -259,24 +251,9 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
   },
   cta: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
     paddingVertical: 16,
-    alignItems: 'center',
-    width: '100%',
-  },
-  ctaDisabled: {
-    backgroundColor: Colors.border,
-  },
-  ctaPressed: {
-    opacity: 0.85,
   },
   ctaText: {
-    fontSize: 15,
     fontWeight: '700',
-    color: Colors.surface,
-  },
-  ctaTextDisabled: {
-    color: Colors.tertiary,
   },
 });

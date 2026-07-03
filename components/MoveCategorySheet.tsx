@@ -5,6 +5,7 @@ import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategories, createCategory } from '@/lib/api';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import type { Category } from '@/types';
 
 type MoveCategorySheetProps = {
@@ -118,13 +119,7 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
               <View style={styles.errorState}>
                 <Ionicons name="cloud-offline-outline" size={28} color={Colors.tertiary} />
                 <Text selectable style={styles.errorText}>카테고리를 불러오지 못했어요</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={loadCategories}
-                  style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
-                >
-                  <Text style={styles.retryButtonText}>다시 시도</Text>
-                </Pressable>
+                <PrimaryButton label="다시 시도" size="small" onPress={loadCategories} />
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
@@ -239,20 +234,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: Colors.secondary,
-  },
-  retryButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  retryButtonPressed: {
-    opacity: 0.7,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.surface,
   },
   option: {
     flexDirection: 'row',
