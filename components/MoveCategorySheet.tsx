@@ -1,4 +1,4 @@
-import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator } from 'react-native';
+import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
@@ -36,7 +36,13 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   }, []);
 
   useEffect(() => {
-    if (visible) loadCategories();
+    if (!visible) return;
+    // 시트 등장 애니메이션과 fetch가 겹치면 첫 프레임이 잘려 버벅여 보인다.
+    // 상호작용(=애니메이션) 종료 후 fetch를 실행해 등장 프레임을 우선 확보.
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadCategories();
+    });
+    return () => task.cancel();
   }, [visible, loadCategories]);
 
   useEffect(() => {
