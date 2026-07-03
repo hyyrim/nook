@@ -1,4 +1,4 @@
-import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
+import { Animated, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
@@ -21,8 +21,9 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   const [isMounted, setIsMounted] = useState(visible);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  // close target(300)과 동일하게 시작해 setValue 리셋 없이 값 동기화. 첫 open 프레임 점프 방지.
-  const sheetTranslateY = useRef(new Animated.Value(300)).current;
+  // 시트 max height(480)보다 크게 잡아 close 시 완전히 화면 밖으로 나간 뒤 unmount.
+  // CategoryBottomSheet과 동일한 값으로 맞춤.
+  const sheetTranslateY = useRef(new Animated.Value(600)).current;
 
   const loadCategories = useCallback(() => {
     setLoading(true);
@@ -66,9 +67,8 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
     Animated.parallel([
       Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
       Animated.timing(sheetTranslateY, {
-        toValue: 300,
+        toValue: 600,
         duration: 190,
-        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => { if (finished) setIsMounted(false); });
