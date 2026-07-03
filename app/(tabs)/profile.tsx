@@ -57,7 +57,10 @@ export default function ProfileScreen() {
 
         <View style={styles.content}>
           {/* User info card */}
-          <View style={styles.userCard}>
+          <Pressable
+            onPress={() => router.push('/account-settings')}
+            style={({ pressed }) => [styles.userCard, pressed && { backgroundColor: 'rgba(255,255,255,0.72)' }]}
+          >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initial}</Text>
             </View>
@@ -65,6 +68,11 @@ export default function ProfileScreen() {
               <Text style={styles.userName}>{displayName}</Text>
               <Text style={styles.userEmail} numberOfLines={1}>{email}</Text>
             </View>
+            <Ionicons name="chevron-forward" size={14} color={Colors.tertiary} />
+          </Pressable>
+
+          <View style={styles.settingsCard}>
+            <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
           </View>
 
           {/* Information section */}
@@ -74,16 +82,6 @@ export default function ProfileScreen() {
               <SettingRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')} />
               <Divider />
               <SettingRow icon="document-text-outline" label="서비스 이용약관" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')} />
-            </View>
-          </View>
-
-          {/* Account section */}
-          <View>
-            <SectionLabel text="계정" />
-            <View style={styles.settingsCard}>
-              <SettingRow icon="settings-outline" label="계정 설정" onPress={() => router.push('/account-settings')} />
-                <Divider />
-              <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
             </View>
           </View>
         </View>
