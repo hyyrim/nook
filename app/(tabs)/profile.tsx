@@ -72,6 +72,8 @@ export default function ProfileScreen() {
           </Pressable>
 
           <View style={styles.settingsCard}>
+            <SettingRow icon="notifications-outline" label="알림 설정" onPress={() => router.push('/notification-settings')} />
+            <Divider />
             <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
           </View>
 

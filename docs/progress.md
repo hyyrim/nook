@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-03 (38차 — 카테고리 순서 편집 안정화)
+최종 업데이트: 2026-07-04 (39차 — 푸시 알림 클라이언트 토큰/설정)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,7 +14,7 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 38차 — 카테고리 순서 편집 안정화 + 카테고리 바텀시트 input 높이 고정 |
+| 최근 앱 작업 | 39차 — 푸시 알림 클라이언트 (expo-notifications + 토큰 등록 + 알림 설정 화면) |
 | 최근 문서 작업 | 36차 — 출시 전 정책 문서 정합성 정리 |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
@@ -98,6 +98,19 @@ Archived records:
 | `lib/api.ts` — `reorderCategories`가 Supabase update 결과와 실제 row 업데이트 여부를 확인하고 실패 시 throw | ✅ |
 | `components/CategoryBottomSheet.tsx` — 카테고리 추가/수정 input 높이 44로 고정해 입력 중 크기 변동 방지 | ✅ |
 | 취소는 기존 UX대로 확인 Alert 없이 즉시 뒤로가기 유지 | ✅ |
+
+## 완료 (39차 — 푸시 알림 클라이언트 토큰/설정)
+
+| 항목 | 상태 |
+|------|------|
+| `expo-notifications` + `expo-device` 설치, `app.json` plugin 등록 (→ 결정 091) | ✅ |
+| `lib/notifications.ts` — 권한 요청 / Expo Push Token 발급 / 서버 upsert / 포그라운드 배너 노출 | ✅ |
+| `lib/api.ts` — `upsertDeviceToken`, `getNotificationSettings`, `upsertNotificationSettings` 추가 | ✅ |
+| `types/index.ts` — `NotificationSettings`, `NotificationType` 타입 추가 | ✅ |
+| `app/notification-settings.tsx` 신규 — 전체 on/off + 종류별 토글 + 발송 시간 안내 + 권한 미허용 배너 | ✅ |
+| `app/(tabs)/profile.tsx` — 로그아웃 카드에 "알림 설정" 진입점 추가 | ✅ |
+| `app/_layout.tsx` — 세션 활성 시 `syncDeviceToken` 실행 + `notification-settings` Stack.Screen 등록 | ✅ |
+| 온보딩 권한 요청 스텝과 딥링크 라우팅은 40차(feat/push-onboarding)로 분리 | ⏸ |
 
 ## Phase 2 범위
 

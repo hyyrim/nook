@@ -4,7 +4,7 @@ import { emit, markClassified, markClassifying } from './events';
 import { fetchLinkMetadata, isBadMetadataText, isGenericPlatformTitle, normalizeUrl, platformFallbackTitle } from './metadata';
 import { analytics, type EntrySource, type FailureReason } from './analytics';
 import { PRESET_CATEGORY_ICON_MAP } from '@/constants/categoryStyle';
-import type { Category, Content } from '@/types';
+import type { Category, Content, NotificationSettings } from '@/types';
 
 async function requireUserId() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -781,4 +781,60 @@ export async function createInitialCategories(names: string[]) {
 export async function deleteAccount() {
   const { error } = await supabase.rpc('delete_user_account');
   if (error) throw error;
+}
+
+// ─── Push Notifications ───
+
+export async function upsertDeviceToken(input: {
+  expoPushToken: string;
+  platform: 'ios' | 'android';
+  deviceName?: string | null;
+}) {
+  const userId = await requireUserId();
+  const { error } = await supabase
+    .from('device_tokens')
+    .upsert(
+      {
+        user_id: userId,
+        expo_push_token: input.expoPushToken,
+        platform: input.platform,
+        device_name: input.deviceName ?? null,
+      },
+      { onConflict: 'user_id,expo_push_token' },
+    );
+  if (error) throw error;
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings | null> {
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from('notification_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as NotificationSettings | null) ?? null;
+}
+
+/**
+ * 알림 설정 upsert. 최초 호출 시 기본값으로 row가 생성됨.
+ * quiet_hours_start/end는 0~23 정수. timezone은 IANA(기본 Asia/Seoul).
+ */
+export async function upsertNotificationSettings(
+  patch: Partial<Omit<NotificationSettings, 'user_id' | 'created_at' | 'updated_at'>>,
+): Promise<NotificationSettings> {
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from('notification_settings')
+    .upsert(
+      {
+        user_id: userId,
+        ...patch,
+      },
+      { onConflict: 'user_id' },
+    )
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as NotificationSettings;
 }

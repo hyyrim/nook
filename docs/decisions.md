@@ -315,3 +315,37 @@ Archived records:
 
 **교훈**: 재발견 축(Forgotten/Rediscover)은 정의상 사용자가 앱을 안 열고 있을 때 알아채는 게 목적이므로, 이 기능만큼은 서버 스케줄이 로컬 스케줄보다 우선한다. 알림 정책·발송 로그·기기 토큰을 각각 다른 테이블로 나누면 향후 채널 추가(주간 요약·저장 완료 등)도 로그 스키마 변경 없이 `type` enum 확장만으로 가능하다.
 
+---
+
+## 091. 푸시 알림 클라이언트 (2026-07-04)
+
+**결정**: `expo-notifications` + `expo-device` 도입, 세션 활성 시점에 토큰 upsert, 알림 설정은 프로필 하위의 독립 화면 하나로 관리. 온보딩 권한 요청 스텝과 딥링크 라우팅은 이 PR에서 분리해 40차에서 처리.
+
+**배경**: 결정 090에서 스키마와 서버 발송 방침을 정했다. 클라이언트에서는 (1) 실기기에서 권한을 확보하고 Expo Push Token을 발급받아 서버에 등록하고, (2) 유저가 언제든 종류별 알림을 껐다 켤 수 있는 진입점을 제공해야 한다. 범위가 커서 온보딩 UX·딥링크 라우팅과 함께 한 PR로 묶으면 리뷰가 어려워진다.
+
+**결과**:
+- `expo-notifications@~56.0.19`, `expo-device` 설치. `app.json` plugins에 `"expo-notifications"` 추가. 별도 설정 없이 iOS aps-environment entitlement가 EAS Build 시 자동 부여된다.
+- `lib/notifications.ts`
+  - `Notifications.setNotificationHandler`로 포그라운드에서도 배너 노출 (sound off, badge off).
+  - `requestNotificationPermission()`은 `undetermined`에서만 요청 다이얼로그를 띄우고, 이미 결정된 상태에서는 그대로 반환. iOS 재요청 불가 제약을 UX 흐름에 반영.
+  - `syncDeviceToken()`은 실기기 + granted 상태에서만 토큰을 발급받아 `upsertDeviceToken`으로 서버에 등록. 시뮬레이터/권한 없음/실패는 조용히 스킵 (fail-silent).
+- `lib/api.ts`
+  - `upsertDeviceToken` — `(user_id, expo_push_token)` unique 제약을 활용해 upsert.
+  - `getNotificationSettings` — `maybeSingle()`로 row 부재 시 `null` 반환 (아직 알림을 켜본 적 없는 유저).
+  - `upsertNotificationSettings` — patch 형태로 부분 업데이트. 최초 호출 시 서버 default(`enabled: true`, `quiet_hours 22~08`, `Asia/Seoul`)로 row 생성.
+- `app/notification-settings.tsx`
+  - 전체 알림 마스터 토글이 꺼져 있으면 종류별 토글은 disabled + opacity 0.5로 시각적으로 잠금.
+  - 마스터 토글을 켤 때 iOS 권한이 없으면 즉시 요청 → 거절 시 "iOS 설정 열기" Alert. 이후에는 상단 배너(`iOS 설정에서 알림이 꺼져 있어요`)로 재유도.
+  - 발송 시간은 `매일 09:00 KST` + 조용한 시간(22~08) 안내만 표시. 사용자 커스텀 편집 UI는 후속.
+  - RN 기본 `Switch`를 트랙 색 `#1A1A1A`, thumb 흰색으로 스타일링해 브랜드 뉴트럴 톤에 맞춤.
+- `app/_layout.tsx` — 세션이 활성일 때 `syncDeviceToken`을 fire-and-forget 실행. `notification-settings` Stack.Screen을 slide_from_right로 등록.
+- `app/(tabs)/profile.tsx` — 로그아웃과 같은 카드에 "알림 설정" 진입점을 추가 (Divider로 분리).
+
+**대안 검토**:
+- **로그인 직후 자동 권한 요청**: iOS는 권한 다이얼로그를 한 번만 띄울 수 있어 온보딩과 맥락 없이 나타나면 유저가 자동 반사로 거절할 확률이 높다. 40차에서 카테고리 선택 직후 문맥이 있는 스텝으로 배치할 예정.
+- **알림 설정을 계정 설정 화면 하위로**: 정보 성격이 달라(계정=식별/보안, 알림=재발견 UX) 프로필 최상위 카드로 노출하는 편이 발견성이 높다.
+- **`upsertNotificationSettings` 대신 update-only + row 존재 여부 체크**: upsert 한 번으로 최초 진입/재진입을 모두 처리하는 편이 오류 경로가 적어 채택.
+- **포그라운드에서 배너를 숨기고 인앱 토스트로 대체**: MVP 범위 초과. Expo 기본 배너로 시작해 반응 보고 조정.
+
+**교훈**: 알림 설정 UI는 "권한 상태"와 "유저 설정" 두 축이 항상 함께 있어야 한다. 유저가 앱 내에서 토글을 다 켜뒀는데 iOS 권한이 꺼져 있으면 아무것도 오지 않아 혼란스러운데, 상단 배너로 이 gap을 명시적으로 시각화하면 지원 문의를 줄일 수 있다. 또 시뮬레이터/에뮬레이터에서는 토큰 발급이 실패하므로 `Device.isDevice` 가드를 반드시 두어야 개발 환경에서 노이즈가 안 생긴다.
+
