@@ -24,3 +24,17 @@ export type Content = {
   created_at: string;
   updated_at: string;
 };
+
+export type NotificationSettings = {
+  user_id: string;
+  enabled: boolean;
+  forgotten_enabled: boolean;
+  rediscover_enabled: boolean;
+  quiet_hours_start: number;
+  quiet_hours_end: number;
+  timezone: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationType = 'forgotten' | 'rediscover';

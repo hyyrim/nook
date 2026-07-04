@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
 import { onAppActive, onAppBackground } from '@/lib/analytics';
+import { syncDeviceToken } from '@/lib/notifications';
 import { ToastProvider, useToast } from '@/lib/toast';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -61,6 +62,12 @@ function RootNavigator() {
 
     return () => subscription.remove();
   }, [session, hasShareIntent]);
+
+  // 세션 활성 → 푸시 토큰 동기화. 권한 없으면 조용히 skip.
+  useEffect(() => {
+    if (!session) return;
+    syncDeviceToken().catch((e) => console.warn('[push] token sync failed', e));
+  }, [session]);
 
   // Share Intent 처리: 공유된 URL 자동 저장
   useEffect(() => {
@@ -145,6 +152,10 @@ function RootNavigator() {
         />
         <Stack.Screen
           name="account-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="notification-settings"
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
