@@ -276,3 +276,25 @@ Archived records:
 - red 톤만 진짜 붉게 조정(이름 유지): 브랜드 pastel 톤과 어긋난다. coral 정도가 상한.
 
 **교훈**: 팔레트에서는 key 이름과 실제 톤의 일치가 유저 예측 가능성에 직결된다. "red"가 실제 mauve로 저장되면 향후 다크 모드/컬러 로직 확장 시 혼란이 커진다.
+
+---
+
+## 090. 푸시 알림 DB 스키마 (2026-07-04)
+
+**결정**: 푸시 알림 1차 범위(Forgotten + Rediscover)를 지원하기 위해 세 테이블 — `device_tokens`, `notification_settings`, `notification_logs` — 을 도입한다. 발송은 Supabase pg_cron이 매일 09:00 KST에 Edge Function `send-daily-notifications`를 호출해 서버에서 수행한다. 로컬 알림 스케줄링은 사용하지 않는다.
+
+**배경**: 콘텐츠 데이터가 서버(Supabase)에 있으므로 "잊혀진 링크" 후보 계산과 사용자 관심 카테고리 기반 Rediscover 후보 계산은 서버가 담당해야 정확하다. 로컬 스케줄은 앱이 최근 실행돼야 계산이 가능해 재발견 목적과 어긋난다. 여러 기기 대응·발송 로그·중복 방지도 서버 단이 유리하다.
+
+**결과**:
+- `device_tokens`: 유저별 Expo Push Token upsert. `(user_id, expo_push_token)` unique. RLS로 본인 행만 접근.
+- `notification_settings`: `user_id` PK 1행. 전체 on/off + 종류별 on/off + `quiet_hours_start/end`(0~23) + `timezone`(기본 `Asia/Seoul`). 기본값은 opt-in 정책상 `enabled = true` — 클라이언트에서 권한 획득 후에만 row가 생성되므로 로그인만 한 유저에게는 발송되지 않는다.
+- `notification_logs`: 발송 이력. `type` (`forgotten` / `rediscover` / 향후 `weekly_summary`), `content_ids` uuid 배열, `title` / `body`, `expo_ticket_id` / `expo_receipt_status`, `opened_at`. 인덱스는 `(user_id, sent_at desc)` + `(user_id, type, sent_at desc)` — 중복 방지 쿼리(같은 type을 오늘 이미 보냈나?) 최적화.
+- RLS 정책: `device_tokens` / `notification_settings`는 유저가 CRUD 가능. `notification_logs`는 유저가 select와 `opened_at` update만 가능하고 insert는 Edge Function service role이 수행.
+
+**대안 검토**:
+- **로컬 알림(expo-notifications scheduleNotificationAsync)**: 서버 비용 0. 그러나 앱 실행이 없으면 후보 재계산이 불가능하고, "오래 안 본 링크"가 정확히 로컬에서 계산되지 않는다. 재발견 축의 정확도가 앱 사용 빈도에 종속되는 역설이 생겨 제외.
+- **`notification_settings`를 `users`에 컬럼 추가**: 스키마는 단순해지지만 조용한 시간·종류별 토글 등이 늘어나면 users 테이블이 부풀어오른다. 향후 tz별 배치·A/B용 컬럼 확장도 부담. 별도 테이블 유지.
+- **`content_ids`를 별도 조인 테이블**로 정규화: 감사·분석 정확도는 오르지만 하루 1건 상한에서 배열 저장으로 충분. 초기 단순화 우선.
+- **notification_logs insert에도 유저 policy 허용**: 유저가 임의로 로그를 만들 수 있으면 발송 이력 신뢰도가 깨진다. service role만 insert.
+
+**교훈**: 재발견 축(Forgotten/Rediscover)은 정의상 사용자가 앱을 안 열고 있을 때 알아채는 게 목적이므로, 이 기능만큼은 서버 스케줄이 로컬 스케줄보다 우선한다. 알림 정책·발송 로그·기기 토큰을 각각 다른 테이블로 나누면 향후 채널 추가(주간 요약·저장 완료 등)도 로그 스키마 변경 없이 `type` enum 확장만으로 가능하다.
