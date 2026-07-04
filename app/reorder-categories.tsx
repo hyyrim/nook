@@ -13,15 +13,16 @@ import { emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import type { Category } from '@/types';
 
-// DraggableFlatList calls onDragEnd after the drop spring finishes.
-// Keep that spring tight so the visible order settles without a long pause.
+// 드롭 시 자연스러운 소프트 정착과 빠른 tail cut을 함께 확보한다.
+// stiffness를 높여 초기 가속을 빠르게 하고, rest threshold를 크게 잡아
+// 미세 진동 구간이 눈에 띄기 전에 스프링을 종료시킨다.
 const DRAG_ANIMATION_CONFIG = {
-  damping: 32,
-  mass: 0.12,
-  stiffness: 420,
-  overshootClamping: true,
-  restSpeedThreshold: 0.8,
-  restDisplacementThreshold: 0.8,
+  damping: 30,
+  mass: 0.15,
+  stiffness: 500,
+  overshootClamping: false,
+  restSpeedThreshold: 1,
+  restDisplacementThreshold: 1,
 };
 
 export default function ReorderCategoriesScreen() {
@@ -80,7 +81,7 @@ export default function ReorderCategoriesScreen() {
     const { bg } = getCategoryColor(item.color);
     const iconName = getCategoryIcon(item.icon);
     return (
-      <ScaleDecorator activeScale={1.03}>
+      <ScaleDecorator activeScale={1.05}>
         <Pressable
           onLongPress={drag}
           delayLongPress={180}
@@ -223,8 +224,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   rowActive: {
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
   },
   left: {
     flexDirection: 'row',

@@ -31,3 +31,4 @@ Archived records:
 | Codex | 카테고리 아이콘을 lucide-react-native 기반 렌더링으로 전환하고 기존 Ionicons 저장값 호환 유지 (→ 결정 087) |
 | Claude | lucide-react-native 1.23.0 배포 손상(존재 안 하는 exports 대상 + Metro packageExports 강제) 분석 후 0.577.0 다운그레이드 + 아이콘 세트를 12그룹 41개로 재구성 (→ 결정 088) |
 | Claude | 카테고리 컬러 팔레트에서 이름·톤이 어긋난 red / gray와 근접한 slate를 coral / sage로 교체 (→ 결정 089) |
+| Codex | 카테고리 순서 편집 드롭 모션 조정 + 리포트 섹션 설명 문구 톤 정리 (→ 결정 090) |
