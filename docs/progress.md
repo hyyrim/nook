@@ -2,7 +2,7 @@
 
 최종 업데이트: 2026-07-03 (38차 — 카테고리 순서 편집 안정화)
 
-> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.0).
+> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
 
 Archived records:
@@ -13,7 +13,7 @@ Archived records:
 
 | 항목 | 상태 |
 |------|------|
-| 현재 Phase | Phase 2 / v1.1.0 |
+| 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
 | 최근 앱 작업 | 38차 — 카테고리 순서 편집 안정화 + 카테고리 바텀시트 input 높이 고정 |
 | 최근 문서 작업 | 36차 — 출시 전 정책 문서 정합성 정리 |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
@@ -109,9 +109,7 @@ Archived records:
 | 카테고리 순서 변경 | ✅ 24차 완료 (결정 071). 수동 정렬만 도입. 편집 전용 2depth 화면 + `react-native-draggable-flatlist` 세로 리스트 드래그. 자동 정렬 옵션(이름순/저장순/최근순)은 백로그 유지 |
 | Rediscover 알고리즘 재고민 | ✅ 21차 완료 (결정 067). 정의를 "안 본 콘텐츠"에서 "관심사 기반 + 한동안 안 들여다본 콘텐츠"로 변경 |
 | 리스트 viewType 설정 (콘텐츠) | ✅ 26차 Category Detail 1차 완료 (결정 073). Recent Saved / Search 등 다른 리스트 확장은 필요 시 후속 |
-| 폴더 목록 뷰 토글 (카테고리) | 미완료. 폴더 탭 자체를 그리드(현재) ↔ 리스트로 전환. 컬러/아이콘 시스템 도입 후 리스트에서도 시각 구분 유지 가능. v1.1.0 스코프에서는 제외 |
 | 카테고리 아이콘 세트 교체 검토 | 미완료. 현재 Ionicons `-outline` 28개. 웹 배포까지 통일된 톤을 위해 Lucide(웹 호환) 또는 Feather로 교체 검토. SF Symbols는 iOS 전용이라 배제 |
-| 오래된 링크 정리 제안 | 검토 필요. 링크 앱 특성상 저장된 링크의 수명 관리가 중요함. 자동 삭제보다는 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향이 안전 |
 
 ### B. CLAUDE.md 2차 범위 (1차 완료 + 남은 항목)
 
@@ -120,12 +118,13 @@ Archived records:
 | Forgotten Content | ✅ 1차 완료 (§055) |
 | Report | ✅ 1차 완료 (§056~061). 2차 — 주차별 흐름, AI 코멘트는 별도 |
 | Interest Insight | ✅ 홈 카드로 1차 완료 (§068). Report 2차에서 정적 분석 형태 추가 검토 가능 |
-| 푸시 알림 | 미정. Forgotten/Rediscover와 연결 가능 |
+| 푸시 알림 | 🟡 **진행 중** (39차~). Forgotten + Rediscover 2종. 온보딩 스텝에서 권한 요청, 09:00 KST 고정 발송, Supabase pg_cron → Edge Function `send-daily-notifications`. 단계: (1) DB 스키마 → (2) 클라이언트 토큰/설정 → (3) Edge Function/pg_cron → (4) 딥링크/분석 |
 | 소셜 공유 | 미정 |
 | 태그 필터링 | 미정. 현재 tags는 `text[]`로 저장만 됨 (CLAUDE.md 데이터 모델 참조) |
 | 카카오 로그인 | 미정 |
 | AI 요약 | 미정. AI 단일 호출 원칙(태그+카테고리)과 별도 호출로 분리 필요 |
 | 미분류 관리 장치 | 미정. 미분류 방치 방지 UX 검토 |
+| 오래된 링크 정리 제안 | 미정. 자동 삭제 대신 "오래 안 본 링크 정리 후보"를 제안하고 사용자가 삭제/유지/보관을 선택하는 방향. `viewed_at`/`saved_at` 기준 후보 산출 필요 |
 
 ### C. 기존 백로그
 
