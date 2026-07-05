@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-04 (40차 — 푸시 알림 온보딩 스텝 + 딥링크 라우팅)
+최종 업데이트: 2026-07-05 (41차 — 푸시 알림 성격 재정의 + 발송 시간 유저 지정)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,8 +14,8 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 40차 — 푸시 알림 온보딩 권한 요청 스텝 + 딥링크 라우팅 + 설정 화면 폴리싱 |
-| 최근 문서 작업 | 40차 — 결정 092 (푸시 알림 온보딩 스텝 + 딥링크 라우팅 + 설정 화면 폴리싱) |
+| 최근 앱 작업 | 41차 — 미열람 리마인더 단일 채널 확정 + TimePickerSheet + 스키마 재정리 (마이그레이션 007) |
+| 최근 문서 작업 | 41차 — 결정 093 (푸시 알림 v1.2 성격 재정의) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
 
@@ -125,6 +125,20 @@ Archived records:
 | `notification-settings` AppState 리스너로 iOS 설정 변경 후 복귀 시 배너 자동 갱신 | ✅ |
 | 토글 하단 "저장 중…" hint 및 `saving` state 제거 | ✅ |
 
+## 완료 (41차 — 푸시 알림 성격 재정의 + 발송 시간 유저 지정)
+
+| 항목 | 상태 |
+|------|------|
+| 알림 성격을 "미열람 리마인더" 단일 채널로 확정 (Forgotten/Rediscover 분리 폐기, → 결정 093) | ✅ |
+| 후보 규칙 확정 — `viewed_at IS NULL AND saved_at BETWEEN 7~14일 전`, 3개 이상, 주 1회 상한 | ✅ |
+| 마이그레이션 007 — `send_at_hour`/`send_at_minute` 추가, `quiet_hours_*`/`forgotten_enabled`/`rediscover_enabled` 삭제 | ✅ |
+| `components/TimePickerSheet.tsx` 신규 — 48행 30분 단위 FlatList picker | ✅ |
+| `app/notification-settings.tsx` — "전체 알림"(마스터) + "알림 종류"(미열람 리마인더 채널) 섹션 분리, 시간 wheel picker 카드 (→ 결정 094) | ✅ |
+| `types/index.ts` — `NotificationSettings` 재구성, `NotificationType = 'unread_reminder'` 단일, `unread_reminder_enabled` 필드 추가 | ✅ |
+| 마이그레이션 008 — `unread_reminder_enabled` 채널 컬럼 추가 (마스터/채널 분리로 향후 확장 대비) | ✅ |
+| Edge Function `send-unread-reminder` + pg_cron `0,30 * * * *`은 42차(feat/push-edge)로 분리 | ⏸ |
+| 온보딩 권한 요청 문구 재조정은 별도 스프린트에서 처리 | ⏸ |
+
 ## Phase 2 범위
 
 ### A. Phase 1 검토 발견 이슈 (우선순위 후보)
@@ -144,7 +158,7 @@ Archived records:
 | Forgotten Content | ✅ 1차 완료 (§055) |
 | Report | ✅ 1차 완료 (§056~061). 2차 — 주차별 흐름, AI 코멘트는 별도 |
 | Interest Insight | ✅ 홈 카드로 1차 완료 (§068). Report 2차에서 정적 분석 형태 추가 검토 가능 |
-| 푸시 알림 | 🟡 **진행 중** (39~40차). 완료: (1) DB 스키마 (2) 클라이언트 토큰/설정 (3) 온보딩 권한 스텝 + 딥링크 라우팅. 남음: (4) Edge Function `send-daily-notifications` + Supabase pg_cron (매일 09:00 KST 발송) |
+| 푸시 알림 | 🟡 **진행 중** (39~41차). 완료: (1) DB 스키마 (2) 클라이언트 토큰/설정 (3) 온보딩 권한 + 딥링크 라우팅 (4) 성격 재정의: 미열람 리마인더 단일 채널, 유저 지정 시간(30분 단위, 기본 20:00 KST). 남음: (5) Edge Function `send-unread-reminder` + pg_cron `0,30 * * * *`. v1.3 이후 채널 후보(관심사 급부상 등)는 백로그. |
 | 소셜 공유 | 미정 |
 | 태그 필터링 | 미정. 현재 tags는 `text[]`로 저장만 됨 (CLAUDE.md 데이터 모델 참조) |
 | 카카오 로그인 | 미정 |

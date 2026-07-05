@@ -28,13 +28,13 @@ export type Content = {
 export type NotificationSettings = {
   user_id: string;
   enabled: boolean;
-  forgotten_enabled: boolean;
-  rediscover_enabled: boolean;
-  quiet_hours_start: number;
-  quiet_hours_end: number;
+  unread_reminder_enabled: boolean;
+  send_at_hour: number; // 0~23
+  send_at_minute: number; // 0 or 30
   timezone: string;
   created_at: string;
   updated_at: string;
 };
 
-export type NotificationType = 'forgotten' | 'rediscover';
+// v1.2 알림 채널. 단일 미열람 리마인더. 향후 채널 추가 시 확장.
+export type NotificationType = 'unread_reminder';
