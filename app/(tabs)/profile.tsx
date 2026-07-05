@@ -1,9 +1,8 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
 
 function SettingRow({ icon, label, danger, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress?: () => void }) {
@@ -37,17 +36,6 @@ export default function ProfileScreen() {
   const initial = (user?.user_metadata?.full_name?.[0] ?? email[0] ?? 'U').toUpperCase();
   const displayName = user?.user_metadata?.full_name ?? email.split('@')[0] ?? 'User';
 
-  const handleLogout = () => {
-    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃', style: 'destructive',
-        onPress: () => supabase.auth.signOut(),
-      },
-    ]);
-  };
-
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -73,8 +61,6 @@ export default function ProfileScreen() {
 
           <View style={styles.settingsCard}>
             <SettingRow icon="notifications-outline" label="알림 설정" onPress={() => router.push('/notification-settings')} />
-            <Divider />
-            <SettingRow icon="log-out-outline" label="로그아웃" onPress={handleLogout} />
           </View>
 
           {/* Information section */}

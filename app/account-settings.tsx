@@ -23,6 +23,16 @@ export default function AccountSettingsScreen() {
   const provider = session?.user?.app_metadata?.provider;
   const providerLabel = provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : '이메일';
 
+  const handleLogout = () => {
+    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '로그아웃', style: 'destructive',
+        onPress: () => supabase.auth.signOut(),
+      },
+    ]);
+  };
+
   const handleDeleteAccount = () => {
     Alert.alert(
       '계정을 삭제할까요?',
@@ -78,9 +88,23 @@ export default function AccountSettingsScreen() {
               </View>
             </View>
           </View>
+
+          {/* Logout */}
+          <View style={styles.settingsCard}>
+            <Pressable
+              onPress={handleLogout}
+              style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: 'rgba(0,0,0,0.02)' }]}
+            >
+              <View style={styles.iconBubble}>
+                <Ionicons name="log-out-outline" size={16} color={Colors.secondary} />
+              </View>
+              <Text style={styles.settingLabel}>로그아웃</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.tertiary} />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Delete account - low emphasis footer */}
+        {/* Delete account - low emphasis footer, right aligned */}
         <Pressable onPress={handleDeleteAccount} style={styles.deleteButton} hitSlop={8}>
           <Text style={styles.deleteText}>계정 삭제하기</Text>
         </Pressable>
@@ -152,13 +176,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.primary,
   },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    paddingVertical: 13,
+    borderRadius: 8,
+  },
+  settingLabel: {
+    flex: 1,
+    fontSize: 14.5,
+    fontWeight: '500',
+    color: Colors.primary,
+  },
   divider: {
     height: 0.5,
     backgroundColor: 'rgba(0,0,0,0.07)',
   },
   deleteButton: {
-    alignItems: 'center',
-    paddingVertical: 24,
+    alignItems: 'flex-end',
+    paddingVertical: 20,
     paddingHorizontal: 20,
   },
   deleteText: {
