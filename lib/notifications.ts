@@ -73,19 +73,22 @@ export async function syncDeviceToken(): Promise<string | null> {
 }
 
 type NotificationDataPayload = {
-  type?: 'forgotten' | 'rediscover';
+  type?: 'unread_reminder';
   log_id?: string;
 };
 
-function routeForType(type: NotificationDataPayload['type']): '/forgotten' | '/rediscover' | null {
-  if (type === 'forgotten') return '/forgotten';
-  if (type === 'rediscover') return '/rediscover';
+// v1.2 알림 채널은 미열람 리마인더 단일. 전용 화면은 별도 스프린트(43차 이후) —
+// 우선은 홈으로 라우팅해서 유저가 재발견 축 전체를 훑을 수 있게 한다.
+type NotificationRoute = '/(tabs)';
+
+function routeForType(type: NotificationDataPayload['type']): NotificationRoute | null {
+  if (type === 'unread_reminder') return '/(tabs)';
   return null;
 }
 
 function handleNotificationResponse(
   response: Notifications.NotificationResponse,
-  push: (path: '/forgotten' | '/rediscover') => void,
+  push: (path: NotificationRoute) => void,
 ) {
   const data = (response.notification.request.content.data ?? {}) as NotificationDataPayload;
   const target = routeForType(data.type);
@@ -106,7 +109,7 @@ export function useNotificationRouting(active: boolean) {
   useEffect(() => {
     if (!active) return;
 
-    const push = (path: '/forgotten' | '/rediscover') => {
+    const push = (path: NotificationRoute) => {
       router.push(path);
     };
 

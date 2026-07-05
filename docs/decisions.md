@@ -450,3 +450,56 @@ Nook은 채널 수가 v1.x 로드맵상 최대 5개(미열람 / 관심사 급부
 
 **교훈**: iOS 시스템 알림 UX(전체 앱 알림 + 종류별)는 유저에게 익숙한 멘탈 모델이라 우리도 같은 구조를 취하면 학습 비용이 없다. 확장 방식은 컬럼당 vs 조인 테이블 선택에서 "지금 채널 몇 개고 최대 몇 개 예상하는가"가 결정 요인 — 5개 이하면 컬럼당이 이득. 20개+ 되면 리팩터.
 
+---
+
+## 095. 미열람 리마인더 Edge Function + pg_cron 발송 (2026-07-05)
+
+**결정**: pg_cron이 매 30분(`0,30 * * * *`) tick으로 Edge Function `send-unread-reminder`를 호출한다. Function은 현재 KST hour+minute을 매칭하는 유저를 조회하고 조건을 통과한 유저에게 Expo Push API로 미열람 리마인더를 발송하며 `notification_logs`에 이력을 남긴다. 딥링크 라우팅은 우선 홈(`/(tabs)`)으로 하고 전용 화면은 별도 스프린트로 분리한다.
+
+**배경**: 결정 093에서 발송 스펙(30분 단위 유저 지정 시간, 주 1회 상한, 후보 3개 이상)이 확정됐고 결정 094에서 마스터/채널 컬럼이 분리됐다. 이제 서버 인프라(Edge Function + 스케줄러 + Expo Push 연동)를 조립해 실제 알림을 유저에게 도달시켜야 한다. 딥링크 대상은 아직 전용 화면이 없어 임시 landing 결정도 필요했다.
+
+**결과**:
+- `supabase/functions/send-unread-reminder/index.ts` 신규
+  - 인증: `Authorization: Bearer <CRON_SECRET>` 검증 후 service role 클라이언트 생성. RLS 우회로 전 유저 조회 필요.
+  - KST 시각 계산: UTC + 9h → hour + minute(30분 그리드 floor: 0~29→0, 30~59→30). pg_cron이 :00/:30에 tick하지만 지연 대응.
+  - 대상 유저: `notification_settings WHERE enabled AND unread_reminder_enabled AND send_at_hour=X AND send_at_minute=Y`
+  - 유저별 파이프라인:
+    1. `notification_logs`에 지난 7일 이내 `unread_reminder` 있으면 skip (주 1회 상한)
+    2. 후보 조회: `contents WHERE user_id=X AND viewed_at IS NULL AND saved_at BETWEEN now()-14d AND now()-7d`, `saved_at desc`, 상위 5개
+    3. 3개 미만이면 skip
+    4. `device_tokens` 조회 (여러 기기 지원) — 0개면 skip
+    5. `crypto.randomUUID()`로 `log_id` 사전 발급 → payload `data.log_id`에 포함 → 유저가 알림 탭 시 `markNotificationOpened` update 가능
+    6. Expo Push 배치 전송 (100 chunk), 성공 여부를 `expo_ticket_id` / `expo_receipt_status`에 기록
+    7. `notification_logs` 삽입
+- `lib/notifications.ts` — payload 타입을 `'forgotten' | 'rediscover'` → `'unread_reminder'`로 축소. `routeForType` 반환을 `/(tabs)` (홈)로 단순화. 전용 화면 도입 시 여기만 갱신하면 됨.
+- Message body: 후보 리스트 첫 번째 콘텐츠 제목을 40자 이내로 slice해 "…외에도 다시 볼만한 링크가 쌓였어요" 톤으로 조립. 제목 없으면 폴백 문구.
+- Return payload에 `stats` 반환 (`candidateUsers` / `sent` / `skippedRecent` / `skippedNoCandidates` / `skippedNoTokens` / `expoErrors`) — 모니터링/디버깅용.
+
+**pg_cron 스케줄 SQL (Supabase Dashboard)**:
+```sql
+select cron.schedule(
+  'send-unread-reminder',
+  '0,30 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://<project-ref>.supabase.co/functions/v1/send-unread-reminder',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer <CRON_SECRET>'
+    ),
+    body := '{}'::jsonb
+  ) as request_id;
+  $$
+);
+```
+
+**대안 검토**:
+- **JWT 검증 유지 + 유저 토큰으로 호출**: 서비스 롤 없이 하려면 각 유저별로 함수를 호출해야 함. pg_cron이 유저별 tick을 돌리는 건 비효율(N번 http_post). 서비스 롤 + service role 클라이언트로 한 번에 처리.
+- **콘텐츠 후보를 클라이언트에서 계산해서 Edge Function에 넘기기**: 서버 스케줄에서 클라이언트를 개입시킬 방법이 없음 (앱이 꺼진 상태). 서버 계산 필수.
+- **딥링크를 `/forgotten`으로 라우팅**: 스펙 불일치 — `/forgotten`은 `viewed_at IS NOT NULL AND lt 14d ago`(본 적 있음), 미열람 리마인더는 `viewed_at IS NULL`(본 적 없음). 다른 축. 홈으로 라우팅하는 게 오해 없음.
+- **딥링크 전용 화면 `/unread-reminder?log_id=...` 이번에 함께 구현**: PR 부담이 커짐. `notification_logs.content_ids`로 정확히 그 알림에 포함된 콘텐츠 렌더링하는 뷰가 필요한데 스코프 별도 분리.
+- **`send_at_minute`을 무시하고 매시간 발송**: 30분 단위 자유 선택 스펙과 불일치. `0,30 * * * *`로 매 30분 tick + minute 필터로 정확히 매칭.
+- **Expo receipt 조회 정리 함수 이번에 함께**: 무효 토큰 정리는 주 1회 정도만 필요. 별도 함수(43차 이후)로 분리.
+
+**교훈**: 스케줄 기반 서버 발송은 인증/스케줄러/후보 계산/외부 API/이력 저장의 5단 파이프라인이라 초기부터 각 단계의 실패 격리(fail-silent + stats 반환)를 설계해두면 부분 장애가 전체 발송을 막지 않는다. 특히 Expo Push 실패는 유저별로 격리되고 로그에 receipt 상태를 남겨 후속 정리 함수로 처리하는 편이 안정적이다. 딥링크 대상은 임시 landing으로 시작해 유저 반응 보고 전용 화면 필요성을 판단하는 게 오버엔지니어링을 방지한다.
+
