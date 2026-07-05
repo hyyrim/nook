@@ -380,3 +380,73 @@ Archived records:
 
 **교훈**: 권한 요청은 "언제" 요청하느냐가 승인률을 좌우한다. 로그인 직후는 문맥이 없어 반사적 거절 확률이 높고, 첫 저장 직후는 저장 UX를 방해한다. 온보딩 마지막 전용 스텝에서 재발견 가치 제안과 함께 요청하는 게 실질적으로 승인/거절 결정을 유도할 수 있는 유일한 시점이다. 또 iOS 권한은 설정에서만 되돌릴 수 있으므로 앱 내 상태와 시스템 상태 동기화(AppState 리스너)가 없으면 유저는 "왜 배너가 안 사라지지?"라는 혼란을 겪는다.
 
+---
+
+## 093. 푸시 알림 v1.2 성격 재정의 — 미열람 리마인더 단일 채널 + 유저 발송 시간 지정 (2026-07-05)
+
+**결정**: 푸시 알림 v1.2 범위를 **"저장했지만 열어보지 않은 링크를 잊지 않도록 깨워주는 리마인더"** 단일 채널로 확정한다. Forgotten/Rediscover 두 축을 통합하지 않고 아예 다른 성격(**미열람**)으로 재정의. 유저는 30분 단위로 발송 시간을 자유롭게 선택할 수 있으며 기본값은 20:00 KST. pg_cron은 매 30분 정각/반정각에 tick하고 Edge Function이 현재 KST 시각과 일치하는 유저만 처리.
+
+**배경**: 결정 090에서 Forgotten + Rediscover 두 채널을 계획했지만, 실제 알림 성격을 재검토하니 이 둘은 유저 관점에서 **홈 화면의 재발견 큐레이션 섹션과 겹치는** 콘텐츠였다. 알림은 "홈에서 볼 수 있는 것을 미리 push"가 아니라 **"유저가 스스로는 절대 상기하지 못할 것을 깨워주는"** 역할이어야 한다. 저장한 지 며칠 지났는데 한 번도 안 본 링크(=`viewed_at IS NULL AND saved_at 7~14일`)가 이 정의에 정확히 부합. 홈에서는 이런 콘텐츠를 별도 섹션으로 노출하지 않으므로 알림 채널로만 존재해도 겹침이 없다.
+
+또 09:00 KST 고정 발송은 아침 러시 시간에 링크를 다시 볼 여유가 없어 실효성이 낮다는 판단. 저녁 콘텐츠 소비 시간대(20:00) 기본값 + 유저가 시:분(30분 단위)으로 자유롭게 조정하는 방향이 Nook 특성(저빈도, 여유 시간대 소비)과 맞는다.
+
+**결과**:
+- 마이그레이션 `007_notification_settings_time.sql`
+  - `send_at_hour int not null default 20 check (0~23)` 추가
+  - `send_at_minute int not null default 0 check (0 or 30)` 추가
+  - `quiet_hours_start`, `quiet_hours_end`, `forgotten_enabled`, `rediscover_enabled` 삭제 (dead column 정리 — 알림 미배포 시점이라 데이터 손실 없음, 결정 088·089·091과 동일 근거)
+- `types/index.ts` — `NotificationSettings` 재구성, `NotificationType = 'unread_reminder'` 단일
+- `components/TimePickerSheet.tsx` 신규 — iOS 알람 스타일 3-column wheel picker (오전·오후 / 시 1~12 / 분 00·30). 각 column은 `snapToInterval` ScrollView, 중앙 하이라이트 오버레이 + 거리 기반 opacity 감쇠(0.14~1)로 wheel 감성 재현. `mode='time'` native DateTimePicker 대신 커스텀으로 만든 이유: (1) native module 재빌드 회피 (2) 브랜드 톤 유지 (3) 30분 단위 이산 옵션 제약이 native picker의 60분 그리드와 어긋남.
+- `app/notification-settings.tsx`
+  - "종류" 섹션(Forgotten/Rediscover 토글) 완전 제거
+  - 마스터 토글 라벨을 "미열람 리마인더"로 변경 + 설명 문구 "저장했지만 열어보지 않은 링크가 쌓이면 주 1회 알려드려요"
+  - "발송 시간" 정적 안내 → **누르면 TimePickerSheet 여는 pressable 카드**로 교체. 시간 표시는 오전/오후 12시 형식.
+- 알림 로직 확정 (Edge Function 41차에서 구현)
+  - 후보: `viewed_at IS NULL AND saved_at BETWEEN 7~14일 전`
+  - 최소 3개 이상일 때만 발송
+  - 유저별 최근 7일 이내 발송 이력 있으면 skip (주 1회 상한)
+  - pg_cron `0,30 * * * *` → Edge Function이 KST 기준 현재 시각 매칭 유저만 처리
+
+**대안 검토**:
+- **Forgotten + Rediscover 두 채널 유지**: 유저 인지 부담(어떤 걸 켜지?) + 홈 섹션과 겹침. 단일 축(미열람)만 남기면 결정 피로 없이 utility 명확.
+- **네이티브 DateTimePicker(`@react-native-community/datetimepicker`)**: 접근성/일관성은 좋으나 native module 재빌드가 필요하고 스타일 커스터마이즈가 제한적. 커스텀 BottomSheet(48행 FlatList)로 브랜드 톤 유지 + 재빌드 없음.
+- **프리셋 4개(아침/점심/저녁/밤)만 제공**: 구현 단순하지만 유저 선호가 자유도 있어야 한다는 판단. 30분 단위 자유 선택 유지.
+- **매시간 pg_cron 1개 + minute 필터 없음(정각만)**: 30분 단위 자유 선택 스펙과 불일치. `0,30 * * * *`로 매 30분 tick.
+
+**교훈**: 알림 채널을 "홈 UI의 push 확장"으로 설계하면 유저 관점에서 중복으로 느껴진다. 알림은 **홈에서 절대 발견하지 못할 사각지대**를 채워야 한다. 미열람 링크는 홈 어디에도 노출되지 않는 사각지대라 알림 전용 채널로 명확한 가치가 있다. 시간 지정은 pg_cron 스케줄 세분화(4개→매 30분)로 인프라 부담을 감수하되 유저 자유도를 확보하는 편이 저빈도 앱의 리마인더 UX에 맞는다.
+
+---
+
+## 094. 알림 마스터/채널 토글 분리 + 채널별 컬럼 방식 (2026-07-05)
+
+**결정**: `notification_settings.enabled`(마스터)와 채널별 컬럼(`unread_reminder_enabled` 등)을 명시적으로 분리한다. 향후 채널 추가는 조인 테이블이 아니라 컬럼 추가 방식으로 확장한다. UI도 "전체 알림" 섹션과 "알림 종류" 섹션을 나눠 iOS 시스템 알림과 동일한 멘탈 모델을 유지.
+
+**배경**: 결정 093에서 v1.2 채널은 단일 미열람 리마인더로 축소하며 마스터와 채널 구분 없이 `enabled` 하나로 통합했다. 그러나 v1.3 이후 채널 추가(관심사 급부상, Throwback 등)가 로드맵에 있어 지금 마스터/채널을 분리해두면 채널 추가 시 UI/스키마 리팩터가 없다. 확장 방식으로는 (a) 컬럼당 채널 vs (b) `notification_channels(user_id, type, enabled)` 조인 테이블 두 안이 있었다.
+
+**결과**:
+- 마이그레이션 `008_notification_channels.sql` — `notification_settings`에 `unread_reminder_enabled boolean not null default true` 추가.
+- `types/index.ts` — `NotificationSettings`에 `unread_reminder_enabled` 필드 추가.
+- `app/notification-settings.tsx`
+  - "알림" 섹션: **전체 알림** 마스터 토글 — Nook 알림 전체 on/off + iOS 권한 게이트.
+  - "알림 종류" 섹션 신설: **미열람 리마인더** 채널 토글. 마스터 off일 때 disabled + opacity 0.5.
+  - "발송 시간" 섹션: 마스터 off 이거나 채널 off일 때 disabled.
+- Edge Function 조건은 `enabled = true AND unread_reminder_enabled = true`인 유저만 발송 대상 (42차에서 구현).
+
+**대안 검토 — 컬럼당 채널 vs 조인 테이블**:
+
+| 축 | 컬럼당 채널 (채택) | 조인 테이블 |
+|---|---|---|
+| 읽기 (Edge Function 필터) | 단일 row select | 조인 필요 |
+| 쓰기 (토글 저장) | 단일 row update | 채널별 upsert |
+| 스키마 진화 | 채널당 `ALTER TABLE ADD COLUMN` | 마이그레이션 불필요 |
+| TypeScript 타입 안전성 | 명시적 필드 | dynamic map |
+| 코드 복잡도 | 단순 | 살짝 복잡 |
+
+Nook은 채널 수가 v1.x 로드맵상 최대 5개(미열람 / 관심사 급부상 / 사그라든 관심사 / Throwback / 마일스톤). 20개 넘어가면 조인 테이블 리팩터가 이득이지만 그 스케일까지 안 감. 읽기·쓰기 성능과 타입 안전성에서 컬럼당 채널이 우세.
+
+**다른 대안**:
+- **마스터/채널 통합 유지 (결정 093 그대로)**: v1.2 유지 관점에선 심플하지만 v1.3 채널 추가 시 UI/스키마 두 곳 리팩터 필요. 지금 분리해두는 게 총 비용이 낮음.
+- **채널 컬럼을 `_enabled` 대신 시맨틱 이름(`unread_reminders` bool)**: 접미사 컨벤션이 명시적이라 다른 곳(`enabled` 마스터)과 충돌 안 나게 유지. 유지 결정.
+
+**교훈**: iOS 시스템 알림 UX(전체 앱 알림 + 종류별)는 유저에게 익숙한 멘탈 모델이라 우리도 같은 구조를 취하면 학습 비용이 없다. 확장 방식은 컬럼당 vs 조인 테이블 선택에서 "지금 채널 몇 개고 최대 몇 개 예상하는가"가 결정 요인 — 5개 이하면 컬럼당이 이득. 20개+ 되면 리팩터.
+
