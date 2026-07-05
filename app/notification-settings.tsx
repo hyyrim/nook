@@ -9,6 +9,7 @@ import {
   Pressable,
   Linking,
   Alert,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -73,7 +74,6 @@ function ToggleRow({ label, description, value, disabled, onValueChange }: Toggl
 export default function NotificationSettingsScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<Pick<
     NotificationSettings,
     'enabled' | 'forgotten_enabled' | 'rediscover_enabled' | 'quiet_hours_start' | 'quiet_hours_end' | 'timezone'
@@ -107,18 +107,26 @@ export default function NotificationSettingsScreen() {
     })();
   }, [refreshPermission]);
 
+  // iOS 설정에서 알림 권한을 바꾼 뒤 앱으로 돌아오면 배너 상태를 즉시 반영.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') {
+        refreshPermission();
+        syncDeviceToken().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
+  }, [refreshPermission]);
+
   const patch = useCallback(
     async (partial: Partial<typeof settings>) => {
-      const next = { ...settings, ...partial };
-      setSettings(next);
-      setSaving(true);
+      const previous = settings;
+      setSettings({ ...settings, ...partial });
       try {
         await upsertNotificationSettings(partial);
       } catch (e) {
-        setSettings(settings);
+        setSettings(previous);
         Alert.alert('알림 설정을 저장하지 못했어요', '잠시 후 다시 시도해주세요.');
-      } finally {
-        setSaving(false);
       }
     },
     [settings],
@@ -226,9 +234,6 @@ export default function NotificationSettingsScreen() {
             </View>
           </View>
 
-          {saving ? (
-            <Text style={styles.savingHint}>저장 중…</Text>
-          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -318,11 +323,5 @@ const styles = StyleSheet.create({
   divider: {
     height: 0.5,
     backgroundColor: 'rgba(0,0,0,0.07)',
-  },
-  savingHint: {
-    fontSize: 12,
-    color: Colors.tertiary,
-    textAlign: 'center',
-    marginTop: 8,
   },
 });

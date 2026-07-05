@@ -349,3 +349,34 @@ Archived records:
 
 **교훈**: 알림 설정 UI는 "권한 상태"와 "유저 설정" 두 축이 항상 함께 있어야 한다. 유저가 앱 내에서 토글을 다 켜뒀는데 iOS 권한이 꺼져 있으면 아무것도 오지 않아 혼란스러운데, 상단 배너로 이 gap을 명시적으로 시각화하면 지원 문의를 줄일 수 있다. 또 시뮬레이터/에뮬레이터에서는 토큰 발급이 실패하므로 `Device.isDevice` 가드를 반드시 두어야 개발 환경에서 노이즈가 안 생긴다.
 
+---
+
+## 092. 푸시 알림 온보딩 스텝 + 딥링크 라우팅 + 설정 화면 폴리싱 (2026-07-04)
+
+**결정**: 온보딩 흐름 마지막에 알림 권한 요청 전용 화면을 추가하고, 알림 탭 시 payload `data.type`에 따라 딥링크로 라우팅한다. `notification-settings` 화면에는 AppState 리스너를 붙여 iOS 설정에서 권한을 바꾸고 앱으로 돌아왔을 때 배너/토큰 상태가 즉시 반영되게 한다.
+
+**배경**: 결정 091에서 토큰 등록 + 설정 화면을 만들었지만 자동 권한 요청 흐름이 없어 유저가 프로필에 들어가야만 권한이 뜨는 문제가 있었다. 또 실제 테스트에서 (1) 토글마다 하단에 "저장 중…" hint가 깜빡여 산만하고 (2) iOS 설정에서 알림을 다시 켠 후 앱으로 돌아와도 빨간 배너가 그대로 남아있는 두 이슈가 발견됐다.
+
+**결과**:
+- `app/notification-permission.tsx` 신규 — Sparkles 아이콘 카드 + "다시 발견할 준비 됐어요" 타이틀 + "알림 받기" / "나중에" 이원 액션. 이미 결정된 상태(granted/denied)라면 mount 즉시 `/(tabs)`로 replace해 스텝을 skip.
+- `app/choose-interests.tsx` — `createInitialCategories` 성공 후 `router.replace('/(tabs)')` → `router.replace('/notification-permission')`으로 교체.
+- `app/_layout.tsx`
+  - Auth 라우팅 가드의 `inAuthFlow`에 `notification-permission`을 포함시켜 인증 완료 유저가 이 화면에 머무는 것을 허용. 단 카테고리 존재 확인 리다이렉트는 `onboarding` / `choose-interests`에서만 수행(이 화면은 이미 카테고리 생성 후 도달).
+  - `useNotificationRouting(Boolean(session))`으로 알림 딥링크 라우팅 활성화.
+  - `notification-permission` Stack.Screen 추가 (`gestureEnabled: false` — 스와이프로 뒤로 못 감).
+- `lib/notifications.ts`
+  - `useNotificationRouting(active)` — 세션 활성일 때 (1) 콜드 스타트 알림 탭은 `getLastNotificationResponseAsync()`, (2) 실행 중 탭은 `addNotificationResponseReceivedListener`로 처리.
+  - Payload 계약: `data.type === 'forgotten' | 'rediscover'` → `/forgotten` / `/rediscover`. `data.log_id`가 있으면 `markNotificationOpened`로 서버에 열람 시각 기록.
+- `lib/api.ts` — `markNotificationOpened(logId)` 추가. RLS 정책상 유저는 본인 로그의 `opened_at`만 update 가능하므로 `.eq('user_id', userId).is('opened_at', null)`로 중복 update 방지.
+- `app/notification-settings.tsx`
+  - AppState 리스너 추가 — background → active 복귀 시 `refreshPermission` + `syncDeviceToken`. iOS 설정에서 알림 토글 바꾼 뒤 복귀 시 배너 자동 갱신.
+  - 토글 저장 중 하단 "저장 중…" hint 및 `saving` state 제거. 낙관적 업데이트만 남기고 실패 시 이전 값으로 되돌리는 흐름은 유지.
+
+**대안 검토**:
+- **온보딩 스텝 대신 첫 저장 후 요청**: 문맥은 더 강하지만 저장 흐름 중간에 다이얼로그가 뜨면 저장 UX가 끊긴다. 카테고리 직후가 문맥 자연성과 흐름 연속성 모두 낫다.
+- **딥링크를 expo-linking URL 스킴(`nook://forgotten`)으로 처리**: 앱 외부 링크와 통합할 수 있으나 스킴 관리 부담이 있고 알림 payload는 이미 앱 내 이벤트라 URL로 변환할 이유가 없어 `data.type`을 직접 라우터로 매핑.
+- **`notification-permission`을 modal presentation**: 모달로 띄우면 뒤에 (tabs)가 살짝 보여 흐름이 부자연스러움. 전용 스크린 + `gestureEnabled: false`로 뒤로가기 봉쇄.
+- **AppState 리스너를 앱 루트에서 공유**: 이미 `_layout.tsx`에 분석 이벤트용 리스너가 있어 하나 더 만드는 게 부담이었으나, notification-settings 화면에서만 필요한 갱신이라 화면 범위로 한정.
+
+**교훈**: 권한 요청은 "언제" 요청하느냐가 승인률을 좌우한다. 로그인 직후는 문맥이 없어 반사적 거절 확률이 높고, 첫 저장 직후는 저장 UX를 방해한다. 온보딩 마지막 전용 스텝에서 재발견 가치 제안과 함께 요청하는 게 실질적으로 승인/거절 결정을 유도할 수 있는 유일한 시점이다. 또 iOS 권한은 설정에서만 되돌릴 수 있으므로 앱 내 상태와 시스템 상태 동기화(AppState 리스너)가 없으면 유저는 "왜 배너가 안 사라지지?"라는 혼란을 겪는다.
+

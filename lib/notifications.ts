@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { upsertDeviceToken } from './api';
+import { useRouter } from 'expo-router';
+import { markNotificationOpened, upsertDeviceToken } from './api';
 
 /** 앱이 포그라운드일 때 배너/사운드 노출. */
 Notifications.setNotificationHandler({
@@ -69,3 +71,58 @@ export async function syncDeviceToken(): Promise<string | null> {
 
   return token;
 }
+
+type NotificationDataPayload = {
+  type?: 'forgotten' | 'rediscover';
+  log_id?: string;
+};
+
+function routeForType(type: NotificationDataPayload['type']): '/forgotten' | '/rediscover' | null {
+  if (type === 'forgotten') return '/forgotten';
+  if (type === 'rediscover') return '/rediscover';
+  return null;
+}
+
+function handleNotificationResponse(
+  response: Notifications.NotificationResponse,
+  push: (path: '/forgotten' | '/rediscover') => void,
+) {
+  const data = (response.notification.request.content.data ?? {}) as NotificationDataPayload;
+  const target = routeForType(data.type);
+  if (target) push(target);
+  if (data.log_id) {
+    markNotificationOpened(data.log_id).catch(() => {});
+  }
+}
+
+/**
+ * 알림 탭 → 딥링크 라우팅. `_layout.tsx`에서 세션 활성 여부로 gate.
+ * - 앱이 실행 중일 때 탭: `addNotificationResponseReceivedListener`가 처리
+ * - 앱이 종료 상태에서 탭으로 실행됨: `getLastNotificationResponseAsync`가 mount 시 반환
+ */
+export function useNotificationRouting(active: boolean) {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!active) return;
+
+    const push = (path: '/forgotten' | '/rediscover') => {
+      router.push(path);
+    };
+
+    // Cold start: 앱이 종료 상태에서 알림 탭으로 실행된 경우
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) handleNotificationResponse(response, push);
+      })
+      .catch(() => {});
+
+    // 실행 중 탭
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      handleNotificationResponse(response, push);
+    });
+
+    return () => subscription.remove();
+  }, [active, router]);
+}
+

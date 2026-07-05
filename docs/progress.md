@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-04 (39차 — 푸시 알림 클라이언트 토큰/설정)
+최종 업데이트: 2026-07-04 (40차 — 푸시 알림 온보딩 스텝 + 딥링크 라우팅)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,8 +14,8 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 39차 — 푸시 알림 클라이언트 (expo-notifications + 토큰 등록 + 알림 설정 화면) |
-| 최근 문서 작업 | 36차 — 출시 전 정책 문서 정합성 정리 |
+| 최근 앱 작업 | 40차 — 푸시 알림 온보딩 권한 요청 스텝 + 딥링크 라우팅 + 설정 화면 폴리싱 |
+| 최근 문서 작업 | 40차 — 결정 092 (푸시 알림 온보딩 스텝 + 딥링크 라우팅 + 설정 화면 폴리싱) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
 
@@ -112,6 +112,19 @@ Archived records:
 | `app/_layout.tsx` — 세션 활성 시 `syncDeviceToken` 실행 + `notification-settings` Stack.Screen 등록 | ✅ |
 | 온보딩 권한 요청 스텝과 딥링크 라우팅은 40차(feat/push-onboarding)로 분리 | ⏸ |
 
+## 완료 (40차 — 푸시 알림 온보딩 스텝 + 딥링크 라우팅)
+
+| 항목 | 상태 |
+|------|------|
+| `app/notification-permission.tsx` 신규 — Sparkles 카드 + "알림 받기" / "나중에" 액션 (→ 결정 092) | ✅ |
+| `app/choose-interests.tsx` — 카테고리 생성 후 `/notification-permission` 스텝으로 replace | ✅ |
+| `app/_layout.tsx` — `inAuthFlow`에 notification-permission 포함, Stack.Screen 추가 (`gestureEnabled: false`) | ✅ |
+| `useNotificationRouting(active)` — 콜드 스타트 + 실행 중 알림 탭 두 경로 모두 처리 | ✅ |
+| 알림 payload 계약 `data.type` ∈ `forgotten` / `rediscover` → 대응 화면으로 라우팅 | ✅ |
+| `markNotificationOpened(logId)` — 알림 탭 시 `notification_logs.opened_at` 기록 | ✅ |
+| `notification-settings` AppState 리스너로 iOS 설정 변경 후 복귀 시 배너 자동 갱신 | ✅ |
+| 토글 하단 "저장 중…" hint 및 `saving` state 제거 | ✅ |
+
 ## Phase 2 범위
 
 ### A. Phase 1 검토 발견 이슈 (우선순위 후보)
@@ -131,7 +144,7 @@ Archived records:
 | Forgotten Content | ✅ 1차 완료 (§055) |
 | Report | ✅ 1차 완료 (§056~061). 2차 — 주차별 흐름, AI 코멘트는 별도 |
 | Interest Insight | ✅ 홈 카드로 1차 완료 (§068). Report 2차에서 정적 분석 형태 추가 검토 가능 |
-| 푸시 알림 | 🟡 **진행 중** (39차~). Forgotten + Rediscover 2종. 온보딩 스텝에서 권한 요청, 09:00 KST 고정 발송, Supabase pg_cron → Edge Function `send-daily-notifications`. 단계: (1) DB 스키마 → (2) 클라이언트 토큰/설정 → (3) Edge Function/pg_cron → (4) 딥링크/분석 |
+| 푸시 알림 | 🟡 **진행 중** (39~40차). 완료: (1) DB 스키마 (2) 클라이언트 토큰/설정 (3) 온보딩 권한 스텝 + 딥링크 라우팅. 남음: (4) Edge Function `send-daily-notifications` + Supabase pg_cron (매일 09:00 KST 발송) |
 | 소셜 공유 | 미정 |
 | 태그 필터링 | 미정. 현재 tags는 `text[]`로 저장만 됨 (CLAUDE.md 데이터 모델 참조) |
 | 카카오 로그인 | 미정 |

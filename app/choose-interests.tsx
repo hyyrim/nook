@@ -52,7 +52,7 @@ export default function ChooseInterestsScreen() {
     try {
       await createInitialCategories(selected);
       void analytics.onboardingCompleted();
-      router.replace('/(tabs)');
+      router.replace('/notification-permission');
     } catch (e: any) {
       Alert.alert('Error', e.message);
     } finally {

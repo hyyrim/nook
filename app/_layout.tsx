@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthProvider';
 import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/api';
 import { emit } from '@/lib/events';
 import { onAppActive, onAppBackground } from '@/lib/analytics';
-import { syncDeviceToken } from '@/lib/notifications';
+import { syncDeviceToken, useNotificationRouting } from '@/lib/notifications';
 import { ToastProvider, useToast } from '@/lib/toast';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -24,12 +24,15 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthFlow = segments[0] === 'onboarding' || segments[0] === 'choose-interests';
+    const inAuthFlow =
+      segments[0] === 'onboarding' ||
+      segments[0] === 'choose-interests' ||
+      segments[0] === 'notification-permission';
 
     if (!session && !inAuthFlow) {
       router.replace('/onboarding');
-    } else if (session && inAuthFlow) {
-      // 카테고리 존재 여부 확인 후 분기
+    } else if (session && (segments[0] === 'onboarding' || segments[0] === 'choose-interests')) {
+      // 카테고리 존재 여부 확인 후 분기. notification-permission은 이미 카테고리 생성 후 도달하므로 가드 대상 제외.
       getCategories()
         .then((categories) => {
           if (categories.length > 0) {
@@ -39,13 +42,15 @@ function RootNavigator() {
           }
         })
         .catch(() => {
-          // 카테고리 조회 실패 시 choose-interests로 이동
           if (segments[0] !== 'choose-interests') {
             router.replace('/choose-interests');
           }
         });
     }
   }, [session, isLoading, segments]);
+
+  // 푸시 알림 탭 → 딥링크 라우팅. 세션이 있을 때만 활성.
+  useNotificationRouting(Boolean(session));
 
   // 세션 활성 + AppState 변화 → app_opened 발화 (analytics §12.2)
   // onAppActive 내부에서 30초 background 룰로 dedup하므로 중복 호출 안전.
@@ -165,6 +170,10 @@ function RootNavigator() {
         <Stack.Screen
           name="choose-interests"
           options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="notification-permission"
+          options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
       </Stack>
     </View>

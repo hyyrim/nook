@@ -838,3 +838,18 @@ export async function upsertNotificationSettings(
   if (error) throw error;
   return data as NotificationSettings;
 }
+
+/**
+ * 알림 탭 시 발송 로그의 opened_at을 기록.
+ * RLS 정책상 유저는 본인 로그의 opened_at만 update 가능.
+ */
+export async function markNotificationOpened(logId: string) {
+  const userId = await requireUserId();
+  const { error } = await supabase
+    .from('notification_logs')
+    .update({ opened_at: new Date().toISOString() })
+    .eq('id', logId)
+    .eq('user_id', userId)
+    .is('opened_at', null);
+  if (error) throw error;
+}
