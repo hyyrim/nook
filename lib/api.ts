@@ -289,6 +289,23 @@ export async function getContentById(id: string) {
   return data as Content & { categories: { name: string } | null };
 }
 
+/**
+ * 여러 콘텐츠를 id 배열로 한 번에 조회. RLS로 유저 스코프 자동 필터.
+ * 응답 순서는 DB 순이라 호출자가 필요하면 재정렬해야 함.
+ */
+export async function getContentsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  const userId = await requireUserId();
+
+  const { data, error } = await supabase
+    .from('contents')
+    .select('*, categories(name)')
+    .eq('user_id', userId)
+    .in('id', ids);
+  if (error) throw error;
+  return (data ?? []) as (Content & { categories: { name: string } | null })[];
+}
+
 function classifyFailureReason(error: unknown): FailureReason {
   if (isDuplicateContentUrlError(error)) return 'duplicate_url';
   const message = error instanceof Error ? error.message : String(error ?? '');

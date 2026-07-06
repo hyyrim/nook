@@ -1,11 +1,25 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/AuthProvider';
+import { getAllReminders } from '@/lib/reminders';
 
-function SettingRow({ icon, label, danger, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; danger?: boolean; onPress?: () => void }) {
+function SettingRow({
+  icon,
+  label,
+  danger,
+  badge,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  danger?: boolean;
+  badge?: number;
+  onPress?: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -15,6 +29,11 @@ function SettingRow({ icon, label, danger, onPress }: { icon: keyof typeof Ionic
         <Ionicons name={icon} size={16} color={danger ? Colors.accent : Colors.secondary} />
       </View>
       <Text style={[styles.settingLabel, danger && styles.dangerLabel]}>{label}</Text>
+      {badge !== undefined && badge > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : null}
       <Ionicons name="chevron-forward" size={14} color={danger ? Colors.accent : Colors.tertiary} />
     </Pressable>
   );
@@ -35,6 +54,19 @@ export default function ProfileScreen() {
   const email = user?.email ?? '';
   const initial = (user?.user_metadata?.full_name?.[0] ?? email[0] ?? 'U').toUpperCase();
   const displayName = user?.user_metadata?.full_name ?? email.split('@')[0] ?? 'User';
+  const [reminderCount, setReminderCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void getAllReminders().then((list) => {
+        if (!cancelled) setReminderCount(list.length);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -61,6 +93,13 @@ export default function ProfileScreen() {
 
           <View style={styles.settingsCard}>
             <SettingRow icon="notifications-outline" label="알림 설정" onPress={() => router.push('/notification-settings')} />
+            <Divider />
+            <SettingRow
+              icon="alarm-outline"
+              label="예정된 리마인더"
+              badge={reminderCount}
+              onPress={() => router.push('/reminders')}
+            />
           </View>
 
           {/* Information section */}
@@ -190,5 +229,20 @@ const styles = StyleSheet.create({
   divider: {
     height: 0.5,
     backgroundColor: 'rgba(0,0,0,0.07)',
+  },
+  badge: {
+    minWidth: 22,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

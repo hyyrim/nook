@@ -172,6 +172,10 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="reminders"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="onboarding"
           options={{ animation: 'none' }}
         />
