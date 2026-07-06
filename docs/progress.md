@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-05 (42차 — 미열람 리마인더 Edge Function + pg_cron 발송)
+최종 업데이트: 2026-07-05 (43차 — 클립보드 감지 저장 프롬프트)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,8 +14,8 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 42차 — 미열람 리마인더 Edge Function + 딥링크 라우팅 타입 정리 |
-| 최근 문서 작업 | 42차 — 결정 095 (미열람 리마인더 Edge Function + pg_cron) |
+| 최근 앱 작업 | 43차 — 클립보드 감지 저장 프롬프트 (앱 진입 시 URL 자동 저장 시트) |
+| 최근 문서 작업 | 43차 — 결정 096 (클립보드 감지 저장 프롬프트) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
 
@@ -151,6 +151,16 @@ Archived records:
 | 실기기 종단 검증(실제 알림 도착 + 딥링크 홈 이동)은 배포 후 별도 진행 | ⏸ |
 | Expo receipt 조회 정리 함수는 43차 이후 별도 진행 | ⏸ |
 | 딥링크 전용 화면 `/unread-reminder?log_id=...`도 43차 이후 별도 진행 | ⏸ |
+
+## 완료 (43차 — 클립보드 감지 저장 프롬프트)
+
+| 항목 | 상태 |
+|------|------|
+| `components/ClipboardSavePrompt.tsx` 신규 — 컴팩트 BottomSheet + 도메인/URL 카드 + "지금은 아니에요"/"저장" 이원 액션 (→ 결정 096) | ✅ |
+| `lib/useClipboardSavePrompt.ts` 신규 — `Clipboard.hasUrlAsync` 필터로 iOS 배너 최소화, 400ms 디바운스, 세션 스코프 dismissed set | ✅ |
+| `app/_layout.tsx` — 세션 활성 + Share Intent 미처리 + 온보딩 아님 조건일 때만 훅 활성, `<ClipboardSavePrompt>` 오버레이 렌더 | ✅ |
+| `inAuthFlow` 컴퓨테이션을 컴포넌트 레벨로 hoist해 라우팅 가드와 클립보드 훅에서 공유 | ✅ |
+| 신규 유저 첫 저장까지의 마찰을 최소화하는 activation 기능 | ✅ |
 
 ## Phase 2 범위
 

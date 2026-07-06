@@ -503,3 +503,29 @@ select cron.schedule(
 
 **교훈**: 스케줄 기반 서버 발송은 인증/스케줄러/후보 계산/외부 API/이력 저장의 5단 파이프라인이라 초기부터 각 단계의 실패 격리(fail-silent + stats 반환)를 설계해두면 부분 장애가 전체 발송을 막지 않는다. 특히 Expo Push 실패는 유저별로 격리되고 로그에 receipt 상태를 남겨 후속 정리 함수로 처리하는 편이 안정적이다. 딥링크 대상은 임시 landing으로 시작해 유저 반응 보고 전용 화면 필요성을 판단하는 게 오버엔지니어링을 방지한다.
 
+---
+
+## 096. 클립보드 감지 저장 프롬프트 (2026-07-05)
+
+**결정**: 앱이 foreground로 진입할 때마다 클립보드에 URL이 있는지 non-intrusive 방식(`Clipboard.hasUrlAsync()`)으로 체크하고, 있으면 컴팩트 BottomSheet로 "저장할까요?"를 노출한다. 세션 스코프의 dismissed set으로 같은 URL 반복 프롬프트를 방지한다. Share Intent 처리 중이거나 온보딩 흐름에서는 자동으로 비활성화.
+
+**배경**: 신규 유저 activation의 핵심 gap은 "온보딩 후 첫 저장까지의 지연"이다. 관심 카테고리를 정했지만 홈이 비어있으면 다시 앱을 열 이유가 없어 이탈로 이어진다. 대부분 사용자는 어딘가에서 URL을 이미 복사한 상태로 앱을 여는 경우가 많은데, 이 순간을 잡아 첫 저장 마찰을 극도로 낮추면 activation curve가 개선된다.
+
+**결과**:
+- `components/ClipboardSavePrompt.tsx` 신규 — Modal + 컴팩트 BottomSheet. 도메인/URL preview 카드 + "지금은 아니에요" / "저장" 이원 액션. 드래그 핸들, 배경 dim, spring 애니메이션은 기존 시트 톤과 일치.
+- `lib/useClipboardSavePrompt.ts` 신규 — 훅. `hasUrlAsync`로 배너 없이 존재만 체크 후, 있을 때만 `getUrlAsync`로 실제 URL을 읽어와(iOS 16+ 클립보드 접근 배지 1회 노출) 프롬프트 상태를 세팅. 400ms 디바운스 + 세션 스코프 dismissed Set(URL 기준)으로 중복 프롬프트 방지. AppState 리스너로 매 foreground 진입 시 재검사.
+- `app/_layout.tsx`
+  - `inAuthFlow`를 컴포넌트 레벨로 hoist해 라우팅 가드와 클립보드 훅에서 공유.
+  - `useClipboardSavePrompt(Boolean(session) && !hasShareIntent && !inAuthFlow)` — 세션 있고 Share Intent 미처리 중이며 온보딩/권한 스텝이 아닐 때만 활성.
+  - `<ClipboardSavePrompt>`를 Stack 아래에 렌더해서 어느 라우트에서든 오버레이로 노출.
+- 저장 로직은 기존 `saveContent({ url }, { entry_source: 'direct' })` 재사용. 중복 URL은 `isDuplicateContentUrlError`로 판별해 "이미 저장된 링크예요" 토스트.
+
+**대안 검토**:
+- **홈에 hint bar만 노출(자동 시트 X)**: iOS 배너를 전혀 노출하지 않아 조용하지만, "자동으로 저장" 마찰 감소 효과가 사라짐. 유저가 홈에 들어와야만 감지 → activation 목적 반감.
+- **Widget으로 홈스크린 저장 버튼**: 진짜 습관화에 강력하지만 iOS Widget은 native/Expo Widget SDK 필요해 개발 비용 큼. 별도 스프린트.
+- **매 AppState active마다 배너 노출**: getUrlAsync를 조건 없이 매번 호출하면 iOS 16+ 배지가 앱 열 때마다 뜸. hasUrlAsync 필터로 URL 있을 때만 실제 read해서 배지 노출 빈도 최소화.
+- **URL 감지 후 자동 저장(사용자 확인 없이)**: 유저 의도 없는 저장 = 스팸. 확인 시트로 유저 통제 유지.
+- **AsyncStorage에 dismissed URL 영구 저장**: 세션 넘어 지속하면 유저가 새로 복사한 뒤 다시 열어도 프롬프트 안 뜨는 케이스는 없지만, 며칠 전 dismiss한 URL을 다시 복사했을 때도 안 뜸 → UX 손해. 세션 스코프가 낫다.
+
+**교훈**: iOS 16+ 클립보드 접근 배지는 유저 프라이버시 신뢰 축 하나라 함부로 트리거하면 앱 신뢰가 훼손된다. `hasStringAsync`/`hasUrlAsync` 계열은 introspective(존재 유무만 확인)라 배지가 안 뜨므로, 이걸 first-line filter로 두고 실제 read는 조건 만족할 때만 하는 게 정석. Activation 기능은 "낮은 마찰 + 유저 통제 유지"라는 두 축을 동시에 만족해야 스팸으로 인지되지 않는다.
+
