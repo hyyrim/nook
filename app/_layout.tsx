@@ -8,7 +8,9 @@ import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/ap
 import { emit } from '@/lib/events';
 import { onAppActive, onAppBackground } from '@/lib/analytics';
 import { syncDeviceToken, useNotificationRouting } from '@/lib/notifications';
+import { useClipboardSavePrompt } from '@/lib/useClipboardSavePrompt';
 import { ToastProvider, useToast } from '@/lib/toast';
+import { ClipboardSavePrompt } from '@/components/ClipboardSavePrompt';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
@@ -20,14 +22,14 @@ function RootNavigator() {
   const savingRef = useRef(false);
   const toast = useToast();
 
+  const inAuthFlow =
+    segments[0] === 'onboarding' ||
+    segments[0] === 'choose-interests' ||
+    segments[0] === 'notification-permission';
+
   // Auth 라우팅 가드
   useEffect(() => {
     if (isLoading) return;
-
-    const inAuthFlow =
-      segments[0] === 'onboarding' ||
-      segments[0] === 'choose-interests' ||
-      segments[0] === 'notification-permission';
 
     if (!session && !inAuthFlow) {
       router.replace('/onboarding');
@@ -51,6 +53,12 @@ function RootNavigator() {
 
   // 푸시 알림 탭 → 딥링크 라우팅. 세션이 있을 때만 활성.
   useNotificationRouting(Boolean(session));
+
+  // 클립보드 저장 프롬프트 — 앱 진입 시 URL 발견하면 저장 시트 노출.
+  // Share Intent 처리 중 / 인증·온보딩 흐름 / 로그아웃 상태에서는 skip.
+  const clipboardPrompt = useClipboardSavePrompt(
+    Boolean(session) && !hasShareIntent && !inAuthFlow,
+  );
 
   // 세션 활성 + AppState 변화 → app_opened 발화 (analytics §12.2)
   // onAppActive 내부에서 30초 background 룰로 dedup하므로 중복 호출 안전.
@@ -176,6 +184,13 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
       </Stack>
+      <ClipboardSavePrompt
+        visible={Boolean(clipboardPrompt.promptUrl)}
+        url={clipboardPrompt.promptUrl ?? ''}
+        saving={clipboardPrompt.saving}
+        onSave={clipboardPrompt.save}
+        onDismiss={clipboardPrompt.dismiss}
+      />
     </View>
   );
 }
