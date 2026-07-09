@@ -176,6 +176,10 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="unread-reminder"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="onboarding"
           options={{ animation: 'none' }}
         />

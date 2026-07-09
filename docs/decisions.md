@@ -586,3 +586,30 @@ select cron.schedule(
 
 **교훈**: 개인용 로컬 알림 시스템은 유저가 "지금 뭐가 예약돼 있지?"를 자주 궁금해하는데 이걸 못 보면 시스템 신뢰가 훼손된다. 배지는 pending의 존재 자체를 상시 알려주는 저비용 신호이며, 진입점의 위치는 자주 쓰는 기능 옆(알림 설정)이 발견성이 가장 좋다. 삭제된 콘텐츠에 대한 리마인더는 예외적으로 발생하지만 UI에서 명시적으로 표시하고 취소만 허용하는 게 fail-silent보다 유저 통제감이 크다.
 
+---
+
+## 099. 미열람 리마인더 딥링크 전용 화면 (2026-07-09)
+
+**결정**: 미열람 리마인더 알림 탭 시 홈(`/(tabs)`) 임시 landing에서 `/unread-reminder?log_id=...` 전용 화면으로 이동. `notification_logs` 로우를 조회해 그 알림에 실제로 포함됐던 콘텐츠만 정확히 렌더하고, 진입 시 `opened_at`을 기록해 열람 지표를 확보. `log_id`가 없거나 로그를 찾지 못하면 empty state로 fallback.
+
+**배경**: 결정 095에서 미열람 리마인더 발송 파이프라인은 완성했지만 딥링크 전용 화면은 스코프 분리 이유로 유보하고 홈으로 임시 landing 시켰다. 그 결과 (1) "링크 3개가 쌓였어요"라는 알림 문구와 실제 열리는 화면(홈)이 어긋나 유저 기대와 불일치, (2) 알림에 포함됐던 정확히 그 콘텐츠 세트를 다시 볼 방법이 없음, (3) `opened_at` 기록은 됐지만 실제 어떤 콘텐츠가 재열람되는지 후속 추적이 어려운 문제가 남았다.
+
+**결과**:
+- `types/index.ts` — `NotificationLog` 타입 추가 (`notification_logs` 스키마와 1:1).
+- `lib/api.ts` — `getNotificationLog(logId)` 추가. RLS로 본인 로그만 접근, 없으면 null.
+- `app/unread-reminder.tsx` 신규 — `useLocalSearchParams<{ log_id }>` 파싱 → `getNotificationLog` → `content_ids` 배치 조회 (`getContentsByIds`) → 원본 순서 유지 렌더. `ContentCard` 그리드, `source=unread_reminder`로 상세 이동.
+- `lib/notifications.ts` — `resolveRoute` 업데이트. `type='unread_reminder' && log_id` 있으면 `/unread-reminder?log_id=...`, 없으면 홈 fallback.
+- `lib/analytics.ts` / `app/content/[id].tsx` — `ContentOpenedSource`에 `'unread_reminder'` 추가. 재열람 세션의 유입 채널 구분 가능.
+- `app/_layout.tsx` — `unread-reminder` Stack.Screen 등록 (`slide_from_right`).
+- `opened_at` 기록은 알림 탭 핸들러(`handleNotificationResponse`)와 화면 진입(`markNotificationOpened`) 양쪽에서 호출. RLS + `.is('opened_at', null)` 가드로 idempotent.
+- 삭제된 콘텐츠는 `content_ids` 순서 유지 매핑에서 자동 제외. 모두 삭제된 경우 별도 empty state.
+
+**대안 검토**:
+- **`/forgotten` 재사용**: 스펙 불일치 (`viewed_at` 유무 축이 반대). 결정 095에서 이미 배제.
+- **홈 유지 + hero 카드로 강조**: 홈 진입 후 유저가 별도로 다시 탐색해야 함. 알림 → 후보 리스트의 직접성이 약해짐.
+- **`log_id` 대신 콘텐츠 후보를 payload에 직접 담기**: Expo Push data 크기 제한(~4KB) 위험, 삭제된 콘텐츠 반영 어려움. `log_id`로 서버 조회하는 편이 안전.
+- **`markNotificationOpened`를 화면에서만 호출**: cold start 라우팅 후 화면 도달 사이 지연/실패 시 지표 누락. 알림 탭 핸들러 호출 유지가 안전.
+- **로그 없거나 만료 시 홈으로 replace**: empty state가 UX 상 더 명확 ("이미 열어봤거나 만료된 알림이에요"). 무음 리다이렉트는 혼란.
+
+**교훈**: 서버 발송/딥링크 화면을 두 단계로 나눠 처리하면 초기 발송 안정화와 UI 완성도를 독립적으로 검증할 수 있다. 특히 알림 payload에 후보 데이터 자체가 아닌 `log_id`만 담고 화면 진입 시 서버 로그를 재조회하는 방식은 payload 크기와 삭제된 콘텐츠 반영을 한 번에 해결한다. `opened_at` 같은 idempotent 지표는 여러 진입 경로에서 반복 호출해도 안전하도록 스키마 레벨(`.is null` 가드)에서 보장하는 게 애플리케이션 로직 단순화의 열쇠다.
+
