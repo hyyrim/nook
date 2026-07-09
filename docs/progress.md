@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-06 (45차 — 예정된 리마인더 목록)
+최종 업데이트: 2026-07-09 (46차 — 미열람 리마인더 딥링크 전용 화면)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,8 +14,8 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 45차 — 예정된 리마인더 목록 (Profile 진입점 + 배지 + 리스트 화면) |
-| 최근 문서 작업 | 45차 — 결정 098 (리마인더 목록 뷰) |
+| 최근 앱 작업 | 46차 — 미열람 리마인더 딥링크 전용 화면 (`/unread-reminder?log_id=...`) |
+| 최근 문서 작업 | 46차 — 결정 099 (딥링크 전용 화면) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
 
@@ -191,6 +191,22 @@ Archived records:
 | 리마인더 시간이 프로필 발송 시간과 연동된다는 안내 UX (별도 스프린트) | ⏸ |
 | 커스텀 프리셋 도입 시 시간도 사용자가 개별 선택 가능하도록 (별도 스프린트) | ⏸ |
 
+## 완료 (46차 — 미열람 리마인더 딥링크 전용 화면)
+
+| 항목 | 상태 |
+|------|------|
+| `types/index.ts` — `NotificationLog` 타입 추가 (`notification_logs` 스키마와 1:1) (→ 결정 099) | ✅ |
+| `lib/api.ts` — `getNotificationLog(logId)` 추가 (RLS로 본인 로그만 접근, 없으면 null) | ✅ |
+| `app/unread-reminder.tsx` 신규 — `log_id` 조회 → `content_ids` 배치 fetch → 원본 순서 유지 렌더, empty/error 상태 처리 | ✅ |
+| `lib/notifications.ts` — `resolveRoute` 업데이트 (`unread_reminder` + `log_id` → `/unread-reminder?log_id=...`, 없으면 홈 fallback) | ✅ |
+| `lib/analytics.ts` / `app/content/[id].tsx` — `ContentOpenedSource`에 `'unread_reminder'` 추가 | ✅ |
+| `app/_layout.tsx` — `unread-reminder` Stack.Screen 등록 (`slide_from_right`) | ✅ |
+| `opened_at` 기록은 알림 탭 핸들러와 화면 진입 양쪽에서 idempotent 호출 | ✅ |
+| pg_cron `0,30 * * * *` SQL 실행 (Supabase Dashboard) | ⏸ |
+| 실기기 종단 검증 (실제 알림 도착 → 딥링크 화면 랜딩 → 상세 이동) | ⏸ |
+| Expo receipt 조회 정리 함수 | ⏸ |
+| 온보딩 권한 요청 문구 재조정 | ⏸ |
+
 ## Phase 2 범위
 
 ### A. Phase 1 검토 발견 이슈 (우선순위 후보)
@@ -210,7 +226,7 @@ Archived records:
 | Forgotten Content | ✅ 1차 완료 (§055) |
 | Report | ✅ 1차 완료 (§056~061). 2차 — 저장 리듬 히트맵(다음 후보), 저장→열람 지연 여정 세로 바(후보), 주차별 흐름, AI 코멘트. 백로그 — 관심사 페르소나 한 줄, 월간/연간 Wrapped 특별 리포트 |
 | Interest Insight | ✅ 홈 카드로 1차 완료 (§068). Report 2차에서 정적 분석 형태 추가 검토 가능 |
-| 푸시 알림 | 🟢 **1차 완료** (39~42차). 완료: DB 스키마 / 클라이언트 토큰·설정 / 온보딩 권한 + 딥링크 / 성격 재정의(미열람 리마인더 단일, 30분 단위 시간 지정) / Edge Function `send-unread-reminder` + pg_cron `0,30 * * * *`. 남음(별도 스프린트): pg_cron SQL 실행, 실기기 종단 검증, Expo receipt 정리, 딥링크 전용 화면. v1.3 이후 채널(관심사 급부상 등) 백로그 유지. |
+| 푸시 알림 | 🟢 **1차 완료** (39~42, 46차). 완료: DB 스키마 / 클라이언트 토큰·설정 / 온보딩 권한 + 딥링크 라우팅 / 성격 재정의(미열람 리마인더 단일, 30분 단위 시간 지정) / Edge Function `send-unread-reminder` + pg_cron `0,30 * * * *` / 딥링크 전용 화면 `/unread-reminder?log_id=...`. 남음(별도 스프린트): pg_cron SQL 실행, 실기기 종단 검증, Expo receipt 정리, 온보딩 권한 문구 재조정. v1.3 이후 채널(관심사 급부상 등) 백로그 유지. |
 | 소셜 공유 | 미정 |
 | 태그 필터링 | 미정. 현재 tags는 `text[]`로 저장만 됨 (CLAUDE.md 데이터 모델 참조) |
 | 카카오 로그인 | 미정 |

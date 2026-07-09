@@ -15,6 +15,7 @@ export type ContentOpenedSource =
   | 'category'
   | 'search'
   | 'related'
+  | 'unread_reminder'
   | 'direct';
 export type FailureReason =
   | 'duplicate_url'

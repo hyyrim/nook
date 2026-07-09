@@ -85,8 +85,10 @@ function resolveRoute(data: NotificationDataPayload): string | null {
   if (data.type === 'reminder' && data.content_id) {
     return `/content/${data.content_id}?source=direct`;
   }
-  // v1.2 미열람 리마인더: 전용 화면 없어 홈으로 임시 landing.
-  if (data.type === 'unread_reminder') return '/(tabs)';
+  // v1.2 미열람 리마인더: 알림에 포함된 후보 리스트 전용 화면. log_id 없으면 홈 fallback.
+  if (data.type === 'unread_reminder') {
+    return data.log_id ? `/unread-reminder?log_id=${data.log_id}` : '/(tabs)';
+  }
   return null;
 }
 

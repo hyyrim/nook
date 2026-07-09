@@ -4,7 +4,7 @@ import { emit, markClassified, markClassifying } from './events';
 import { fetchLinkMetadata, isBadMetadataText, isGenericPlatformTitle, normalizeUrl, platformFallbackTitle } from './metadata';
 import { analytics, type EntrySource, type FailureReason } from './analytics';
 import { PRESET_CATEGORY_ICON_MAP } from '@/constants/categoryStyle';
-import type { Category, Content, NotificationSettings } from '@/types';
+import type { Category, Content, NotificationLog, NotificationSettings } from '@/types';
 
 async function requireUserId() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -854,6 +854,21 @@ export async function upsertNotificationSettings(
     .single();
   if (error) throw error;
   return data as NotificationSettings;
+}
+
+/**
+ * 단일 발송 로그 조회. RLS로 본인 로그만 접근 가능. 없으면 null.
+ */
+export async function getNotificationLog(logId: string): Promise<NotificationLog | null> {
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from('notification_logs')
+    .select('*')
+    .eq('id', logId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as NotificationLog | null) ?? null;
 }
 
 /**
