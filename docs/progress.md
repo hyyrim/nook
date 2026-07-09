@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-05 (43차 — 클립보드 감지 저장 프롬프트)
+최종 업데이트: 2026-07-06 (45차 — 예정된 리마인더 목록)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,8 +14,8 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 43차 — 클립보드 감지 저장 프롬프트 (앱 진입 시 URL 자동 저장 시트) |
-| 최근 문서 작업 | 43차 — 결정 096 (클립보드 감지 저장 프롬프트) |
+| 최근 앱 작업 | 45차 — 예정된 리마인더 목록 (Profile 진입점 + 배지 + 리스트 화면) |
+| 최근 문서 작업 | 45차 — 결정 098 (리마인더 목록 뷰) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
 
@@ -162,6 +162,35 @@ Archived records:
 | `inAuthFlow` 컴퓨테이션을 컴포넌트 레벨로 hoist해 라우팅 가드와 클립보드 훅에서 공유 | ✅ |
 | 신규 유저 첫 저장까지의 마찰을 최소화하는 activation 기능 | ✅ |
 
+## 완료 (44차 — 콘텐츠 리마인더)
+
+| 항목 | 상태 |
+|------|------|
+| `lib/reminders.ts` 신규 — 로컬 알림 CRUD (schedule/cancel), OS pending 큐가 진실의 원천, 프로필 발송 시간 재사용 (→ 결정 097) | ✅ |
+| 프리셋 3개 확정 — 1시간 뒤 / 내일 / 주말. 각 라벨에 실제 요일·시간 동적 노출로 결정 피로 최소화 | ✅ |
+| 주말 정책 — 월~금: 이번 주 토 / 토 유저시간 전: 오늘 / 토 유저시간 후: 일 / 일 유저시간 전: 오늘 / 일 유저시간 후: 다음 주 토 | ✅ |
+| `lib/useContentReminder.ts` 신규 — 콘텐츠 id 기반 훅 (reminder/loading/busy/schedule/cancel) | ✅ |
+| `components/ReminderSheet.tsx` 신규 — ActionSheet 톤, 예약 상태 + 프리셋 + 취소 옵션 | ✅ |
+| `app/content/[id].tsx` — 우상단 nav에 bell 아이콘 (outline↔filled+accent), 시트 연결, 토스트 피드백 | ✅ |
+| `lib/notifications.ts` — payload 타입에 `'reminder'` 추가, `content_id` 있으면 `/content/[id]`로 딥링크 | ✅ |
+| 서버 백업 + 미열람 후보에서 예약된 콘텐츠 제외 로직은 후속 스프린트로 분리 | ⏸ |
+| 커스텀 시간 선택 (date+time picker)도 후속 스프린트로 분리 | ⏸ |
+| 다중 기기 sync는 서버 백업 도입 후 자동 커버 (별도 스프린트) | ⏸ |
+
+## 완료 (45차 — 예정된 리마인더 목록)
+
+| 항목 | 상태 |
+|------|------|
+| `lib/reminders.ts` — `getAllReminders()` 추가 (OS pending 큐 전체 스캔 후 시간 오름차순) (→ 결정 098) | ✅ |
+| `lib/api.ts` — `getContentsByIds(ids)` 추가 (배치 조회로 콘텐츠 정보 매핑) | ✅ |
+| `app/reminders.tsx` 신규 — 썸네일/제목/도메인/예정 시간 카드 리스트 + 우측 X 버튼으로 취소 (Alert 확인) | ✅ |
+| `app/(tabs)/profile.tsx` — "예정된 리마인더" 진입점 + 개수 배지 (accent 색상), `useFocusEffect`로 자동 갱신 | ✅ |
+| `app/_layout.tsx` — `reminders` Stack.Screen 등록 (`slide_from_right`) | ✅ |
+| 빈 상태 안내 — "콘텐츠 상세에서 🔔 눌러 예약할 수 있어요" | ✅ |
+| 지난 알림 이력은 서버 백업 도입 후 함께 처리 | ⏸ |
+| 리마인더 시간이 프로필 발송 시간과 연동된다는 안내 UX (별도 스프린트) | ⏸ |
+| 커스텀 프리셋 도입 시 시간도 사용자가 개별 선택 가능하도록 (별도 스프린트) | ⏸ |
+
 ## Phase 2 범위
 
 ### A. Phase 1 검토 발견 이슈 (우선순위 후보)
@@ -179,7 +208,7 @@ Archived records:
 | 항목 | 상태 / 비고 |
 |------|------|
 | Forgotten Content | ✅ 1차 완료 (§055) |
-| Report | ✅ 1차 완료 (§056~061). 2차 — 주차별 흐름, AI 코멘트는 별도 |
+| Report | ✅ 1차 완료 (§056~061). 2차 — 저장 리듬 히트맵(다음 후보), 저장→열람 지연 여정 세로 바(후보), 주차별 흐름, AI 코멘트. 백로그 — 관심사 페르소나 한 줄, 월간/연간 Wrapped 특별 리포트 |
 | Interest Insight | ✅ 홈 카드로 1차 완료 (§068). Report 2차에서 정적 분석 형태 추가 검토 가능 |
 | 푸시 알림 | 🟢 **1차 완료** (39~42차). 완료: DB 스키마 / 클라이언트 토큰·설정 / 온보딩 권한 + 딥링크 / 성격 재정의(미열람 리마인더 단일, 30분 단위 시간 지정) / Edge Function `send-unread-reminder` + pg_cron `0,30 * * * *`. 남음(별도 스프린트): pg_cron SQL 실행, 실기기 종단 검증, Expo receipt 정리, 딥링크 전용 화면. v1.3 이후 채널(관심사 급부상 등) 백로그 유지. |
 | 소셜 공유 | 미정 |

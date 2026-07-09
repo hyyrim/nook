@@ -72,26 +72,30 @@ export async function syncDeviceToken(): Promise<string | null> {
   return token;
 }
 
+type NotificationType = 'unread_reminder' | 'reminder';
+
 type NotificationDataPayload = {
-  type?: 'unread_reminder';
+  type?: NotificationType;
   log_id?: string;
+  content_id?: string;
 };
 
-// v1.2 알림 채널은 미열람 리마인더 단일. 전용 화면은 별도 스프린트(43차 이후) —
-// 우선은 홈으로 라우팅해서 유저가 재발견 축 전체를 훑을 수 있게 한다.
-type NotificationRoute = '/(tabs)';
-
-function routeForType(type: NotificationDataPayload['type']): NotificationRoute | null {
-  if (type === 'unread_reminder') return '/(tabs)';
+function resolveRoute(data: NotificationDataPayload): string | null {
+  // 유저 지정 콘텐츠 리마인더: 해당 상세로 이동. 소스 표시로 리마인더 진입 구분.
+  if (data.type === 'reminder' && data.content_id) {
+    return `/content/${data.content_id}?source=direct`;
+  }
+  // v1.2 미열람 리마인더: 전용 화면 없어 홈으로 임시 landing.
+  if (data.type === 'unread_reminder') return '/(tabs)';
   return null;
 }
 
 function handleNotificationResponse(
   response: Notifications.NotificationResponse,
-  push: (path: NotificationRoute) => void,
+  push: (path: string) => void,
 ) {
   const data = (response.notification.request.content.data ?? {}) as NotificationDataPayload;
-  const target = routeForType(data.type);
+  const target = resolveRoute(data);
   if (target) push(target);
   if (data.log_id) {
     markNotificationOpened(data.log_id).catch(() => {});
@@ -109,8 +113,9 @@ export function useNotificationRouting(active: boolean) {
   useEffect(() => {
     if (!active) return;
 
-    const push = (path: NotificationRoute) => {
-      router.push(path);
+    const push = (path: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.push(path as any);
     };
 
     // Cold start: 앱이 종료 상태에서 알림 탭으로 실행된 경우

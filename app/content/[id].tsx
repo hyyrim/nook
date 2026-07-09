@@ -8,8 +8,12 @@ import { ActionSheet } from '@/components/ActionSheet';
 import { MoveCategorySheet } from '@/components/MoveCategorySheet';
 import { ContentTitleSheet } from '@/components/ContentTitleSheet';
 import { TagsSheet } from '@/components/TagsSheet';
+import { ReminderSheet } from '@/components/ReminderSheet';
 import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
+import { useContentReminder } from '@/lib/useContentReminder';
+import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
+import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatSource, THUMBNAIL_PLACEHOLDER, openInAppOrBrowser } from '@/lib/utils';
 import { isBadMetadataText, isGenericPlatformTitle } from '@/lib/metadata';
@@ -109,6 +113,9 @@ export default function ContentDetailScreen() {
   const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [showTitleSheet, setShowTitleSheet] = useState(false);
   const [showTagsSheet, setShowTagsSheet] = useState(false);
+  const [showReminderSheet, setShowReminderSheet] = useState(false);
+  const toast = useToast();
+  const reminderState = useContentReminder(typeof id === 'string' ? id : null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<ContentWithCategory | null>(null);
@@ -250,9 +257,18 @@ export default function ContentDetailScreen() {
             <Pressable onPress={() => router.back()} style={styles.navButton}>
               <Ionicons name="chevron-back" size={18} color={Colors.primary} />
             </Pressable>
-            <Pressable onPress={() => setShowSheet(true)} style={styles.navButton}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={Colors.primary} />
-            </Pressable>
+            <View style={styles.navRight}>
+              <Pressable onPress={() => setShowReminderSheet(true)} style={styles.navButton}>
+                <Ionicons
+                  name={reminderState.reminder ? 'notifications' : 'notifications-outline'}
+                  size={18}
+                  color={reminderState.reminder ? Colors.accent : Colors.primary}
+                />
+              </Pressable>
+              <Pressable onPress={() => setShowSheet(true)} style={styles.navButton}>
+                <Ionicons name="ellipsis-horizontal" size={18} color={Colors.primary} />
+              </Pressable>
+            </View>
           </View>
         </SafeAreaView>
 
@@ -392,6 +408,27 @@ export default function ContentDetailScreen() {
         onClose={() => setShowMoveSheet(false)}
         onSelect={handleMoveCategory}
       />
+      <ReminderSheet
+        visible={showReminderSheet}
+        reminder={reminderState.reminder}
+        busy={reminderState.busy}
+        onClose={() => setShowReminderSheet(false)}
+        onSchedule={async (remindAt) => {
+          const record = await reminderState.schedule({
+            title: item?.title ?? item?.url ?? '',
+            remindAt,
+          });
+          setShowReminderSheet(false);
+          if (record) {
+            toast.show(`리마인더 예약됨 · ${formatReminderStatus(record.remindAt)}`, 'success');
+          }
+        }}
+        onCancelReminder={async () => {
+          await reminderState.cancel();
+          setShowReminderSheet(false);
+          toast.show('리마인더 취소', 'success');
+        }}
+      />
     </View>
   );
 }
@@ -410,6 +447,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  navRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   navButton: {
     width: 34,

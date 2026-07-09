@@ -189,7 +189,7 @@ export default function NotificationSettingsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingText}>
                   <Text style={[styles.settingLabel, subDisabled && styles.settingLabelDisabled]}>
-                    미열람 리마인더
+                    미열람 알림
                   </Text>
                   <Text style={styles.settingDescription}>
                     저장했지만 열어보지 않은 링크가 쌓이면 주 1회 알려드려요

@@ -529,3 +529,60 @@ select cron.schedule(
 
 **교훈**: iOS 16+ 클립보드 접근 배지는 유저 프라이버시 신뢰 축 하나라 함부로 트리거하면 앱 신뢰가 훼손된다. `hasStringAsync`/`hasUrlAsync` 계열은 introspective(존재 유무만 확인)라 배지가 안 뜨므로, 이걸 first-line filter로 두고 실제 read는 조건 만족할 때만 하는 게 정석. Activation 기능은 "낮은 마찰 + 유저 통제 유지"라는 두 축을 동시에 만족해야 스팸으로 인지되지 않는다.
 
+---
+
+## 097. 콘텐츠 리마인더 — 유저 지정 스누즈 알림 (2026-07-06)
+
+**결정**: Content Detail 상단 bell 아이콘으로 유저가 콘텐츠별 리마인더를 예약할 수 있게 한다. 3개 프리셋(1시간 뒤 / 내일 / 주말)만 노출하고 시간은 프로필 미열람 발송 시간을 재사용한다. 저장소는 OS pending 큐(`expo-notifications`)를 진실의 원천으로 삼아 별도 AsyncStorage/DB를 두지 않는다. 알림 탭 → 해당 콘텐츠 상세로 딥링크.
+
+**배경**: 기존 미열람 리마인더는 시스템이 자동으로 판단해서 aggregate로 알려주는 축이었다면, 콘텐츠 리마인더는 유저가 "이거 이따 봐야지" 순간에 explicit intent를 잡아주는 축이다. Slack "Remind me" / Gmail 스누즈 같은 익숙한 패턴. 홈 화면에서 절대 발견하지 못하는 "특정 링크를 특정 시점에" 축을 채운다. 유저가 반복해서 지적한 "선택지 피로" 문제를 최소화하기 위해 프리셋을 3개로 축소하고 시간은 프로필 설정을 재사용.
+
+**결과**:
+- `lib/reminders.ts` 신규 — 저장소는 `Notifications.getAllScheduledNotificationsAsync()` 반환값의 data(`type: 'reminder', content_id`)로 콘텐츠 매칭. `getReminder`/`scheduleReminder`/`cancelReminder`가 pending 큐에 직접 CRUD.
+  - 프로필 발송 시간 재사용: `getUserPreferredTime()`이 `notification_settings.send_at_hour/minute` 로드 (실패 시 20:00 default), 모듈 캐시로 반복 조회 억제.
+  - 프리셋 시간 계산: `computePresetTime(preset, userTime, now)` — hour(+1h) / tomorrow(내일 유저 시간) / weekend(주말 정책).
+  - 주말 정책: 월~금 → 이번 주 토요일 / 토 유저시간 전 → 오늘 / 토 유저시간 후 → 일요일 / 일 유저시간 전 → 오늘 / 일 유저시간 후 → 다음 주 토요일.
+  - 라벨은 동적 계산: `labelForPreset` 이 계산된 실제 요일과 시간을 괄호로 노출 ("주말 (토, 20:00)", "주말 (오늘, 20:00)", "주말 (다음 토, 20:00)"). 유저가 헷갈릴 여지 없음.
+- `lib/useContentReminder.ts` 신규 — `refresh` / `schedule` / `cancel` / `busy` state를 노출하는 훅. 콘텐츠 id 변경 시 자동 조회.
+- `components/ReminderSheet.tsx` 신규 — ActionSheet 톤의 카드 UI + 3개 프리셋 row + (예약된 경우) 상단 "예약됨: N일 뒤 20:00" 상태 + 하단 "리마인더 취소" 버튼.
+- `app/content/[id].tsx` 수정 — 우상단 nav에 bell 아이콘 (outline / filled + accent 컬러) 추가. 탭 시 ReminderSheet 노출. 성공/취소 시 인앱 토스트.
+- `lib/notifications.ts` 수정 — payload 타입에 `'reminder'` 추가. `data.type === 'reminder' && data.content_id`이면 `/content/[id]?source=direct`로 라우팅. 기존 `'unread_reminder'` 처리는 유지.
+
+**대안 검토**:
+- **AsyncStorage에 로컬 record 저장**: OS pending 큐와 로컬 저장소 두 곳을 sync해야 해서 실패 케이스가 늘어남. pending 큐 자체가 이미 진실의 원천 — 단일 소스가 훨씬 안정적.
+- **서버 백업 + 서버 발송**: 다중 기기 sync/재설치 유지에는 좋지만 스코프 2배(마이그레이션 + Edge Function + pg_cron + device_tokens 활용). Nook은 iOS 개인 유저 중심 → 로컬 알림으로 충분. 후속 스프린트에서 미열람 후보 exclusion 로직과 함께 필요 시 추가.
+- **프리셋 6개 (오늘 저녁 / 다음 주 등)**: 유저 요청 "귀찮음 최소화"와 배치. 3개(1시간 뒤 / 내일 / 주말)로 축소해 상황별 커버 90%+ 달성.
+- **커스텀 시간 선택 옵션**: MVP 스코프 초과. 유저 반응 보고 후속 스프린트에서 date+time picker 추가 검토.
+- **미열람 리마인더 후보에서 예약된 콘텐츠 제외**: 서버가 로컬 알림 예약 상태를 모르므로 지금은 불가. 오늘 겹침은 iOS 알림 그룹핑으로 완화. 서버 백업 도입 시 함께 처리.
+- **bell 아이콘 없이 ActionSheet 항목으로만**: 발견성 저하. 리마인더는 재발견 축의 핵심 UX라 우상단 접근성이 필요.
+- **저장소 이름 `nook.reminders.v1` AsyncStorage 키**: pending 큐 방식 채택으로 불필요. AsyncStorage 의존성 자체 회피.
+
+**교훈**: 로컬 알림 기반 기능은 OS pending 큐가 이미 강력한 저장소라 앱이 별도 저장을 두면 sync 실패 케이스만 늘어난다. `data` payload를 조회 keying에 활용하면 큐 자체를 DB처럼 쓸 수 있다. 프리셋 라벨을 static 문자열로 두면 "이번 주말이 언제지?" 같은 계산이 유저에게 넘어가 결정 피로가 커지지만, 계산 결과를 라벨에 함께 노출하면 유저는 즉시 시각적으로 이해할 수 있다. 유저 지정 시간을 프로필 설정과 재사용하면 프로필 시간의 의미가 확장되어 일관된 리듬을 유지할 수 있다.
+
+---
+
+## 098. 예정된 리마인더 목록 뷰 (2026-07-06)
+
+**결정**: Profile 하위에 "예정된 리마인더" 진입점 추가. 진입 시 pending 리마인더를 시간 오름차순으로 나열하고, 카드 탭 → 해당 콘텐츠 상세, 우측 X 버튼 → 확인 Alert 후 취소. 데이터는 로컬 OS pending 큐 + 콘텐츠 배치 조회로 조합. 지난 알림 이력은 서버 백업 도입 시 함께 처리.
+
+**배경**: 결정 097로 콘텐츠 리마인더가 도입됐지만 유저가 여러 콘텐츠에 리마인더를 걸어두면 무엇이 예약돼 있는지 한눈에 볼 수 없었다. 개별 Content Detail에 진입해야만 상태 확인이 가능해 발견성이 떨어지고, 유저가 자신의 예약을 놓칠 위험이 있었다. Profile 진입점에 개수 배지를 함께 노출해 pending 존재를 상시 알린다.
+
+**결과**:
+- `lib/reminders.ts` — `getAllReminders()` 추가. `getAllScheduledNotificationsAsync()` 전체 스캔 후 `type: 'reminder'` 필터, 이미 지난 항목 제외, 시간 오름차순 정렬.
+- `lib/api.ts` — `getContentsByIds(ids)` 추가. `.in('id', ids)`로 배치 조회. RLS로 유저 스코프 자동 필터.
+- `app/reminders.tsx` 신규 — pending 리마인더 카드 리스트. 각 카드에 썸네일/제목/도메인/예정 시간, 우측 X 버튼(확인 Alert 후 `cancelReminder`). `useFocusEffect`로 진입 시마다 재조회. 빈 상태 안내 문구 표시.
+- `app/(tabs)/profile.tsx` — "예정된 리마인더" `SettingRow`에 `badge` prop 추가(accent 컬러). 항상 pending 개수 노출. `useFocusEffect`로 pending 큐 재조회.
+- `app/_layout.tsx` — `reminders` Stack.Screen 등록 (`slide_from_right`).
+- 삭제된 콘텐츠 처리: 콘텐츠 배치 조회에서 매치 실패한 리마인더는 "(삭제된 콘텐츠)" 텍스트로 표시. 탭 비활성화. 유저가 X 버튼으로 취소만 가능.
+
+**대안 검토**:
+- **홈 하단 섹션 형태**: 홈이 이미 재발견 축 3개(Recent/Rediscover/Forgotten)+Insight로 복잡. 추가 섹션은 인지 부담. Profile 진입점 방식이 더 조용함.
+- **탭 바에 리마인더 탭 추가**: 발견성은 높지만 코어 4탭(홈/폴더/리포트/프로필)이 이미 정착. 리마인더는 부가 기능이라 Profile 하위가 맞다.
+- **콘텐츠 배치 조회 없이 알림 데이터에 제목 저장**: OS pending 큐의 notification 본문에 제목이 이미 저장되어 있어 재활용 가능. 하지만 도메인/썸네일 등은 없어 결국 콘텐츠 fetch 필요. 배치 조회 한 번이 fetch 총량이 더 적다.
+- **iOS-style swipe to delete**: 개발 부담 큼(제스처 라이브러리), 우측 X 버튼이 발견성/접근성 모두 우수. 유지.
+- **지난 리마인더 이력 함께 노출**: 로컬 알림은 delivered 이력이 없어 반쪽만 커버됨. 서버 백업 도입 시 함께 처리하는 게 완결성.
+- **배지를 개수 대신 dot(점)만**: 개수가 유용한 정보(0 vs 3+). 정확한 개수 노출.
+- **개수 0일 때도 진입점 유지**: 예약 없어도 "언제든 콘텐츠 상세에서 예약할 수 있다"는 안내 화면 노출 유지. 진입점 자체는 항상 존재.
+
+**교훈**: 개인용 로컬 알림 시스템은 유저가 "지금 뭐가 예약돼 있지?"를 자주 궁금해하는데 이걸 못 보면 시스템 신뢰가 훼손된다. 배지는 pending의 존재 자체를 상시 알려주는 저비용 신호이며, 진입점의 위치는 자주 쓰는 기능 옆(알림 설정)이 발견성이 가장 좋다. 삭제된 콘텐츠에 대한 리마인더는 예외적으로 발생하지만 UI에서 명시적으로 표시하고 취소만 허용하는 게 fail-silent보다 유저 통제감이 크다.
+
