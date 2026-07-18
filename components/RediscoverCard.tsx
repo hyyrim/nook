@@ -1,5 +1,6 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Colors, Radius } from '@/constants';
+import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
 
 type RediscoverCardProps = {
@@ -11,7 +12,7 @@ type RediscoverCardProps = {
   onPress?: () => void;
 };
 
-export function RediscoverCard({ title, source, hint, thumbnailUrl, placeholderColor = '#DDD7CE', onPress }: RediscoverCardProps) {
+export function RediscoverCard({ title, source, hint, thumbnailUrl, placeholderColor = THUMBNAIL_PLACEHOLDER, onPress }: RediscoverCardProps) {
   const isNotion = source === 'Notion';
 
   return (

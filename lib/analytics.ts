@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 
 // 측정 명세는 docs/analytics-plan.md 참조.
@@ -31,16 +32,9 @@ const appOpenedSourcesBySession = new Set<EntrySource>();
 // §12.4: rediscover_impression 세션당 사용자당 content_id 1회 dedup
 const rediscoverImpressionSet = new Set<string>();
 
-function randomId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
-
 function ensureSession(): string {
   if (!sessionId) {
-    sessionId = randomId();
+    sessionId = Crypto.randomUUID();
     appOpenedSourcesBySession.clear();
     rediscoverImpressionSet.clear();
   }
@@ -65,7 +59,7 @@ export function onAppActive(entrySource: EntrySource): boolean {
     backgroundAt !== null && now - backgroundAt > SESSION_TIMEOUT_MS;
 
   if (isFirstActive || isResumedAfterTimeout) {
-    sessionId = randomId();
+    sessionId = Crypto.randomUUID();
     appOpenedSourcesBySession.clear();
     rediscoverImpressionSet.clear();
     backgroundAt = null;

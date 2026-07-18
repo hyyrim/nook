@@ -1,6 +1,7 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants';
+import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 
 type ContentCardProps = {
   title: string;
@@ -15,7 +16,7 @@ type ContentCardProps = {
   onPress?: () => void;
 };
 
-export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, isClassifying = false, selectionMode = false, selected = false, onPress }: ContentCardProps) {
+export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = THUMBNAIL_PLACEHOLDER, savedAt, isClassifying = false, selectionMode = false, selected = false, onPress }: ContentCardProps) {
   const isNotion = source === 'Notion';
 
   return (

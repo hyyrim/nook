@@ -1,6 +1,7 @@
 import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants';
+import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 
 type GridContentCardProps = {
   title: string;
@@ -18,7 +19,7 @@ export function GridContentCard({
   title,
   source,
   thumbnailUrl,
-  thumbnailColor = '#DDD7CE',
+  thumbnailColor = THUMBNAIL_PLACEHOLDER,
   savedAt,
   isClassifying = false,
   selectionMode = false,
