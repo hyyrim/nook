@@ -613,3 +613,228 @@ select cron.schedule(
 
 **교훈**: 서버 발송/딥링크 화면을 두 단계로 나눠 처리하면 초기 발송 안정화와 UI 완성도를 독립적으로 검증할 수 있다. 특히 알림 payload에 후보 데이터 자체가 아닌 `log_id`만 담고 화면 진입 시 서버 로그를 재조회하는 방식은 payload 크기와 삭제된 콘텐츠 반영을 한 번에 해결한다. `opened_at` 같은 idempotent 지표는 여러 진입 경로에서 반복 호출해도 안전하도록 스키마 레벨(`.is null` 가드)에서 보장하는 게 애플리케이션 로직 단순화의 열쇠다.
 
+---
+
+## 100. Search 화면 최근 검색어 + 자주 쓰는 태그 (2026-07-09)
+
+**결정**: Search 화면의 빈 검색어 상태(진입 직후 하얀 화면)를 "최근 검색"과 "자주 쓰는 태그" 두 chip row 섹션으로 채운다. chip 탭 시 입력란에 해당 문자열이 채워지면서 기존 필터(title/domain/tags 부분 일치)가 그대로 재사용된다. 최근 검색어는 `expo-secure-store`에 최대 10개 로컬 저장하며 엔터 확정 시에만 기록한다. 자주 쓰는 태그는 최근 200개 콘텐츠의 tags 빈도 상위 10개를 클라이언트에서 계산한다.
+
+**배경**: Search 화면은 진입 시 검색바 아래에 안내 문구 한 줄만 있고 나머지 공간이 완전히 비어 있어 (1) 첫 진입 유저에게 "뭘 검색해야 하지?" 결정 피로가 크고, (2) 같은 검색을 반복하는 유저가 매번 처음부터 타이핑해야 했다. 태그 필터링 후속 로드맵의 첫 단계로 **저비용 진입점** 확보가 필요했는데, 별도 데이터 API 없이 이미 로드된 콘텐츠에서 통계를 뽑아 자연스럽게 노출하는 방식이 가장 마찰이 적었다. Nook의 재발견 정체성상 "당신이 자주 저장하는 관심사" 미러도 겸한다.
+
+**결과**:
+- `lib/searchHistory.ts` 신규 — `expo-secure-store` 키 `search_recent_terms`에 JSON string[] 저장. `getRecentSearches`/`addRecentSearch`/`removeRecentSearch`/`clearRecentSearches` 노출. 대소문자 무시 dedup, 최신이 배열 앞. 최대 10개.
+- `app/search.tsx` 수정:
+  - `useFocusEffect`에서 `getRecentSearches` 호출로 재진입 시마다 최신 이력 반영.
+  - `topTags` `useMemo` — `allItems` (최근 200개)에서 tags 순회, 대소문자 무시 카운트, 표시는 원본 첫 등장 형태 유지, 빈도 상위 10개 반환.
+  - `handleSubmit`(엔터) → `addRecentSearch(query.trim())`. 저장은 명시적 확정 액션에서만 발생.
+  - `applyTerm(term)` — chip 탭 시 `setQuery(term)` + `inputRef.blur()`. 250ms 디바운스 후 자동 필터.
+  - 최근 검색 chip: 라벨 hit-area와 X 버튼 hit-area 분리(`chipRemovable` 컨테이너 + 내부 두 Pressable).
+  - 태그 chip: 단일 Pressable, pressed 상태 표시.
+  - 두 섹션의 가로 ScrollView는 리스트 padding(16)을 상쇄하는 `marginHorizontal: -16` + `contentContainerStyle.paddingHorizontal: 16` 조합으로 화면 끝까지 스크롤.
+- 빈 상태 fallback: 콘텐츠 0개 + 검색 이력 0개인 새 유저에겐 기존 hintText ("제목, 출처, 태그로 찾아보세요") 유지.
+- 태그 chip 탭 시에는 `addRecentSearch` 호출하지 않음 — 이미 "자주 쓰는 태그"로 노출되고 있으므로 최근 검색어에도 중복 저장하면 두 섹션이 겹침.
+
+**대안 검토**:
+- **AsyncStorage**: 프로젝트가 이미 `expo-secure-store`를 다른 preference(`preferences.ts`)와 Supabase 세션 저장에 쓰고 있어 신규 패키지 도입 불필요. 검색어는 민감 정보는 아니지만 크기가 작아 SecureStore로도 무리 없음.
+- **별도 태그 필터 상태 (`selectedTag`) 유지**: 검색어와 AND 조합 등 정밀한 필터링에 유리하지만, chip 탭 = "이 태그로 검색"이라는 단순한 정신모델을 깨뜨림. YouTube/App Store가 채택한 "입력란에 채우기" 패턴이 예측 가능성 최고. Category Detail의 태그 필터는 별도 스코프로 후속 진행.
+- **서버에서 태그 통계 집계**: DB 함수/materialized view 필요. 200개 로컬 계산으로 충분히 대표성 있고, 사용자 관점에서 "최근 관심사"가 더 유의미. 필요 시 후속 API 추가.
+- **엔터가 아닌 결과 카드 탭 시 저장**: 검색 결과가 없어도 유효한 재검색어일 수 있음(예: 오늘 저장 예정인 키워드). 엔터가 명시적 확정 시그널로 더 정확.
+- **최근 검색 chip 탭 시 재배열(가장 앞으로 이동)**: 사용자 이력 신선도는 오르지만 chip 순서가 자주 흔들려 시각 인지 부담. 지금은 그대로 유지, 필요 시 후속.
+- **상단 힌트 문구 제거**: chip section이 이미 진입 자체를 안내함. 실제로 chip이 있을 땐 hintText 미노출. 두 섹션 모두 빈 신유저만 hintText로 보완.
+- **자주 저장하는 도메인 chip 병기**: B안이었지만 도메인 문자열 길이가 편차 커서 chip row 시각 노이즈. 후속 스프린트에서 별도 처리 여지.
+
+**교훈**: 빈 상태 화면은 **첫 유저 결정 피로**와 **재방문 유저 반복 마찰** 두 축을 동시에 겨냥해야 한다. 최근 검색어(재방문 유저)와 자주 쓰는 태그(신유저 탐색 진입 + 관심사 미러)는 서로 다른 페르소나에 각각 대응하면서 같은 UI 패턴(chip row)으로 통합될 수 있다. 통계 데이터를 서버에서 별도로 뽑기 전에 이미 로드된 콘텐츠에서 클라이언트 계산으로 뽑으면 새로운 API/스키마 없이 즉시 가치가 나오고, 필요할 때 서버로 승격하면 된다. chip 탭이 검색어를 채우는 방식은 기존 필터 로직을 그대로 재사용하므로 유지보수 부담이 없고 사용자 정신모델도 단순하다.
+
+---
+
+## 101. 미열람 리마인더 실기기 종단 검증 + EAS/APNs 초기 세팅 (2026-07-14)
+
+**결정**: v1.2 미열람 리마인더 파이프라인의 실기기 종단 흐름(발송 → 폰 알림 도착 → 딥링크 `/unread-reminder` 랜딩 → 상세 이동 → `opened_at` 기록)을 검증하고, 검증 과정에서 필요했던 iOS 배포 세팅(Apple App ID Push Notifications capability, EAS 프로비저닝 프로필 재생성, Expo APNs Push Key 등록)을 확정한다.
+
+**배경**: 46차까지 서버(Edge Function `send-unread-reminder`) + 클라이언트(딥링크 화면 `/unread-reminder`) 코드는 완성됐으나 실기기에서 실제 알림이 도착하는지, 딥링크가 정상 라우팅되는지는 확인되지 않은 상태였다. 검증 착수 시점에 폰에 dev build가 설치되어 있지 않았고, 이번에 처음 `expo-notifications`를 도입한 상태라 기존 EAS 크리덴셜과 App ID capability가 push용으로 셋업돼 있지 않아 여러 단계의 초기 세팅이 필요했다.
+
+**결과**:
+- Apple Developer Portal의 `com.hyerimhan.nook` App ID에 Push Notifications capability를 활성화했다.
+- EAS credentials에서 Nook / ShareExtension 두 타겟의 AdHoc 프로비저닝 프로필을 재생성했다 (기존 캐시된 프로필은 aps-environment entitlement 미포함).
+- Expo에 APNs Push Key(.p8)를 등록해 Expo Push Service가 실제 APNs로 전달할 수 있게 했다.
+- 시드 SQL로 현재 KST 30분 슬롯에 맞춘 `notification_settings`, 미열람 후보 3개(`verify.nook.test/unread-1~3`, `saved_at` 8~10일 전, `viewed_at IS NULL`), 쿨다운 초기화 상태를 만들고 curl로 Edge Function을 수동 호출했다. 응답: `sent: 1`, `expoErrors: 0`.
+- 폰에서 알림 도착 → 알림 탭 → `/unread-reminder?log_id=...` 자동 랜딩 → 시드 콘텐츠 리스트 렌더 → 카드 탭 → 상세 이동을 확인했다.
+- `notification_logs.opened_at`이 정상 기록됨을 SQL로 확인했다.
+- 시드 콘텐츠 3개는 유지한다(다음 회귀 검증에서 재사용, 제목 prefix가 "알림 검증용 링크"라 실사용 콘텐츠와 구분 용이).
+
+**부수 발견**:
+- 유선 홈 wifi 라우터가 대용량 HTTPS 업로드를 ~256KB 지점에서 반복적으로 드롭했다(EAS 클라우드 빌드 업로드가 매번 EPIPE로 실패). 아이폰 개인용 핫스팟으로 갈아타 우회했다. 홈 wifi 라우터/ISP 쪽 이슈로 추정.
+- EAS 프로필 캐시는 Apple Portal 삭제만으로는 갱신되지 않고, 반드시 `eas credentials`로 재생성해야 한다. main app / share extension 두 타겟 각각 재생성이 필요하다.
+- Supabase Edge Function Secrets는 값 조회 불가지만, `cron.job.command` 컬럼에는 등록 시 하드코딩된 값이 그대로 남아 있어 SQL로 조회 가능하다(운영 시 값 회수 경로로 참고).
+- APNs SSL Certificate(Apple Developer Portal의 Apple Push Notification service SSL Certificates)는 Expo Push Service를 사용하는 경우 별도로 생성/등록할 필요가 없다. APNs Auth Key(.p8)만 있으면 된다.
+
+**대안 검토**:
+- **로컬 빌드 (`eas build --local`)**: fastlane 미설치로 시도는 실패. 설치 후 재시도 가능하나 네트워크 우회가 이미 성공하여 추가 검증 불필요.
+- **시뮬레이터로 딥링크만 검증**: 시뮬레이터에서는 실제 APNs 배달이 불가능하므로 종단 검증으로는 부족. 실기 흐름 검증 후에 시뮬레이터는 부차적 도구로 남긴다.
+- **Edge Function 응답에 Expo ticket message 추가**: 진단성 향상. 지금은 카운트만 반환하지만, 이번처럼 원인이 APNs Key 미등록인 경우 원본 에러 메시지가 있으면 훨씬 빠르게 원인을 좁힐 수 있다. 후속 스프린트에서 개선 여지.
+
+**교훈**: 푸시 알림은 **코드 완성**과 **인프라 세팅**이 별개다. Edge Function, DB 스키마, 클라이언트 라우팅이 다 완성돼도 App ID capability / 프로비저닝 프로필 / APNs Auth Key 중 하나라도 어긋나면 종단 흐름이 죽는다. 46차에서 코드 커밋을 완료해도 "실기기 종단 검증"을 별도 항목으로 남겨두는 이유가 명확해졌다. 초기 도입 시 필수 세팅 3종(capability / provisioning / APNs key)을 릴리스 체크리스트로 명문화할 필요가 있다. 또한 Expo Push의 실패는 Edge Function 응답 `stats.expoErrors` 카운트로는 원인 좁히기 어려우니, 티켓 message를 로깅에 노출하는 개선이 다음 오류 상황에서 큰 절감 효과를 줄 것이다.
+
+---
+
+## 102. 썸네일 영구화 — Supabase Storage 백업 + expo-image 전면 도입 (2026-07-14)
+
+**결정**: 외부 CDN(Instagram scontent, X pbs.twimg 등) 서명 URL 만료로 시간이 지나면 썸네일이 placeholder로 바뀌는 문제를 해결하기 위해, 저장 시점에 이미지를 fetch·리사이즈·JPEG 압축해 Supabase Storage에 영구 복사본을 두고 `contents.thumbnail_url`을 Storage public URL로 갱신한다. 클라이언트는 모든 콘텐츠 썸네일 렌더링을 `expo-image`(`cachePolicy="memory-disk"`)로 전환해 CDN 왕복 비용을 재설치 전까지 사실상 0으로 만든다.
+
+**배경**: 48차 검증 이후 사용자가 "시간이 지나면 썸네일이 사라진다"고 보고. 확인해보니 Instagram scontent CDN URL은 며칠~2주 내에 `oe` 서명이 만료돼 403을 반환하며, 저장 시점의 CDN URL을 그대로 `contents.thumbnail_url`에 두는 현재 파이프라인 특성상 시간이 지날수록 카드가 회색으로 변한다. Nook의 재발견 정체성상 썸네일은 시각 기억의 핵심 앵커라 영구화가 필요했다. 동시에 "많은 사람이 무료 티어에서 쓸 수 있게" 규모 목표가 있어 무작정 원본 이미지를 저장하기보다 압축·캐시 최적화로 헤드룸을 최대화하는 방향을 택했다.
+
+**결과**:
+- `supabase/migrations/010_thumbnail_storage.sql` — `thumbnails` public 버킷 + 유저 폴더 제한(`(storage.foldername(name))[1] = auth.uid()::text`) RLS 정책 4개(view/insert/update/delete). Dashboard SQL Editor에서 실행 완료.
+- `supabase/functions/backup-thumbnail/index.ts` — JWT 인증으로 유저 확인, `imagescript`로 짧은 쪽 400px로 비율 유지 리사이즈, JPEG quality 70 인코딩, service role로 `thumbnails/<user_id>/<content_id>.jpg` 업로드. `cacheControl: '31536000, immutable'`로 클라이언트/CDN 캐시 1년 지시. 실패 시 원본 URL 반환(fail-silent).
+- `lib/api.ts` — `backupThumbnailAsync(contentId, sourceUrl)` 헬퍼가 saveContent와 refreshContentMetadata 양쪽에서 병렬로 호출됨. 이미 Storage URL이면 skip. 성공 시 `contents.thumbnail_url`을 Storage URL로 UPDATE하고 `content-classified` 이벤트로 UI 재갱신 유도. AI 분류와 마찬가지로 저장 UX와 분리(비동기, fail-silent).
+- `lib/api.ts` — `migrateExpiredThumbnails()` 헬퍼 (일회성). CDN URL을 유지하고 있는 콘텐츠를 페이지 없이 순차 재스크레이핑 → 임시 URL 반영 → backup 호출. 300ms 간격 rate limit. 기존 사용자 소수 상황이라 이번엔 실행 스킵, 헬퍼만 유지.
+- `expo-image` 도입(SDK 56에 맞춘 `~56.0.11`) + 6개 사용처(ContentCard / GridContentCard / RediscoverCard / Content Detail hero / Content Detail related / reminders 카드) 전면 교체. 각 사용처에서 `contentFit="cover"` + `cachePolicy="memory-disk"` + `transition={150}` 통일. 앱 로고 등 로컬 asset은 RN `Image` 유지.
+- EAS `development-device` 재빌드 후 실기기에서 Instagram 게시물 신규 저장 → `contents.thumbnail_url`이 `.../storage/v1/object/public/thumbnails/<user_id>/<id>.jpg` 형태로 저장됨 확인. Storage 실제 오브젝트도 확인됨.
+
+**무료 티어 헤드룸 (설계 목표)**:
+- 압축 후 예상 크기: 15~30KB/썸네일 (원본 50~200KB 대비 1/3~1/5). 1GB / 20KB ≈ 5만 개.
+- Cache-Control 1년으로 재조회 egress 사실상 0. 첫 로드 15KB만 계상.
+- 시나리오 상 활성 유저 100명대(각 유저 저장 1000개, 활성 조회 월 50MB) 수준까지 무료 티어로 커버.
+- 스케일 확장 시 개선 여지: (a) WebP 인코딩(imagescript 미지원이라 다른 라이브러리 필요), (b) 매우 오래된·조회 안 된 콘텐츠 storage prune, (c) 유저별 storage 사용량 모니터링 알림.
+
+**대안 검토**:
+- **로컬 캐싱만 (Storage 없이)**: 서버 비용 0, 무제한 스케일. 그러나 앱 재설치·기기 변경 시 만료된 CDN URL로 대체돼 아카이브 전체가 회색으로 물듦. iOS 단독·개인 아카이브 스코프에선 방어 가능하지만 로드맵상 iPad/웹/Chrome 확장이 있어 다기기 전제에서는 부적합.
+- **On-demand 재스크레이핑**: 썸네일 로드 실패 시마다 서버에서 새 CDN URL을 재취득. 서버 저장 없음. 그러나 1주 후 다시 만료되므로 근본 해결이 안 되고 반복 재스크레이핑 부하가 지속됨. 백로그로 완전 제거.
+- **하이브리드(로드 실패 시에만 Storage 복사)**: 스토리지 사용량은 최소이나 복잡도와 race condition 증가. 이번엔 저장 시점 자동 백업으로 단순화.
+- **Sharp WASM (더 나은 압축률)**: imagescript보다 결과 품질/용량 우수하나 Edge Function cold start 시간과 번들 크기 부담. 초기엔 imagescript로 충분하고 필요 시 교체.
+
+**교훈**: 외부 CDN에 저장된 URL은 아무리 오래된 URL이라도 "언젠간 죽는다"로 취급해야 한다. 특히 Meta/X처럼 서명 유효기간을 짧게 두는 CDN은 개인 아카이브·재발견 서비스의 시각 자산으로 부적합하다. 압축·캐시 헤더·클라이언트 지속 캐시 3단 조합으로 무료 티어에서 유의미한 스케일(100명대 활성 유저)을 확보할 수 있고, 저장 시점 일회성 비용이 반복적 원본 fetch보다 항상 저렴하다. `expo-image` 전환은 CDN egress 절감에 결정적이며(재요청 안 함), 도입 자체는 API가 유사해 마이그레이션 비용이 작으니 신규 프로젝트에서도 초기부터 채택할 만하다. 마지막으로, "코드 완성 → 인프라 배포 → 실기기 검증"의 3단 검증 흐름은 48차 푸시 알림과 동일한 패턴이며, 각 단계마다 별도 완료 조건이 있다는 점을 반복 확인했다.
+
+---
+
+## 103. 코드 리뷰 + 보안 감사 스윕 — HIGH·MEDIUM·LOW 우선순위 수정 (2026-07-14)
+
+**결정**: 48/49차 신규 변경(푸시 알림 + 썸네일 Storage)과 전체 코드베이스를 `code-reviewer`(정확성/컨벤션) + `security-reviewer`(OWASP/보안) 두 에이전트에 병렬 감사시키고, 나온 findings를 심각도 순으로 처리한다. HIGH 3개 + MEDIUM 6개 + LOW 2개를 이번 스윕에 반영하고, 나머지 LOW/운영 확인 3개는 백로그로 남긴다.
+
+**배경**: 48차/49차에서 새로운 표면(Edge Function, Storage, Push, 이미지 프록시)이 대폭 늘어났다. 특히 `backup-thumbnail`은 인증된 사용자가 임의 URL을 서버에서 fetch하게 하는 구조라 초기 SSRF 방어가 없으면 클라우드 메타데이터 유출 위험이 있다. 스케일 확대(무료 티어 100명대 목표)를 앞두고 defense-in-depth를 미리 확보하는 편이 낫다는 판단.
+
+**결과 (수정된 findings)**:
+
+- **H1 SSRF 방어 (`backup-thumbnail`)** — `isAllowedUrl()` 추가. IPv4 사설(10/8, 192.168/16, 172.16-31/12, 127/8), IPv6 loopback/ULA/link-local, cloud metadata(169.254.169.254, metadata.google.internal), `.internal`/`.local` 대역 hostname 차단. DNS 리바인딩까지는 hostname 필터로 커버되지 않지만 대다수 공격 표면 제거.
+- **H2 Timing-safe 비교 (`send-unread-reminder`)** — `timingSafeEqual()` 상수 시간 문자열 비교로 CRON_SECRET 검증 교체. 길이 mismatch도 mask로 처리해 상수 시간 유지.
+- **H3 Migrate race (`migrateExpiredThumbnails`)** — backup 완료 후 `contents` 재조회로 `isStorageThumbnailUrl` 확인, Storage URL로 실제 반영된 경우만 `backedUp` 카운트. 실패 시 `failed`로 분류. 겸사겸사 UPDATE 쿼리에 `.eq('user_id', userId)` defense-in-depth 추가.
+- **M4 스트리밍 read (`backup-thumbnail`)** — `content-length` 헤더 위조 대비. `res.body.getReader()`로 chunk 읽으며 누적 바이트 카운트, `MAX_SOURCE_BYTES` 초과 즉시 `reader.cancel()`. 8MB 상한 유지.
+- **M5 user_id 필터 (`backupThumbnailAsync`)** — UPDATE 쿼리에 `.eq('user_id', ...)` 추가. RLS는 이미 안전하지만 프로젝트 관습 준수.
+- **M6 페이지네이션 (`migrateExpiredThumbnails`)** — Supabase 기본 1000행 제한을 넘는 대량 저장 유저 대비. 1000행씩 `.range(from, from+999)` 루프로 전량 스캔.
+- **M7 CORS wildcard 제거 (`classify`)** — `Access-Control-Allow-Origin: '*'` 삭제. Nook은 모바일 전용이라 CORS 헤더 자체가 불필요. 웹 클라이언트 추가 시 특정 origin allowlist로 재도입 예정. `classify`는 유저 JWT 검증 유지(`verify_jwt=true`).
+- **M8 계정 삭제 완전화 (011 마이그레이션)** — 002의 `delete_user_account()`가 `contents`/`categories`/`auth.users`만 명시 삭제하던 것을 확장. 새 테이블 4종(`device_tokens`, `notification_settings`, `notification_logs`, `analytics_events`) + `storage.objects` (thumbnails 버킷의 유저 폴더) 명시 삭제 추가. `SECURITY DEFINER` + `auth.uid()` 유지, `uid is null` 방어 가드 추가.
+- **M9 UPDATE 컬럼 제한 트리거 (012 마이그레이션)** — 006의 `notification_logs` UPDATE RLS는 컬럼 단위 제한이 불가능하므로 `BEFORE UPDATE` 트리거로 `opened_at` 외 컬럼을 old 값으로 되돌림. 사용자 조작으로 `title`/`body`/`content_ids`/`expo_ticket_id` 위조 방지.
+- **L3 딥링크 UUID 검증 (`lib/notifications.ts`)** — `resolveRoute`가 `content_id`/`log_id`를 UUID 정규식으로 검증한 뒤에만 경로 삽입. 이상 페이로드는 홈 fallback.
+- **L5 partial receipt (`send-unread-reminder`)** — 다기기 사용자의 부분 실패 시 `expo_receipt_status='partial'` 저장. 전체 성공=`ok`, 전체 실패/티켓 없음=`error`, 그 외=`partial` 3분류.
+
+**백로그로 유지**:
+- L1 옛 Anthropic API 키 revoke 확인 (Anthropic 대시보드 수동 확인 필요)
+- L2 classify 프롬프트 인젝션 방어 (본인 데이터만 오염, 리스크 낮음)
+- L4 SecureStore→AsyncStorage 이관 (검색어 비민감)
+- M15 send-unread-reminder N+1 쿼리 (현 스케일 문제 없음, 사용자 100명+ 시 재검토)
+
+**배포 절차**:
+1. Edge Function 3개 재배포 (`classify`, `backup-thumbnail`, `send-unread-reminder`). CLI에선 `send-unread-reminder`는 반드시 `--no-verify-jwt`, 다른 둘은 기본값 유지.
+2. Dashboard에서 `send-unread-reminder` 재배포 시 `Verify JWT` 토글이 자동 ON으로 리셋되는 함정 재확인 → OFF 필수.
+3. SQL Editor에서 011, 012 마이그레이션 실행 (멱등, 재실행 안전).
+4. 배포 후 curl sanity로 (a) 정상 시크릿 200 (b) 잘못된 시크릿 401 (c) SSRF probe는 JWT 게이트에서 걸림 확인.
+
+**대안 검토**:
+- **SSRF에 DNS 해석 후 IP 재검사(perfect SSRF 방어)**: DNS 리바인딩까지 방어 가능하지만 Deno에서 DNS 룩업 후 fetch를 분리하려면 이중 요청 + hostname override 필요. 복잡도 대비 남은 취약 표면이 작아서 hostname 필터로 결정.
+- **CORS를 특정 origin만 허용**: 웹 클라이언트 계획이 확정될 때까지 미리 origin allowlist를 정의할 근거가 없어 완전 제거가 더 정확한 선택.
+- **notification_logs 컬럼 제한을 애플리케이션 레벨 검증**: 클라이언트는 `.update({ opened_at })` 형태로만 호출하므로 관습적으로 안전하지만 서버 트리거로 강제하는 편이 방어선 하나 더 확보.
+- **timing 공격의 실제 exploit 가능성**: 네트워크 지터가 커서 실전 exploit 난이도는 매우 높다. 그러나 수정 비용이 극히 작아 best-practice 준수 판단.
+
+**교훈**: 코드 리뷰와 보안 리뷰는 서로 다른 관점을 잡아낸다. code-reviewer는 race/consistency/N+1 같은 correctness를 짚고, security-reviewer는 SSRF/timing/RLS 컬럼 단위 같은 threat surface를 짚는다. 병렬 감사로 두 시야를 동시에 확보하는 워크플로가 감사 대비 시간 절감에 효과적이다. 특히 새 인프라 표면(Edge Function, Storage, 이미지 프록시)이 추가된 스프린트에서는 배포 전 반드시 이 두 관점 감사를 명시적 단계로 넣는 편이 안전하다. 또한 Dashboard 재배포 시 `verify_jwt` 토글이 리셋되는 함정은 반복 발생 가능성이 높으므로 CLI 기반 배포 스크립트로 표준화하는 것을 다음 단계로 검토할 만하다.
+
+---
+
+## 104. Expo Push Receipt 정리 함수 + dead token 즉시 회수 (2026-07-15)
+
+**결정**: 미열람 리마인더 발송 파이프라인에 두 단계 dead token 회수 계층을 도입한다. (1) `send-unread-reminder`가 Expo ticket **즉시 응답**에서 `details.error === 'DeviceNotRegistered'`인 message의 `device_tokens` 행을 그 자리에서 삭제한다. (2) 신규 Edge Function `cleanup-push-receipts`가 하루 1회 pg_cron으로 실행되어 최근 23시간 내 발송된 `notification_logs` 중 `receipt_checked_at IS NULL`인 로그의 Expo Push **Receipt를 지연 조회**하고 결과에 따라 `expo_receipt_status`를 `delivered` / `device_not_registered` / `receipt_error`로 세분화 저장한다. Receipt 단계에서 감지된 dead token의 자동 삭제는 이번 스코프에서 제외하고 `push_delivery_attempts` 테이블 도입 후 별도 스프린트로 미룬다.
+
+**배경**: 39~46차에 걸쳐 완성된 발송 파이프라인은 ticket 응답의 `status`만 저장(`ok`/`partial`/`error`)해 왔다. 이 상태로는 (a) 실제 APNs/FCM 전달 성공 여부(=receipt 단계 결과)를 확인할 수 없고, (b) `DeviceNotRegistered` 토큰이 device_tokens에 계속 남아 다음 발송에서 반복 낭비되며, (c) Expo가 receipt를 24시간만 보관하므로 그 안에 반드시 한 번은 조회해야 한다는 운영 요건이 처리되지 않았다. 48차 실기기 검증으로 발송 자체는 안정화됐으므로 그다음 계층인 위생 관리(hygiene)를 붙일 시점이다.
+
+**결과**:
+- `supabase/migrations/013_notification_logs_receipt_checked.sql` 신규:
+  - `notification_logs.receipt_checked_at timestamptz` 추가.
+  - `notification_logs_receipt_pending_idx` partial index — `where expo_ticket_id is not null and receipt_checked_at is null` 조건으로 스캔 대상만 색인, sent_at desc.
+  - `enforce_notification_log_update_columns()` 트리거 재정의 — 함수 최상단에 `if auth.uid() is null then return new; end if;`를 넣어 **service role은 컬럼 잠금 우회**, 유저는 여전히 `opened_at`만 갱신 가능. 이 변경 없이는 cleanup 함수의 UPDATE가 기존 트리거에 되돌려져 `receipt_checked_at`이 반영되지 않음.
+- `supabase/functions/send-unread-reminder/index.ts` 개선:
+  - `deadTokens: Array<{ userId; token }>` 수집 로직 추가. 각 batch에서 ticket이 error + `details.error === 'DeviceNotRegistered'`이면 해당 `to`(token)를 수집.
+  - 배치 전송 루프 이후 `deadTokens` 순회하며 `device_tokens.delete().eq('user_id', ...).eq('expo_push_token', ...)` 실행. `user_id` 스코프로 제한해 우연히 같은 토큰이 다른 유저에게 재할당된 경우 오삭제 방지.
+  - `stats.deadTokensRemoved`를 응답에 노출해 모니터링 지표 확보.
+- `supabase/functions/cleanup-push-receipts/index.ts` 신규:
+  - `send-unread-reminder`와 동일한 CRON_SECRET 인증 패턴(`timingSafeEqual`).
+  - `notification_logs`에서 `expo_ticket_id IS NOT NULL AND receipt_checked_at IS NULL AND sent_at >= now() - 23h` 조회 (`limit 5000` 안전 상한).
+  - Ticket id를 최대 1000개씩 `POST https://exp.host/--/api/v2/push/getReceipts`로 배치 조회.
+  - 결과 분류 3+1: `ok` → `delivered`, `error + DeviceNotRegistered` → `device_not_registered`, `error + 기타` → `receipt_error`, **응답에 미포함(pending)** → `receipt_checked_at` 갱신 안 함(다음 배치에서 재시도).
+  - 상태별 log id를 모아 `notification_logs.update({...}).in('id', [...])` 그룹 UPDATE로 서버 왕복 최소화.
+  - stats: `totalChecked`, `delivered`, `deviceNotRegistered`, `otherErrors`, `pendingReceipts`.
+- `supabase/migrations/014_pg_cron_cleanup_push_receipts.sql` 신규:
+  - 스케줄 `'30 20 * * *'` UTC = KST 05:30. 발송 슬롯(9~22시 KST)과 완전히 겹치지 않는 새벽 창.
+  - 하루 1회로 충분한 근거: Expo TTL 24h ≫ 실행 간격 24h, 23h 룩백으로 만료 직전 실패 방지.
+  - Dashboard SQL Editor에서 `<PROJECT_REF>`, `<CRON_SECRET>` 치환 후 수동 실행.
+- 남은 운영 작업: (1) 013 마이그레이션 Dashboard 실행, (2) `supabase functions deploy cleanup-push-receipts --no-verify-jwt`, (3) 014 SQL 실행.
+
+**대안 검토**:
+- **`push_delivery_attempts` 테이블 신규 (message마다 한 row: log_id, user_id, token, ticket_id, ticket_status, receipt_status, checked_at)**: 다기기 유저의 receipt 단계 dead token까지 자동 회수 가능. 하지만 스키마 신규 + 발송 함수 대폭 수정 + 조회 로직 확장으로 스코프 큰 폭 증가. 즉시 응답 회수만으로도 dead token 대부분이 청소되므로 우선 최소 스코프로 도입하고 필요 시 후속에서 승격. 향후 이 테이블이 도입되면 이번 `cleanup-push-receipts`의 상태 저장 필드가 그대로 재사용됨.
+- **cleanup을 하루 여러 번(예: 6시간마다)**: Expo TTL 24h 대비 오버킬. 발송량이 매우 늘어난 뒤 재검토.
+- **트리거를 아예 삭제하고 애플리케이션 레벨에서만 검증**: 012에서 이미 defense-in-depth로 도입한 컬럼 잠금을 되돌리는 셈. Service role skip 조건으로 두 요구를 동시 충족.
+- **`stats.deadTokensRemoved` 대신 별도 audit 테이블에 삭제 기록**: 감사 로그 필요성이 아직 확인되지 않음. Edge Function 로그로 충분. 필요 시 후속.
+- **cleanup 함수가 pending receipt를 skip이 아니라 status='pending'으로 표시**: 애매한 상태를 저장하면 재조회 판단이 복잡해짐. 컬럼 미갱신이 곧 "다음 배치에서 재조회"로 자연스럽게 매핑됨.
+- **`sent_at >= now() - 23h` 대신 정확히 24h**: Expo가 정각 만료 시 receipt를 반환하지 않는 경계 케이스를 피하기 위해 1시간 마진.
+
+**교훈**: Push 알림 인프라의 위생 관리는 발송/딥링크 완성 직후에 즉시 붙이지 않으면 dead token이 축적되어 장기적으로 발송 스팸/지표 오염을 유발한다. 상태 저장 스키마를 처음 도입할 때 `expo_ticket_id` 1개만 저장하는 단순화는 initial ship 속도를 확보하지만, 다기기 유저의 receipt 단계 회수를 자동화하려면 결국 attempts 테이블이 필요하다는 트레이드오프를 문서화해 두는 편이 향후 스프린트 예측성을 높인다. 또한 트리거로 컬럼 잠금을 도입할 때 `auth.uid() is null` skip 조건은 service role 우회 관용구로 매우 자주 재사용되므로 표준 패턴화 가치가 있다. Receipt는 pending일 수 있다는 점을 컬럼 미갱신 = 재시도로 매핑하면 별도 상태값 없이 자연스러운 배치 재시도 루프가 만들어진다.
+
+---
+
+## 105. 코덱스 보안 리뷰 P1/P2/P3 hotfix (2026-07-15)
+
+**결정**: 코덱스 리뷰가 지적한 SSRF redirect 우회, backup-thumbnail 소유권 미검증, Storage 정책 모순, contents.category_id 크로스 유저 참조, delete_user_account SECURITY DEFINER의 search_path 미고정, 앱 tsconfig에 Edge Function 포함 총 6개 findings를 52차 hotfix로 일괄 처리한다. DNS 리바인딩 완전 방어(Deno.resolveDns → private IP 검사)는 이번 스코프에서 제외하고 백로그로 미룬다.
+
+**배경**: 50차 병렬 감사에서 도입된 SSRF hostname 필터(H1)는 fetch의 default `redirect: 'follow'`로 우회 가능한 상태였다. 공개 도메인 → 3xx → 사설 IP 시퀀스에서 hostname 필터는 첫 URL만 검사하고 각 hop URL은 검증되지 않는다. 또한 49차에 도입된 backup-thumbnail은 인증만 확인하고 body의 `contentId`/`sourceUrl`을 신뢰해 서버 fetch/Storage 업로드를 수행했다. RLS가 DB update를 막긴 했지만, 인증 유저가 임의 URL을 서버 자원으로 fetch·압축·업로드하도록 유도할 수 있는 표면이 남았다. Storage 정책은 010의 주석과 달리 authenticated 유저 insert/update/delete가 열려 있어 자기 폴더에 임의 파일을 넣을 수 있었다. category_id는 앱 코드가 검증하지만 REST API 직접 호출로는 다른 유저의 category_id를 삽입해 카테고리 카운트를 오염시킬 수 있었다. 이 findings는 개별로는 무거운 exploit이 아니나 개인 아카이브 서비스의 신뢰 기반을 흔들 가능성이 있어 배포 전 일괄 해소가 맞다.
+
+**결과**:
+- **P1 SSRF redirect** — `supabase/functions/backup-thumbnail/index.ts`의 `fetchImageBytes`를 재작성. `redirect: 'manual'` + `MAX_REDIRECTS = 5` for-loop + 매 hop마다 `Location` 헤더 파싱 → `new URL(loc, currentUrl)`로 relative resolve → `isAllowedUrl` 재검증 → 통과 시 다음 hop, 실패/누락 시 즉시 return null. 정상 응답(2xx)에서 loop 탈출 후 기존 스트림 누적 로직 유지.
+- **P1 backup-thumbnail 소유권** — 함수 body에서 `sourceUrl` 파라미터 제거. `contentId`만 받은 뒤 `userClient.from('contents').select('thumbnail_url').eq('id', contentId).eq('user_id', userId).maybeSingle()`로 소유권 검증 + 실제 소스 URL을 DB에서 재조회. 없으면 404 `content_not_found`, thumbnail_url 없으면 400 `no_thumbnail`. 이미 Storage URL이면 즉시 반환. `lib/api.ts`의 `backupThumbnailAsync`는 클라이언트 시그니처는 유지(caller 영향 없음)하되 Edge Function body에서 `sourceUrl`만 제거해 서버가 신뢰하지 않도록 정렬.
+- **P2 Storage 정책 정리** — `supabase/migrations/015_thumbnail_storage_policy_tighten.sql` 신규. 010의 `Users can upload/update/delete own thumbnails` 정책 drop (실제로는 backup-thumbnail이 service role로만 업로드). `Users can view thumbnails`를 own-folder 조건이 있는 `Users can view own thumbnails`로 교체. Public bucket의 파일 URL 직접 접근은 RLS 우회 경로라 클라이언트 이미지 로딩에 영향 없음.
+- **P2 category cross-user 방어** — `supabase/migrations/016_contents_category_ownership.sql` 신규. `enforce_content_category_ownership()` trigger. `category_id` null이면 pass, 없는 category_id는 null로 정정, `category.user_id <> contents.user_id`이면 `raise exception 'category_ownership_mismatch' using errcode = '23514'`. BEFORE INSERT OR UPDATE OF category_id, user_id.
+- **P2 search_path 고정** — `supabase/migrations/017_delete_user_account_search_path.sql` 신규. `set search_path = public, storage, auth, pg_temp` + `delete from public.notification_logs ...` 등 모든 테이블을 schema-qualified로 명시.
+- **P3 tsconfig exclude** — `tsconfig.json`에 `exclude: ["node_modules", "supabase/functions/**"]` 추가. `npx tsc --noEmit` 결과 오류 0. Edge Function은 Deno tooling으로 별도 검증 (필요 시 후속 스프린트에서 Deno tsconfig 도입).
+- 운영: 015/016/017 Dashboard 수동 실행 필요, `supabase functions deploy backup-thumbnail` 재배포 필요.
+
+**대안 검토**:
+- **DNS 리바인딩까지 완전 방어(`Deno.resolveDns` + IP-level allowlist)**: 공개 도메인의 A/AAAA를 사설 IP로 응답하는 rebind 공격까지 방어 가능. 그러나 Deno에서 DNS 룩업 후 fetch를 분리하려면 hostname override 또는 자체 fetch 대체 필요 → 복잡도 큼. 남는 표면(rebind 정확한 타이밍 조정 필요)의 실제 exploit 난이도가 매우 높고, redirect 재검증으로 대다수 SSRF 표면이 커버되므로 백로그.
+- **backup-thumbnail의 sourceUrl 파라미터 남기고 검증만 강화**: DB 값과 body 값을 비교하는 방식은 클라이언트가 이미 만료된 URL을 넘길 때 발생할 수 있는 race를 늘리고, 명시적 신뢰 경계를 흐린다. 완전 제거로 서버 신뢰 원천을 단일화.
+- **Storage 정책을 완전 제거하고 service role만 접근**: RLS를 완전히 끄면 오히려 방어선이 사라진다. select own-folder + insert/update/delete drop 조합이 defense-in-depth 유지 + 실제 서비스 흐름과 일치.
+- **category cross-user를 composite FK `(user_id, category_id)` REFERENCES `categories(user_id, id)`로**: 정석. 그러나 categories에 `(user_id, id)` unique/PK 재구성 + 기존 데이터 마이그레이션 부담. Trigger는 5줄로 동일 무결성 확보 + 실행 비용도 미미. 향후 FK로 승격 여지 남김.
+- **tsconfig 분리(`tsconfig.functions.json` 도입)**: Edge Function도 앱과 동일한 tsc로 검증할 수 있다는 이점. 하지만 Edge Function은 Deno 런타임(URL import, Deno.env, Deno.serve)이라 앱 tsconfig와 근본적으로 다르다. `deno check`를 별도 워크플로에 두는 게 정합적. 이번은 exclude만.
+- **모든 것을 단일 마이그레이션으로 통합**: 롤백 단위/변경 이유의 응집도가 흐려짐. 3개 migration으로 분리 유지.
+
+**교훈**: 방어 계층 하나를 도입하면 그 층이 만드는 새 표면을 함께 감사해야 한다. SSRF hostname 필터를 넣었으면 fetch의 redirect 동작이 그 필터를 얼마나 신뢰할 수 있는지 반드시 재확인해야 하고, RLS로 DB 조작을 막았으면 그 인증 유저가 서버에 유도할 수 있는 부수 작용(fetch, upload, compute)도 함께 통제해야 한다. Body 파라미터가 서버 결정에 영향을 준다면 그 값의 신뢰 경계를 명시적으로 문서화하거나 아예 서버에서 재조회하는 편이 방어선 하나가 사라지지 않는다. SECURITY DEFINER + search_path 고정은 이제 팀 표준으로 삼는 게 좋다 — 함수 수정 시마다 반복 점검 대상. 앱 tsconfig에 Deno 파일이 포함되어 매 tsc 실행마다 오류가 나오면 진짜 오류에 눈이 둔감해진다(alert fatigue). 검증 도구는 시그널이 노이즈에 파묻히지 않게 관리하는 게 안전성보다 앞선다.
+
+---
+
+## 106. 재리뷰 후속 — contents.category_id composite FK 승격 (2026-07-15)
+
+**결정**: 105의 016 trigger가 invoker RLS 스코프로 categories를 조회하는 탓에 "다른 유저의 실존 category"와 "존재하지 않는 category"를 구분하지 못하고 둘 다 category_id를 null로 정정하며 raise exception 경로가 사실상 죽어있는 semantic 결함을 코덱스 재리뷰가 지적했다. 실유저가 아직 없는 시점의 스키마 유연성을 활용해 최소 방어(trigger) 대신 **composite FK** 정석으로 승격하고 016 trigger를 제거한다. `(contents.user_id, contents.category_id) → (categories.user_id, categories.id)` 관계 무결성을 DB 레벨에서 강제하며, 카테고리 삭제 시 `ON DELETE SET NULL (category_id)`로 미분류 상태로 정정한다.
+
+**배경**: 105의 016 trigger는 보안 목적으로는 여전히 유효했지만(cross-user 할당 시도가 성공하지 못함), semantic 상 "다른 유저의 실존 category를 참조하려는 시도"가 조용히 null로 정정되어 raise exception 경로가 도달 불가능한 상태였다. 실제 exploit 가능성은 없으나 관계 무결성의 진실 표현이 흐려져 있어 코드 리뷰 시 방어 로직의 의도와 실제가 어긋난다. 코덱스 재리뷰가 "composite FK is still the stronger final form"이라고 명확히 방향을 짚어줬고 실유저가 없는 상태에서 스키마 변경 부담이 최소이므로 정석으로 승격한다.
+
+**결과**:
+- `supabase/migrations/018_contents_category_composite_fk.sql` 신규:
+  1. `alter table categories add constraint categories_user_id_id_key unique (user_id, id)` — composite FK 참조 대상 확보.
+  2. `alter table contents drop constraint if exists contents_category_id_fkey` — 001의 단일 FK 제거.
+  3. `alter table contents add constraint contents_category_owner_fkey foreign key (user_id, category_id) references categories (user_id, id) on delete set null (category_id)` — composite FK. `category_id` NULL(미분류)은 MATCH SIMPLE 기본 동작으로 검증 skip.
+  4. `drop trigger contents_category_ownership on contents` + `drop function enforce_content_category_ownership()` — 016은 FK가 강제하므로 완전 중복. 제거.
+- 이제 cross-user 시도는 FK violation(23503)으로 DB가 즉시 reject. `raise exception` 경로가 사실상 죽어있던 문제가 근본 해소.
+
+**대안 검토**:
+- **016 trigger를 SECURITY DEFINER로 승격**: 5줄 변경. Function이 definer 권한(테이블 생성자)으로 실행되어 RLS 우회 → 실제 존재 여부 정확히 판단. 최소 변경이지만 관계 무결성이 여전히 애플리케이션 레이어(trigger). DB semantic으로는 여전히 "invariant maintained by procedure"고 FK 관계는 여전히 단일. 실유저 없는 지금은 정석 승격이 오히려 부담이 낮다.
+- **Trigger 유지 + 주석만 정정**: 실동작과 문서 정합은 맞추지만 semantic 결함 자체는 남음. Nook가 개인 아카이브라 다행이지 다른 도메인이었으면 위험. 지금 해결이 정답.
+- **Postgres 15+ `ON DELETE SET NULL (col)` 문법 대신 BEFORE DELETE trigger**: PG 버전이 이전이라면 필요. Supabase 프로덕션은 PG 15+이므로 표준 문법 사용.
+- **`ON DELETE CASCADE`**: 카테고리 삭제 시 콘텐츠도 함께 삭제. Nook UX는 "카테고리 삭제 = 미분류로 이동" 정책이라 부적합.
+
+**교훈**: Trigger 기반 방어는 semantic이 흐려질 수 있으므로 스키마 무결성이 필요한 관계는 FK로 명시하는 게 코드 리뷰 시 오독을 줄인다. RLS는 조회/조작을 스코프하지 규정 관계를 강제하지 않는다 — 관계 무결성은 constraint의 일이지 policy의 일이 아니다. "실유저 없는 시점"은 스키마를 정석으로 정렬할 수 있는 창구라, 이 시기에 defensive shortcut을 강력한 constraint로 승격해 두면 이후 스케일이 커진 뒤 마이그레이션 부담을 줄일 수 있다. 리뷰의 residual 지적은 accept-with-context가 아니라 fix-if-cheap 각도로 재평가하는 습관이 accumulate되는 부채를 막는다.
+
