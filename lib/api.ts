@@ -378,6 +378,9 @@ export async function saveContent(
       emit('content-classified');
     });
 
+  // 비동기 썸네일 Storage 백업 (CDN 만료 대비, classify와 병렬).
+  backupThumbnailAsync(saved.id, saved.thumbnail_url);
+
   return saved;
 }
 
@@ -432,7 +435,13 @@ export async function refreshContentMetadata(
     .select('*, categories(name)')
     .single();
   if (error) throw error;
-  return data as Content & { categories: { name: string } | null };
+
+  // 리프레시로 새로 확보된 CDN URL도 Storage에 백업 시도.
+  // 이미 Storage URL이면 helper가 조용히 skip.
+  const refreshed = data as Content & { categories: { name: string } | null };
+  backupThumbnailAsync(refreshed.id, refreshed.thumbnail_url);
+
+  return refreshed;
 }
 
 function isMetadataPolluted(content: Content) {
@@ -764,6 +773,123 @@ async function classifyAndUpdate(content: Content, description?: string) {
       .eq('user_id', userId)
       .eq('id', content.id);
   }
+}
+
+// ─── Thumbnail Backup (비동기, Supabase Storage 영구화) ───
+//
+// 외부 CDN(Instagram scontent 등)은 signed URL이라 시간이 지나면 만료된다.
+// 저장/리프레시 시점에 backup-thumbnail Edge Function에 요청해 압축 복사본을
+// Storage에 저장하고, contents.thumbnail_url을 Storage public URL로 갱신한다.
+// 실패는 fail-silent: 원본 URL이 남아 있어 만료 전까지는 계속 표시된다.
+
+export function isStorageThumbnailUrl(url: string | null | undefined): boolean {
+  return typeof url === 'string' && url.includes('/storage/v1/object/public/thumbnails/');
+}
+
+export async function backupThumbnailAsync(
+  contentId: string,
+  sourceUrl: string | null | undefined,
+): Promise<void> {
+  if (!sourceUrl) return;
+  if (isStorageThumbnailUrl(sourceUrl)) return;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabase.functions.invoke<{
+      storageUrl?: string;
+      sizeBytes?: number;
+      error?: string;
+    }>('backup-thumbnail', {
+      // sourceUrl은 서버가 신뢰하지 않는다 — DB의 thumbnail_url을 서버에서 재조회한다.
+      // 클라이언트의 sourceUrl은 skip 판단(위쪽 isStorageThumbnailUrl)에만 사용.
+      body: { contentId },
+    });
+    if (error) return;
+    const storageUrl = data?.storageUrl;
+    if (!storageUrl || storageUrl === sourceUrl) return;
+    const { error: updateError } = await supabase
+      .from('contents')
+      .update({ thumbnail_url: storageUrl })
+      .eq('user_id', user.id)
+      .eq('id', contentId);
+    if (updateError) return;
+    emit('content-classified');
+  } catch {
+    // fail-silent — 원본 URL 유지
+  }
+}
+
+/**
+ * v1.2 이전에 저장된 콘텐츠의 만료된 CDN 썸네일을 재스크레이핑 + Storage 백업으로 복구.
+ * 순차 실행, 요청 간 300ms 간격으로 CDN 부하 최소화.
+ * Storage URL이 이미 있는 콘텐츠는 skip.
+ * Profile → 설정 또는 개발자 콘솔에서 수동 호출.
+ */
+export async function migrateExpiredThumbnails(
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ total: number; backedUp: number; skipped: number; failed: number }> {
+  const userId = await requireUserId();
+
+  // Supabase 기본 limit 1000. 유저가 그 이상 저장했을 수 있어 페이지네이션.
+  const PAGE_SIZE = 1000;
+  const rows: { id: string; url: string; thumbnail_url: string }[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('contents')
+      .select('id, url, thumbnail_url')
+      .eq('user_id', userId)
+      .not('thumbnail_url', 'is', null)
+      .order('saved_at', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const chunk = (data ?? []) as { id: string; url: string; thumbnail_url: string }[];
+    if (chunk.length === 0) break;
+    rows.push(...chunk);
+    if (chunk.length < PAGE_SIZE) break;
+  }
+
+  const targets = rows.filter((r) => !isStorageThumbnailUrl(r.thumbnail_url));
+
+  let backedUp = 0;
+  let failed = 0;
+  const total = targets.length;
+
+  for (let i = 0; i < targets.length; i++) {
+    const row = targets[i];
+    try {
+      const metadata = await fetchLinkMetadata(row.url);
+      const fresh = metadata.thumbnail_url;
+      if (fresh) {
+        // 임시로 fresh CDN URL을 DB에 반영 (Storage 백업이 성공하면 곧 덮어씀).
+        await supabase
+          .from('contents')
+          .update({ thumbnail_url: fresh })
+          .eq('user_id', userId)
+          .eq('id', row.id);
+        await backupThumbnailAsync(row.id, fresh);
+        // backup이 실제로 Storage URL로 갱신했는지 재확인 — 실패 시 아직 만료 CDN URL 상태.
+        const { data: check } = await supabase
+          .from('contents')
+          .select('thumbnail_url')
+          .eq('user_id', userId)
+          .eq('id', row.id)
+          .single();
+        if (check && isStorageThumbnailUrl(check.thumbnail_url)) {
+          backedUp += 1;
+        } else {
+          failed += 1;
+        }
+      } else {
+        failed += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+    onProgress?.(i + 1, total);
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  return { total, backedUp, skipped: rows.length - total, failed };
 }
 
 // ─── Onboarding ───

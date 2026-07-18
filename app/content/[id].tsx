@@ -1,4 +1,5 @@
-import { Image, View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -92,7 +93,13 @@ function RelatedCard({
   return (
     <Pressable onPress={onPress} style={styles.relatedCard}>
       {thumbnailUrl ? (
-        <Image source={{ uri: thumbnailUrl }} style={styles.relatedThumb} resizeMode="cover" />
+        <Image
+          source={{ uri: thumbnailUrl }}
+          style={styles.relatedThumb}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
+        />
       ) : (
         <View style={[styles.relatedThumb, { backgroundColor: thumb }]} />
       )}
@@ -276,7 +283,13 @@ export default function ContentDetailScreen() {
           {/* Header card */}
           <View style={styles.headerCard}>
             {item.thumbnail_url ? (
-              <Image source={{ uri: item.thumbnail_url }} style={styles.heroImage} resizeMode="cover" />
+              <Image
+                source={{ uri: item.thumbnail_url }}
+                style={styles.heroImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={150}
+              />
             ) : isNotion ? (
               <View style={[styles.heroImage, styles.notionHeroImage]}>
                 <Ionicons name="document-text-outline" size={46} color={Colors.primary} />

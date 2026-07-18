@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -132,7 +133,13 @@ function ReminderCard({
         style={({ pressed }) => [styles.cardMain, pressed && content && { opacity: 0.7 }]}
       >
         {thumb ? (
-          <Image source={{ uri: thumb }} style={styles.thumb} resizeMode="cover" />
+          <Image
+            source={{ uri: thumb }}
+            style={styles.thumb}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+          />
         ) : (
           <View style={[styles.thumb, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
         )}

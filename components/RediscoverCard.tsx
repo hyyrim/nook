@@ -1,4 +1,5 @@
-import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { Colors, Radius } from '@/constants';
 import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,13 @@ export function RediscoverCard({ title, source, hint, thumbnailUrl, placeholderC
     >
       <View style={[styles.thumbnail, !thumbnailUrl && { backgroundColor: placeholderColor }]}>
         {thumbnailUrl && (
-          <Image source={{ uri: thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+          />
         )}
         {!thumbnailUrl && isNotion && (
           <View style={styles.notionMark}>
