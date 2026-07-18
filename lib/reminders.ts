@@ -34,10 +34,6 @@ export async function getUserPreferredTime(): Promise<{ hour: number; minute: nu
   return cachedUserTime;
 }
 
-export function invalidateUserTimeCache() {
-  cachedUserTime = null;
-}
-
 // ─── 시간 계산 ─────────────────────────────────────────
 
 export function computePresetTime(

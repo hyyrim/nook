@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRouter } from 'expo-router';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -11,7 +11,15 @@ import { getRecentContents } from '@/lib/api';
 import { isClassifying, on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
+import {
+  addRecentSearch,
+  clearRecentSearches,
+  getRecentSearches,
+  removeRecentSearch,
+} from '@/lib/searchHistory';
 import type { Content } from '@/types';
+
+const TOP_TAGS_LIMIT = 10;
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
 type TransitionEndEvent = { data?: { closing?: boolean } };
@@ -29,6 +37,7 @@ export default function SearchScreen() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -62,6 +71,7 @@ export default function SearchScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      getRecentSearches().then(setRecentSearches);
     }, [loadData])
   );
 
@@ -92,6 +102,50 @@ export default function SearchScreen() {
     });
   }, [allItems, debouncedQuery]);
 
+  // 저장된 콘텐츠들에서 빈도 상위 태그를 뽑아 추천 chip으로 노출.
+  // 대소문자 무시로 카운트, 표시는 원본 첫 등장 형태 유지.
+  const topTags = useMemo(() => {
+    if (allItems.length === 0) return [];
+    const counts = new Map<string, { display: string; count: number }>();
+    for (const item of allItems) {
+      const tags = item.tags ?? [];
+      for (const tag of tags) {
+        const trimmed = tag.trim();
+        if (trimmed.length === 0) continue;
+        const key = trimmed.toLowerCase();
+        const existing = counts.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          counts.set(key, { display: trimmed, count: 1 });
+        }
+      }
+    }
+    return Array.from(counts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, TOP_TAGS_LIMIT)
+      .map((t) => t.display);
+  }, [allItems]);
+
+  const applyTerm = useCallback((term: string) => {
+    setQuery(term);
+    inputRef.current?.blur();
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = query.trim();
+    if (trimmed.length === 0) return;
+    addRecentSearch(trimmed).then(setRecentSearches);
+  }, [query]);
+
+  const handleRemoveRecent = useCallback((term: string) => {
+    removeRecentSearch(term).then(setRecentSearches);
+  }, []);
+
+  const handleClearRecents = useCallback(() => {
+    clearRecentSearches().then(() => setRecentSearches([]));
+  }, []);
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
@@ -108,6 +162,7 @@ export default function SearchScreen() {
               placeholderTextColor={Colors.tertiary}
               value={query}
               onChangeText={setQuery}
+              onSubmitEditing={handleSubmit}
               autoCorrect={false}
               returnKeyType="search"
             />
@@ -155,7 +210,72 @@ export default function SearchScreen() {
           ) : loadError ? (
             <ErrorState onRetry={loadData} />
           ) : debouncedQuery.length === 0 ? (
-            <Text style={styles.hintText}>제목, 출처, 태그로 찾아보세요</Text>
+            recentSearches.length === 0 && topTags.length === 0 ? (
+              <Text style={styles.hintText}>제목, 출처, 태그로 찾아보세요</Text>
+            ) : (
+              <View style={styles.suggestions}>
+                {recentSearches.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionLabel}>최근 검색</Text>
+                      <Pressable onPress={handleClearRecents} hitSlop={8}>
+                        <Text style={styles.sectionAction}>모두 지우기</Text>
+                      </Pressable>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chipRow}
+                    >
+                      {recentSearches.map((term) => (
+                        <View key={term} style={styles.chipRemovable}>
+                          <Pressable
+                            onPress={() => applyTerm(term)}
+                            hitSlop={4}
+                            style={styles.chipRemovableLabelHit}
+                          >
+                            <Text style={styles.chipText} numberOfLines={1}>
+                              {term}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleRemoveRecent(term)}
+                            hitSlop={6}
+                            style={styles.chipRemoveButton}
+                          >
+                            <Ionicons name="close" size={13} color={Colors.tertiary} />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+                {topTags.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionLabel}>자주 쓰는 태그</Text>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chipRow}
+                    >
+                      {topTags.map((tag) => (
+                        <Pressable
+                          key={tag}
+                          onPress={() => applyTerm(tag)}
+                          style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+                        >
+                          <Text style={styles.chipText} numberOfLines={1}>
+                            {tag}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            )
           ) : (
             <Text style={styles.emptyText}>"{debouncedQuery}"에 대한 결과가 없어요</Text>
           )
@@ -234,5 +354,77 @@ const styles = StyleSheet.create({
     color: Colors.tertiary,
     textAlign: 'center',
     paddingVertical: 40,
+  },
+  suggestions: {
+    marginTop: 4,
+    // 가로 스크롤이 리스트 좌우 padding(16)을 넘어 화면 끝까지 이어지도록 상쇄.
+    marginHorizontal: -16,
+    gap: 24,
+  },
+  section: {
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.secondary,
+    letterSpacing: -0.1,
+  },
+  sectionAction: {
+    fontSize: 12.5,
+    color: Colors.tertiary,
+  },
+  chipRow: {
+    paddingHorizontal: 16,
+    gap: 8,
+    alignItems: 'center',
+  },
+  chip: {
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipPressed: {
+    backgroundColor: Colors.pressOverlay,
+  },
+  chipRemovable: {
+    height: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    paddingLeft: 14,
+    paddingRight: 6,
+  },
+  chipRemovableLabelHit: {
+    height: '100%',
+    justifyContent: 'center',
+    maxWidth: 180,
+    paddingRight: 8,
+  },
+  chipRemoveButton: {
+    width: 22,
+    height: 22,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipText: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    color: Colors.primary,
   },
 });

@@ -109,7 +109,7 @@ function extractXStatusId(url: string): string | undefined {
  * meta.title 키는 Safari preprocessing 결과의 페이지 title(<title> 태그)이므로
  * `<title>` 요소로 변환한다. 나머지 og:* / twitter:* / name=* 키는 그대로 메타 태그로.
  */
-export function shareIntentMetaToHtml(meta: Record<string, string | undefined> | null | undefined): string {
+function shareIntentMetaToHtml(meta: Record<string, string | undefined> | null | undefined): string {
   if (!meta) return '';
   const escape = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

@@ -80,14 +80,20 @@ type NotificationDataPayload = {
   content_id?: string;
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string | undefined): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
 function resolveRoute(data: NotificationDataPayload): string | null {
   // 유저 지정 콘텐츠 리마인더: 해당 상세로 이동. 소스 표시로 리마인더 진입 구분.
-  if (data.type === 'reminder' && data.content_id) {
+  if (data.type === 'reminder' && isUuid(data.content_id)) {
     return `/content/${data.content_id}?source=direct`;
   }
-  // v1.2 미열람 리마인더: 알림에 포함된 후보 리스트 전용 화면. log_id 없으면 홈 fallback.
+  // v1.2 미열람 리마인더: 알림에 포함된 후보 리스트 전용 화면. log_id 없거나 형식 이상하면 홈 fallback.
   if (data.type === 'unread_reminder') {
-    return data.log_id ? `/unread-reminder?log_id=${data.log_id}` : '/(tabs)';
+    return isUuid(data.log_id) ? `/unread-reminder?log_id=${data.log_id}` : '/(tabs)';
   }
   return null;
 }

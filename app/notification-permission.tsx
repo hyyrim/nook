@@ -53,8 +53,8 @@ export default function NotificationPermissionScreen() {
           </View>
           <Text style={styles.title}>다시 발견할{"\n"}준비 됐어요</Text>
           <Text style={styles.description}>
-            저장했지만 잊고 지낸 링크를{"\n"}
-            매일 아침 조용히 알려드릴게요.
+            일주일 넘게 안 본 링크가 쌓이면{"\n"}
+            원하는 시간에 조용히 모아 알려드릴게요.
           </Text>
         </View>
 

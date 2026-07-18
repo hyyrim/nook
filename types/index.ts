@@ -36,13 +36,10 @@ export type NotificationSettings = {
   updated_at: string;
 };
 
-// v1.2 알림 채널. 단일 미열람 리마인더. 향후 채널 추가 시 확장.
-export type NotificationType = 'unread_reminder';
-
 export type NotificationLog = {
   id: string;
   user_id: string;
-  type: NotificationType;
+  type: 'unread_reminder';
   content_ids: string[];
   title: string;
   body: string;

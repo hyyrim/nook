@@ -61,5 +61,5 @@ export function useContentReminder(contentId: string | null) {
     }
   }, [contentId]);
 
-  return { reminder, loading, busy, schedule, cancel, refresh };
+  return { reminder, loading, busy, schedule, cancel };
 }

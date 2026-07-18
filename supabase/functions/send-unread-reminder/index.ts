@@ -68,6 +68,19 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// 문자열 상수 시간 비교 — CRON_SECRET 타이밍 부채널 방어.
+// 길이 불일치도 상수 시간 유지를 위해 mask로 처리.
+function timingSafeEqual(a: string, b: string): boolean {
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) {
+    const ac = i < a.length ? a.charCodeAt(i) : 0;
+    const bc = i < b.length ? b.charCodeAt(i) : 0;
+    diff |= ac ^ bc;
+  }
+  return diff === 0;
+}
+
 // UTC now → KST hour + minute (30분 grid로 floor).
 function currentKstSlot(): { hour: number; minute: number } {
   const now = new Date();
@@ -194,7 +207,7 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization') ?? '';
   const expected = `Bearer ${cronSecret}`;
-  if (authHeader !== expected) {
+  if (!timingSafeEqual(authHeader, expected)) {
     return jsonResponse({ error: 'unauthorized' }, 401);
   }
 
@@ -232,6 +245,7 @@ Deno.serve(async (req) => {
     skippedNoCandidates: 0,
     skippedNoTokens: 0,
     expoErrors: 0,
+    deadTokensRemoved: 0,
   };
 
   const allMessages: (PushMessage & { userId: string; logId: string; contentIds: string[]; title: string; body: string })[] = [];
@@ -277,6 +291,9 @@ Deno.serve(async (req) => {
 
   // Expo 배치 전송 + 로그 삽입. userId+logId별로 tickets 매칭.
   const ticketByUserLog = new Map<string, ExpoTicket[]>();
+  // Ticket 즉시 응답에서 DeviceNotRegistered로 판정된 dead token을 모아 뒤에서 일괄 삭제.
+  // (Receipt 지연 응답 단계의 dead token은 cleanup-push-receipts에서 로깅으로만 처리)
+  const deadTokens: Array<{ userId: string; token: string }> = [];
 
   for (let i = 0; i < allMessages.length; i += EXPO_BATCH_SIZE) {
     const batch = allMessages.slice(i, i + EXPO_BATCH_SIZE);
@@ -290,7 +307,27 @@ Deno.serve(async (req) => {
       const ticket = tickets[j];
       if (ticket) list.push(ticket);
       ticketByUserLog.set(key, list);
-      if (ticket?.status === 'error') stats.expoErrors += 1;
+      if (ticket?.status === 'error') {
+        stats.expoErrors += 1;
+        if (ticket.details?.error === 'DeviceNotRegistered') {
+          deadTokens.push({ userId: batch[j].userId, token: batch[j].to });
+        }
+      }
+    }
+  }
+
+  // Dead token 즉시 회수 — 다음 발송에서 dead token으로 낭비되지 않도록.
+  // token은 user_id 스코프로만 삭제 (같은 token이 우연히 다른 유저에 재할당될 가능성 배제).
+  for (const { userId, token } of deadTokens) {
+    const { error: delError } = await supabase
+      .from('device_tokens')
+      .delete()
+      .eq('user_id', userId)
+      .eq('expo_push_token', token);
+    if (delError) {
+      console.error('[send-unread-reminder] dead token delete failed', userId, delError);
+    } else {
+      stats.deadTokensRemoved += 1;
     }
   }
 
@@ -321,7 +358,14 @@ Deno.serve(async (req) => {
       title: m.title,
       body: m.body,
       expo_ticket_id: firstOk?.id ?? null,
-      expo_receipt_status: tickets.every((t) => t.status === 'ok') ? 'ok' : 'error',
+      // 전부 성공 → 'ok', 전부 실패 → 'error', 일부 실패(다기기 중 일부만 실패) → 'partial'
+      expo_receipt_status: tickets.length === 0
+        ? 'error'
+        : tickets.every((t) => t.status === 'ok')
+          ? 'ok'
+          : tickets.some((t) => t.status === 'ok')
+            ? 'partial'
+            : 'error',
     });
     stats.sent += 1;
   }

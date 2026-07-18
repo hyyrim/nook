@@ -1,6 +1,8 @@
-import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants';
+import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 
 type GridContentCardProps = {
   title: string;
@@ -18,7 +20,7 @@ export function GridContentCard({
   title,
   source,
   thumbnailUrl,
-  thumbnailColor = '#DDD7CE',
+  thumbnailColor = THUMBNAIL_PLACEHOLDER,
   savedAt,
   isClassifying = false,
   selectionMode = false,
@@ -34,7 +36,13 @@ export function GridContentCard({
     >
       <View style={styles.thumbnailWrap}>
         {thumbnailUrl ? (
-          <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={styles.thumbnail}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+          />
         ) : isNotion ? (
           <View style={[styles.thumbnail, styles.notionThumbnail]}>
             <Ionicons name="document-text-outline" size={28} color={Colors.primary} />

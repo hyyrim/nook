@@ -1,6 +1,8 @@
-import { Image, View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants';
+import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 
 type ContentCardProps = {
   title: string;
@@ -15,7 +17,7 @@ type ContentCardProps = {
   onPress?: () => void;
 };
 
-export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = '#DDD7CE', savedAt, isClassifying = false, selectionMode = false, selected = false, onPress }: ContentCardProps) {
+export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailColor = THUMBNAIL_PLACEHOLDER, savedAt, isClassifying = false, selectionMode = false, selected = false, onPress }: ContentCardProps) {
   const isNotion = source === 'Notion';
 
   return (
@@ -29,7 +31,13 @@ export function ContentCard({ title, source, tags = [], thumbnailUrl, thumbnailC
         </View>
       )}
       {thumbnailUrl ? (
-        <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+        <Image
+          source={{ uri: thumbnailUrl }}
+          style={styles.thumbnail}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={150}
+        />
       ) : isNotion ? (
         <View style={[styles.thumbnail, styles.notionThumbnail]}>
           <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
