@@ -403,45 +403,58 @@ export default function ContentDetailScreen() {
           { label: '삭제', danger: true, onPress: handleDelete },
         ]}
       />
-      <ContentTitleSheet
-        visible={showTitleSheet}
-        initialValue={item?.title ?? ''}
-        onClose={() => setShowTitleSheet(false)}
-        onSubmit={handleUpdateTitle}
-      />
-      <TagsSheet
-        visible={showTagsSheet}
-        initialTags={item?.tags ?? []}
-        onClose={() => setShowTagsSheet(false)}
-        onSubmit={handleUpdateTags}
-      />
-      <MoveCategorySheet
-        visible={showMoveSheet}
-        currentCategoryId={item?.category_id}
-        onClose={() => setShowMoveSheet(false)}
-        onSelect={handleMoveCategory}
-      />
-      <ReminderSheet
-        visible={showReminderSheet}
-        reminder={reminderState.reminder}
-        busy={reminderState.busy}
-        onClose={() => setShowReminderSheet(false)}
-        onSchedule={async (remindAt) => {
-          const record = await reminderState.schedule({
-            title: item?.title ?? item?.url ?? '',
-            remindAt,
-          });
-          setShowReminderSheet(false);
-          if (record) {
-            toast.show(`리마인더 예약됨 · ${formatReminderStatus(record.remindAt)}`, 'success');
-          }
-        }}
-        onCancelReminder={async () => {
-          await reminderState.cancel();
-          setShowReminderSheet(false);
-          toast.show('리마인더 취소', 'success');
-        }}
-      />
+      {/* iOS RN Modal race 회피: fade out 도중 Stack.Screen이 pop되면 backdrop container가
+          orphan 상태로 남아 터치 캡처 → 화면 먹통. visible이 false일 때 아예 unmount 시켜
+          native modal이 확실히 destroy되게 함. 여러 Modal이 동시에 mount된 상태 자체도
+          iOS에서 dismiss race를 유발하므로 4개 시트 모두 조건부 렌더로 통일. */}
+      {showTitleSheet && (
+        <ContentTitleSheet
+          visible
+          initialValue={item?.title ?? ''}
+          onClose={() => setShowTitleSheet(false)}
+          onSubmit={handleUpdateTitle}
+        />
+      )}
+      {showTagsSheet && (
+        <TagsSheet
+          visible
+          initialTags={item?.tags ?? []}
+          onClose={() => setShowTagsSheet(false)}
+          onSubmit={handleUpdateTags}
+        />
+      )}
+      {showMoveSheet && (
+        <MoveCategorySheet
+          visible
+          currentCategoryId={item?.category_id}
+          onClose={() => setShowMoveSheet(false)}
+          onSelect={handleMoveCategory}
+        />
+      )}
+      {showReminderSheet && (
+        <ReminderSheet
+          visible
+          reminder={reminderState.reminder}
+          busy={reminderState.busy}
+          onClose={() => setShowReminderSheet(false)}
+          onSchedule={async (remindAt) => {
+            // Optimistic dismiss: async 대기 중 backdrop 재터치로 이중 dismiss 되는 걸 방지.
+            setShowReminderSheet(false);
+            const record = await reminderState.schedule({
+              title: item?.title ?? item?.url ?? '',
+              remindAt,
+            });
+            if (record) {
+              toast.show(`리마인더 예약됨 · ${formatReminderStatus(record.remindAt)}`, 'success');
+            }
+          }}
+          onCancelReminder={async () => {
+            setShowReminderSheet(false);
+            await reminderState.cancel();
+            toast.show('리마인더 취소', 'success');
+          }}
+        />
+      )}
     </View>
   );
 }
