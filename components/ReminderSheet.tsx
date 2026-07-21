@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   computePresetTime,
   formatReminderStatus,
+  getCachedUserTime,
   getUserPreferredTime,
   labelForPreset,
   type ReminderPreset,
@@ -30,10 +31,12 @@ export function ReminderSheet({
   onSchedule,
   onCancelReminder,
 }: Props) {
-  const [userTime, setUserTime] = useState<{ hour: number; minute: number } | null>(null);
+  // 초기값을 캐시에서 가져와 첫 open 시 loading→content 리렌더가 fade 애니메이션과 겹치지 않게 함.
+  // 캐시가 비어 있으면 mount 시점(sheet 열리기 전)부터 warm up 시작.
+  const [userTime, setUserTime] = useState<{ hour: number; minute: number } | null>(() => getCachedUserTime());
 
   useEffect(() => {
-    if (!visible) return;
+    if (userTime) return;
     let cancelled = false;
     void getUserPreferredTime().then((t) => {
       if (!cancelled) setUserTime(t);
@@ -41,7 +44,7 @@ export function ReminderSheet({
     return () => {
       cancelled = true;
     };
-  }, [visible]);
+  }, [userTime]);
 
   const now = useMemo(() => new Date(), [visible]);
 

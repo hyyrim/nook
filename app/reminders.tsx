@@ -100,13 +100,13 @@ export default function RemindersScreen() {
           ))}
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.emptyWrap}>
+        <View style={styles.emptyWrap}>
           <Ionicons name="notifications-outline" size={36} color={Colors.tertiary} />
           <Text style={styles.emptyTitle}>예정된 리마인더가 없어요</Text>
           <Text style={styles.emptyBody}>
             콘텐츠 상세에서 우상단 알림 아이콘을 눌러{'\n'}다시 볼 시간을 지정할 수 있어요.
           </Text>
-        </ScrollView>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -180,8 +180,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyWrap: {
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 96,
+    justifyContent: 'center',
     paddingHorizontal: 32,
     gap: 6,
   },

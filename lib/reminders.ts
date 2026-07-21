@@ -34,6 +34,11 @@ export async function getUserPreferredTime(): Promise<{ hour: number; minute: nu
   return cachedUserTime;
 }
 
+// 캐시된 값 즉시 반환 (없으면 null). ReminderSheet 초기 렌더에 async 왕복 없이 채우기 위함.
+export function getCachedUserTime(): { hour: number; minute: number } | null {
+  return cachedUserTime;
+}
+
 // ─── 시간 계산 ─────────────────────────────────────────
 
 export function computePresetTime(
@@ -59,28 +64,37 @@ function computeWeekendTime(now: Date, userTime: { hour: number; minute: number 
   const todayAtUserTime = new Date(now);
   todayAtUserTime.setHours(userTime.hour, userTime.minute, 0, 0);
 
+  let candidate: Date;
   // 월~금 → 이번 주 토요일
   if (day >= 1 && day <= 5) {
-    const daysUntilSat = 6 - day;
-    const d = new Date(now);
-    d.setDate(d.getDate() + daysUntilSat);
-    d.setHours(userTime.hour, userTime.minute, 0, 0);
-    return d;
-  }
-  // 토요일: 유저 시간 전이면 오늘, 후면 내일(일요일)
-  if (day === 6) {
+    candidate = new Date(now);
+    candidate.setDate(candidate.getDate() + (6 - day));
+    candidate.setHours(userTime.hour, userTime.minute, 0, 0);
+  } else if (day === 6) {
+    // 토요일: 유저 시간 전이면 오늘, 후면 내일(일요일)
     if (now.getTime() < todayAtUserTime.getTime()) return todayAtUserTime;
-    const sunday = new Date(now);
-    sunday.setDate(sunday.getDate() + 1);
-    sunday.setHours(userTime.hour, userTime.minute, 0, 0);
-    return sunday;
+    candidate = new Date(now);
+    candidate.setDate(candidate.getDate() + 1);
+    candidate.setHours(userTime.hour, userTime.minute, 0, 0);
+  } else {
+    // 일요일: 유저 시간 전이면 오늘, 후면 다음 주 토요일
+    if (now.getTime() < todayAtUserTime.getTime()) return todayAtUserTime;
+    candidate = new Date(now);
+    candidate.setDate(candidate.getDate() + 6);
+    candidate.setHours(userTime.hour, userTime.minute, 0, 0);
   }
-  // 일요일: 유저 시간 전이면 오늘, 후면 다음 주 토요일
-  if (now.getTime() < todayAtUserTime.getTime()) return todayAtUserTime;
-  const nextSat = new Date(now);
-  nextSat.setDate(nextSat.getDate() + 6);
-  nextSat.setHours(userTime.hour, userTime.minute, 0, 0);
-  return nextSat;
+
+  // "내일" preset과 겹치면 (금 저녁 / 토 유저시간 후) 한 칸 더 밀고, 주말 밖이면 다음 토요일까지.
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (isSameDay(candidate, tomorrow)) {
+    candidate.setDate(candidate.getDate() + 1);
+    const d = candidate.getDay();
+    if (d !== 0 && d !== 6) {
+      candidate.setDate(candidate.getDate() + (6 - d));
+    }
+  }
+  return candidate;
 }
 
 // ─── 라벨 ─────────────────────────────────────────
