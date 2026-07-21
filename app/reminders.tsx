@@ -234,10 +234,6 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     lineHeight: 18,
   },
-  cardMeta: {
-    fontSize: 11,
-    color: Colors.tertiary,
-  },
   cardTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',

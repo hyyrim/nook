@@ -17,7 +17,7 @@ export type SubjectStat = {
 const TAG_LIMIT_PER_CATEGORY = 3;
 
 // 분류된 콘텐츠만 카테고리별 집계. 미분류는 별도 카운팅으로 처리.
-export function aggregateByCategory(items: ReportItem[]): CategoryStat[] {
+function aggregateByCategory(items: ReportItem[]): CategoryStat[] {
   const map = new Map<string, CategoryStat>();
   for (const item of items) {
     if (!item.category_id || !item.categories?.name) continue;
