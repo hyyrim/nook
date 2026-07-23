@@ -234,6 +234,19 @@ export async function scheduleReminder(input: {
   contentTitle: string;
   remindAt: Date;
 }): Promise<ReminderRecord> {
+  // iOS 권한이 없으면 scheduleNotificationAsync는 silent no-op(에러 없이 반환, pending queue에 실제로 안 남음)
+  // 이 상태에서 그대로 진행하면 UI엔 성공 표시되고 실제 알림은 안 걸리는 침묵 실패가 발생.
+  // 여기서 권한 확인 후 없으면 즉시 요청(iOS 팝업), 거부되면 throw로 호출자에게 위임.
+  const current = await Notifications.getPermissionsAsync();
+  if (current.status !== 'granted') {
+    const requested = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowSound: false },
+    });
+    if (requested.status !== 'granted') {
+      throw new Error('notification_permission_denied');
+    }
+  }
+
   // 기존 예약 있으면 취소.
   await cancelReminder(input.contentId);
 
