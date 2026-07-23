@@ -180,7 +180,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyWrap: {
-    flex: 1,
+    // NavHeader 아래 남은 영역이 아닌 SafeAreaView 전체(top edge 제외한 화면 전체) 기준
+    // 정중앙에 위치시켜 시각 중심이 화면 중앙과 일치하도록 absolute + inset:0.
+    // 렌더링은 rows.length===0 케이스에만 발생하므로 NavHeader와 layout 상호작용 걱정 없음.
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
