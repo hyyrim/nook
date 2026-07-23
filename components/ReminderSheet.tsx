@@ -58,8 +58,11 @@ export function ReminderSheet({
   }, [userTime, now]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+    // busy(스케줄/취소 진행) 중엔 dismiss를 막는다. 진행 중 backdrop/닫기/back으로
+    // 시트를 unmount하면 iOS scheduleNotificationAsync 네이티브 호출 도중 Modal이
+    // 사라져 orphan backdrop이 터치를 캡처하는 먹통을 유발한다. 완료 후 호출자가 닫는다.
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={busy ? undefined : onClose}>
+      <Pressable style={styles.backdrop} onPress={busy ? undefined : onClose}>
         <View style={styles.sheetContainer}>
           <View style={styles.card}>
             <View style={styles.header}>
@@ -114,6 +117,7 @@ export function ReminderSheet({
 
           <Pressable
             onPress={onClose}
+            disabled={busy}
             style={({ pressed }) => [styles.dismissButton, pressed && styles.presetPressed]}
           >
             <Text style={styles.dismissText}>닫기</Text>
