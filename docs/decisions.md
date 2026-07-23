@@ -838,3 +838,26 @@ select cron.schedule(
 
 **교훈**: Trigger 기반 방어는 semantic이 흐려질 수 있으므로 스키마 무결성이 필요한 관계는 FK로 명시하는 게 코드 리뷰 시 오독을 줄인다. RLS는 조회/조작을 스코프하지 규정 관계를 강제하지 않는다 — 관계 무결성은 constraint의 일이지 policy의 일이 아니다. "실유저 없는 시점"은 스키마를 정석으로 정렬할 수 있는 창구라, 이 시기에 defensive shortcut을 강력한 constraint로 승격해 두면 이후 스케일이 커진 뒤 마이그레이션 부담을 줄일 수 있다. 리뷰의 residual 지적은 accept-with-context가 아니라 fix-if-cheap 각도로 재평가하는 습관이 accumulate되는 부채를 막는다.
 
+---
+
+## 107. v1.2.0 TestFlight QA 후속 hotfix 배치 (2026-07-23)
+
+**결정**: v1.2.0 TestFlight 검증에서 발견한 UX 회귀·race 이슈를 5개의 소형 PR로 나눠 v1.2.1로 배치 릴리스. 리마인더 관련 세 건(주말 preset 겹침, 시트 fade in jank, 예정된 리마인더 빈 상태 상단 배치), 콘텐츠 상세 시트 뒤로가기 후 화면 먹통, PR #84의 optimistic dismiss 회귀(스케줄이 실제로 등록되지 않음), 그리고 ponytail audit round 2(미사용 export/dead style/미사용 토큰 정리).
+
+**배경**: v1.2.0(썸네일 영구화 + search chip + push 자동화 + RLS 강화)을 TestFlight에 올린 후 실기기 확인에서 여러 UX 회귀가 드러났다. 코드베이스 자체는 논리적으로 정합했지만 iOS 네이티브 Modal의 알려진 dismiss race, 요일 계산의 경계 케이스, 첫 open 시 async fetch가 fade 애니메이션과 겹치는 timing 문제 등 실기기에서만 드러나는 결함들이 누적. 하나의 큰 PR로 묶으면 회귀 지점 특정이 어려워 관심 영역별로 잘게 나눠 순차 배포했다.
+
+**결과**:
+- **PR #82** — 주말 preset이 "내일"과 같은 날짜로 계산되는 경계 케이스 회피(금 저녁, 토 유저시간 후) + ReminderSheet 첫 open 시 캐시 hit으로 loading→content 리렌더 제거 + 예정된 리마인더 빈 상태 세로 중앙 정렬.
+- **PR #83** — ponytail audit round 2. `Radius.xs`, `cardMeta` 스타일, `aggregateByCategory` export 제거(-5 lines).
+- **PR #84** — 콘텐츠 상세의 4개 시트(Title/Tags/MoveCategory/Reminder)를 conditional mount로 변경. iOS RN Modal이 fade out 도중 부모 Stack.Screen이 pop되면 backdrop container가 orphan 상태로 남아 터치를 캡처하는 문제 해결. 함께 넣었던 optimistic dismiss는 PR #86에서 회귀 원인으로 밝혀져 되돌림.
+- **PR #85** — 1.2.0 → 1.2.1 patch bump.
+- **PR #86** — PR #84 optimistic dismiss 회귀 fix(`setShow(false)`를 `await` 뒤로 복원) + 리마인더 시트 첫 open jank의 근본 대응(앱 시작 시 `getUserPreferredTime` warm up). 결국 sheet unmount race는 conditional mount만으로 충분하고, optimistic dismiss는 native scheduling과 상호작용해 스케줄 등록을 놓치는 부작용이 있었다.
+
+**대안 검토**:
+- **하나의 큰 PR로 묶기**: 배포 단순화. 하지만 v1.2.0에서 여러 기능을 한 방에 넣었더니 이번 QA 회귀가 나온 원인을 특정하기 어려웠음. 도메인별 소형 PR이 원인 좁히기 훨씬 유리.
+- **PR #84에서 optimistic dismiss 없이 conditional mount만 도입**: 지금 돌이켜보면 이 조합이 정답이었음. optimistic dismiss는 "이중 dismiss 방지"라는 명분이었지만 실제로 native scheduling과 상호작용해 회귀를 만들었음. 근거 없이 두 개의 fix를 한 번에 넣지 않는 원칙 재확인.
+- **ReminderSheet 첫 open jank를 시트 mount 시점 warm up만으로 커버**: sheet mount와 open 사이 지연이 짧으면 첫 open이 여전히 캐시 miss. 앱 시작 warm up이 근본이었음. 시트 mount 지점의 warm up은 fallback으로 유지.
+- **Modal `animationType="none"`으로 애니메이션 아예 제거**: race 자체를 없앨 수 있지만 UX 저하. 우선 conditional mount로 충분히 잡히는지 확인 후 안 되면 후속.
+
+**교훈**: iOS RN Modal은 여러 개가 동시에 mount된 상태에서 부모 화면 pop과 겹치면 dismiss race를 만든다. `visible` prop만 토글하는 관례적 사용이 실제 native에서는 orphan container를 남기며, `{visible && <Modal .../>}` 조건부 렌더로 완전한 unmount를 보장하는 게 근본 대응이다. 반면 "이중 dismiss 방지" 같은 UX 미세 최적화는 native async와 상호작용해 예상 못한 회귀를 만들 수 있으므로 fix 하나를 넣을 때는 그 fix의 최소 형태만 도입하고 optimization은 별도 회차로 분리해야 한다. TestFlight QA 회귀는 하나의 큰 PR보다 도메인별 잘게 쪼갠 hotfix 스택이 원인 좁히기와 회귀 롤백에 훨씬 유리하다.
+
