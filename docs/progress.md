@@ -1,8 +1,8 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-15 (52차 — 코덱스 P1/P2/P3 hotfix + 재리뷰 후속 + Supabase CLI 배포 완료)
+최종 업데이트: 2026-07-23 (53차 — v1.2.1 TestFlight QA 후속 hotfix 배치)
 
-> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.1.1 — 30차 Anthropic 서버 이전 hotfix 반영).
+> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.2.1 — TestFlight QA 후속 hotfix 배치 반영).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
 
 Archived records:
@@ -13,9 +13,9 @@ Archived records:
 
 | 항목 | 상태 |
 |------|------|
-| 현재 Phase | Phase 2 / v1.1.1 (Anthropic API 서버 이전 hotfix 반영) |
-| 최근 앱 작업 | 52차 — 코덱스 P1/P2/P3 hotfix (SSRF redirect · backup 소유권 · Storage 정책 · category cross-user FK · search_path · tsconfig) |
-| 최근 문서 작업 | 52차 — 결정 105 (보안 리뷰 hotfix) + 결정 106 (재리뷰 P3 semantic 정석 fix: composite FK) |
+| 현재 Phase | Phase 2 / v1.2.1 (TestFlight QA 후속 hotfix 배치 반영) |
+| 최근 앱 작업 | 53차 — 리마인더 주말 preset 겹침 회피 + 시트 fade in jank + 빈 상태 중앙 정렬 + 콘텐츠 상세 시트 dismiss race fix + optimistic dismiss 회귀 되돌림 + 앱 시작 warm up + ponytail audit round 2 |
+| 최근 문서 작업 | 53차 — 결정 107 (v1.2.0 TestFlight QA 후속 hotfix 배치) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
 

@@ -8,6 +8,7 @@ import { getCategories, isDuplicateContentUrlError, saveContent } from '@/lib/ap
 import { emit } from '@/lib/events';
 import { onAppActive, onAppBackground } from '@/lib/analytics';
 import { syncDeviceToken, useNotificationRouting } from '@/lib/notifications';
+import { getUserPreferredTime } from '@/lib/reminders';
 import { useClipboardSavePrompt } from '@/lib/useClipboardSavePrompt';
 import { ToastProvider, useToast } from '@/lib/toast';
 import { ClipboardSavePrompt } from '@/components/ClipboardSavePrompt';
@@ -80,6 +81,9 @@ function RootNavigator() {
   useEffect(() => {
     if (!session) return;
     syncDeviceToken().catch((e) => console.warn('[push] token sync failed', e));
+    // 리마인더 시트가 첫 open 시 async fetch로 인해 fade in 도중 loading→content 리렌더가
+    // 겹치는 jank 방지용 warm up. 캐시 채우고 나면 이후 모든 open이 즉시 렌더.
+    void getUserPreferredTime();
   }, [session]);
 
   // Share Intent 처리: 공유된 URL 자동 저장

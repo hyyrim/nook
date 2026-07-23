@@ -438,19 +438,21 @@ export default function ContentDetailScreen() {
           busy={reminderState.busy}
           onClose={() => setShowReminderSheet(false)}
           onSchedule={async (remindAt) => {
-            // Optimistic dismiss: async 대기 중 backdrop 재터치로 이중 dismiss 되는 걸 방지.
-            setShowReminderSheet(false);
+            // schedule/cancel 완료 후 dismiss. optimistic dismiss(setShow false를 await 앞으로)는
+            // ReminderSheet unmount와 iOS scheduleNotificationAsync 사이 race를 유발해
+            // 스케줄이 실제로 등록되지 않는 이슈가 있었음. race는 conditional mount만으로 충분.
             const record = await reminderState.schedule({
               title: item?.title ?? item?.url ?? '',
               remindAt,
             });
+            setShowReminderSheet(false);
             if (record) {
               toast.show(`리마인더 예약됨 · ${formatReminderStatus(record.remindAt)}`, 'success');
             }
           }}
           onCancelReminder={async () => {
-            setShowReminderSheet(false);
             await reminderState.cancel();
+            setShowReminderSheet(false);
             toast.show('리마인더 취소', 'success');
           }}
         />
