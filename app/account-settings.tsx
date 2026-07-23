@@ -7,6 +7,7 @@ import { NavHeader } from '@/components/NavHeader';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
 import { deleteAccount } from '@/lib/api';
+import { cancelAllReminders } from '@/lib/reminders';
 
 function SectionLabel({ text }: { text: string }) {
   return <Text style={styles.sectionLabel}>{text}</Text>;
@@ -28,7 +29,11 @@ export default function AccountSettingsScreen() {
       { text: '취소', style: 'cancel' },
       {
         text: '로그아웃', style: 'destructive',
-        onPress: () => supabase.auth.signOut(),
+        onPress: async () => {
+          // device 로컬 리마인더는 유저 격리를 파고들 수 있어 로그아웃 시점에 청소.
+          await cancelAllReminders();
+          await supabase.auth.signOut();
+        },
       },
     ]);
   };
@@ -43,6 +48,7 @@ export default function AccountSettingsScreen() {
           text: '삭제하기', style: 'destructive',
           onPress: async () => {
             try {
+              await cancelAllReminders();
               await deleteAccount();
               await supabase.auth.signOut();
             } catch (e: any) {

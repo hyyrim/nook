@@ -1,5 +1,15 @@
 import * as Notifications from 'expo-notifications';
 import { getNotificationSettings } from './api';
+import { supabase } from './supabase';
+
+async function currentUserId(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // 콘텐츠 단위 리마인더. 로컬 알림(`expo-notifications` DATE trigger)만 사용하며 별도 저장소는 두지 않는다.
 // 진실의 원천은 `Notifications.getAllScheduledNotificationsAsync()`가 반환하는 pending 큐 —
@@ -161,6 +171,7 @@ export function formatReminderStatus(remindAt: Date, now: Date = new Date()): st
 type ReminderData = {
   type?: string;
   content_id?: string;
+  user_id?: string;
   remind_at_ms?: number;
 };
 
@@ -208,10 +219,18 @@ function extractReminderDate(
 
 export async function getReminder(contentId: string): Promise<ReminderRecord | null> {
   try {
+    const uid = await currentUserId();
+    if (!uid) return null;
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const notification of scheduled) {
       const data = (notification.content.data ?? {}) as ReminderData;
-      if (data.type !== 'reminder' || data.content_id !== contentId) continue;
+      if (data.type !== 'reminder') continue;
+      // 다른 유저 또는 user_id 없는 잔재는 취소하며 skip. UI 진입만으로 자동 청소.
+      if (data.user_id !== uid) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier).catch(() => {});
+        continue;
+      }
+      if (data.content_id !== contentId) continue;
       const remindAt = extractReminderDate(data, notification.trigger);
       if (!remindAt) continue;
       // 이미 지난 알림이면 없다고 간주 (iOS가 delivered 후에도 잠깐 남아있을 수 있음)
@@ -247,6 +266,10 @@ export async function scheduleReminder(input: {
     }
   }
 
+  // 유저 격리: 알림 data에 user_id를 태그해 다른 계정의 리마인더가 로컬 큐에서 섞이지 않게 한다.
+  const uid = await currentUserId();
+  if (!uid) throw new Error('not_authenticated');
+
   // 기존 예약 있으면 취소.
   await cancelReminder(input.contentId);
 
@@ -258,6 +281,7 @@ export async function scheduleReminder(input: {
       data: {
         type: 'reminder',
         content_id: input.contentId,
+        user_id: uid,
         remind_at_ms: input.remindAt.getTime(),
       },
     },
@@ -289,17 +313,41 @@ export async function cancelReminder(contentId: string): Promise<void> {
 }
 
 /**
+ * device의 모든 리마인더 취소. 로그아웃/계정 삭제 흐름에서 호출해
+ * 다른 계정 재로그인 시 이전 계정의 로컬 알림이 fire되는 걸 방지.
+ */
+export async function cancelAllReminders(): Promise<void> {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const notification of scheduled) {
+      const data = (notification.content.data ?? {}) as ReminderData;
+      if (data.type !== 'reminder') continue;
+      await Notifications.cancelScheduledNotificationAsync(notification.identifier).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('[reminder] cancelAllReminders failed', e);
+  }
+}
+
+/**
  * 모든 예정 리마인더를 시간 오름차순으로 반환.
  * 이미 지난 알림(만료됐지만 OS 큐에 잔존)은 제외.
+ * 유저 격리: user_id mismatch 잔재는 취소하며 skip.
  */
 export async function getAllReminders(): Promise<ReminderRecord[]> {
   try {
+    const uid = await currentUserId();
+    if (!uid) return [];
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     const nowMs = Date.now();
     const list: ReminderRecord[] = [];
     for (const notification of scheduled) {
       const data = (notification.content.data ?? {}) as ReminderData;
       if (data.type !== 'reminder' || !data.content_id) continue;
+      if (data.user_id !== uid) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier).catch(() => {});
+        continue;
+      }
       const remindAt = extractReminderDate(data, notification.trigger);
       if (!remindAt || remindAt.getTime() <= nowMs) continue;
       list.push({
