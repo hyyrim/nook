@@ -411,34 +411,40 @@ export default function CategoryDetailScreen() {
         </SafeAreaView>
       )}
 
-      <MoveCategorySheet
-        visible={showMoveSheet}
-        onClose={() => setShowMoveSheet(false)}
-        onSelect={handleBulkMove}
-      />
+      {/* iOS RN Modal race 회피(content/[id].tsx와 동일): 여러 Modal이 동시에 mount된
+          상태에서 dismiss가 겹치면 backdrop container가 orphan으로 남아 터치 먹통을
+          유발한다. visible이 false일 땐 아예 unmount 시켜 한 번에 하나만 살아있게 한다. */}
+      {showMoveSheet && (
+        <MoveCategorySheet
+          visible
+          onClose={() => setShowMoveSheet(false)}
+          onSelect={handleBulkMove}
+        />
+      )}
 
       {!isUncategorized && (
         <>
           <ActionSheet
             visible={showActionSheet}
             onClose={() => setShowActionSheet(false)}
-            handoffDelay={320}
             actions={[
               { label: '선택', onPress: enterSelectionMode },
               { label: '카테고리 수정', onPress: () => setShowEditSheet(true) },
               { label: '카테고리 삭제', danger: true, onPress: handleDelete },
             ]}
           />
-          <CategoryBottomSheet
-            visible={showEditSheet}
-            mode="edit"
-            initialValue={category?.name ?? ''}
-            initialColor={category?.color ?? null}
-            initialIcon={category?.icon ?? null}
-            existingNames={allCategoryNames}
-            onClose={() => setShowEditSheet(false)}
-            onSubmit={handleUpdate}
-          />
+          {showEditSheet && (
+            <CategoryBottomSheet
+              visible
+              mode="edit"
+              initialValue={category?.name ?? ''}
+              initialColor={category?.color ?? null}
+              initialIcon={category?.icon ?? null}
+              existingNames={allCategoryNames}
+              onClose={() => setShowEditSheet(false)}
+              onSubmit={handleUpdate}
+            />
+          )}
         </>
       )}
     </View>
