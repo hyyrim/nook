@@ -861,3 +861,22 @@ select cron.schedule(
 
 **교훈**: iOS RN Modal은 여러 개가 동시에 mount된 상태에서 부모 화면 pop과 겹치면 dismiss race를 만든다. `visible` prop만 토글하는 관례적 사용이 실제 native에서는 orphan container를 남기며, `{visible && <Modal .../>}` 조건부 렌더로 완전한 unmount를 보장하는 게 근본 대응이다. 반면 "이중 dismiss 방지" 같은 UX 미세 최적화는 native async와 상호작용해 예상 못한 회귀를 만들 수 있으므로 fix 하나를 넣을 때는 그 fix의 최소 형태만 도입하고 optimization은 별도 회차로 분리해야 한다. TestFlight QA 회귀는 하나의 큰 PR보다 도메인별 잘게 쪼갠 hotfix 스택이 원인 좁히기와 회귀 롤백에 훨씬 유리하다.
 
+## 108. 시트 여닫이 후 화면 터치 먹통(무응답) 근본 해결 — v1.2.4 (2026-07-23)
+
+**결정**: 간헐적이지만 잦은 빈도로 재현되던 "시트 여닫이 후 화면 전체 터치 먹통(무응답)"을 두 개의 근본 원인(둘 다 iOS RN Modal present/dismiss race)으로 특정해 한 PR(#91)로 배포, v1.2.4.
+
+**배경**: PR #84에서 콘텐츠 상세 시트를 conditional mount로 이전해 먹통을 잡았다고 판단했으나, 실기기에서 먹통이 계속 재현됐다. 두 가지 잔여 경로가 있었다. ① `ActionSheet`의 핸드오프("…" 메뉴 항목 탭 → 현재 시트 닫고 다음 시트 열기)가 `setTimeout(320ms)` 타이머로 다음 시트를 present했는데, dismiss 애니메이션이 320ms 안에 안 끝나면(JS 스레드 부하·재렌더) 두 모달 전환이 겹쳐 orphan backdrop container가 터치를 캡처. `320`이라는 magic number가 기기 타이밍에 좌우돼 "간헐적"이었다. ② `content/[id].tsx`는 PR #84에서 conditional mount로 이전됐지만 **`category/[id].tsx`는 누락**되어 `MoveCategorySheet` + `ActionSheet` + `CategoryBottomSheet`가 동시에 mount된 채 `visible`만 토글 — 결정 107이 지목한 "여러 Modal 동시 mount = dismiss race" 안티패턴이 카테고리 화면에 그대로 남아 있었다.
+
+**결과** (PR #91, v1.2.4):
+- **ActionSheet 핸드오프를 `onDismiss` 단일 신호로 구동**. 액션 실행을 `onClose`로 시트를 닫은 뒤 iOS `onDismiss`(모달이 완전히 사라진 뒤 발화)에서만 수행. `setTimeout` 타이머·magic number(320)·죽은 `handoffDelay` prop(두 콜사이트 모두 320 전달, 사실상 boolean) 전부 제거. `onDismiss`는 dismiss 완료를 보장하는 신호라 present/dismiss가 구조적으로 겹칠 수 없다.
+- **`category/[id].tsx` 시트를 `{show && <Sheet visible/>}` 조건부 mount로 통일**(content와 동일 패턴). 항상 하나의 Modal만 살아있게 함.
+- OMC 로컬 스킬 아티팩트(`.agents/`, `.claude/skills/`, `skills-lock.json`)가 amend 시 `git add -A`로 커밋에 딸려 들어갔던 것을 스트립 + `.gitignore` 처리.
+- `1.2.3 → 1.2.4` bump.
+
+**대안 검토**:
+- **`setTimeout` fallback을 남기고 320 → 700ms로 늘리기**(1차 시도): onDismiss가 항상 타이머보다 먼저 발화해 결과적으로 race는 사라지지만, "타이머를 애니메이션 밖으로 밀어 우연히 onDismiss가 이기게" 한 우회적 표현이라 코드 의도가 흐림. iOS 전용 앱이라 `onDismiss` 신뢰가 가능하므로 타이머를 완전히 걷어내 의도를 코드에 직접 드러내는 쪽으로 정리.
+- **`category`도 always-mount 유지 + `animationType="none"`**: race를 없앨 수 있으나 UX 저하 + content와 패턴 불일치. 이미 content에서 검증된 conditional mount로 통일이 정답.
+- **`handoffDelay`를 boolean prop으로 축소**: 숫자 의미가 죽었으니 개선이지만, onDismiss-only로 가면 prop 자체가 불필요해 완전 제거가 더 laziness에 부합.
+
+**교훈**: "conditional mount로 먹통 잡음"을 한 화면(content)에만 적용하고 형제 화면(category)에 전파하지 않으면 동일 버그가 다른 진입점에서 그대로 재현된다 — 근본 수정은 패턴을 공유하는 **모든** 호출 지점에 일괄 적용해야 한다. 그리고 타이밍 의존(`setTimeout` + magic number)으로 native 전환을 직렬화하려는 시도는 본질적으로 "간헐적" 결함을 남긴다. 플랫폼이 완료를 보장하는 신호(`onDismiss`)가 있으면 타이머 추정 대신 그 신호로 구동하는 게 유일한 근본책이다. 부수적으로, `git commit --amend` 앞의 `git add -A`는 세션 중 생성된 untracked 아티팩트를 무차별 스테이징하므로 명시적 경로 지정이 안전하다.
+
