@@ -441,13 +441,21 @@ export default function ContentDetailScreen() {
             // schedule/cancel 완료 후 dismiss. optimistic dismiss(setShow false를 await 앞으로)는
             // ReminderSheet unmount와 iOS scheduleNotificationAsync 사이 race를 유발해
             // 스케줄이 실제로 등록되지 않는 이슈가 있었음. race는 conditional mount만으로 충분.
-            const record = await reminderState.schedule({
-              title: item?.title ?? item?.url ?? '',
-              remindAt,
-            });
-            setShowReminderSheet(false);
-            if (record) {
-              toast.show(`리마인더 예약됨 · ${formatReminderStatus(record.remindAt)}`, 'success');
+            try {
+              const record = await reminderState.schedule({
+                title: item?.title ?? item?.url ?? '',
+                remindAt,
+              });
+              setShowReminderSheet(false);
+              if (record) {
+                toast.show(`리마인더 예약됨 · ${formatReminderStatus(record.remindAt)}`, 'success');
+              }
+            } catch (e) {
+              setShowReminderSheet(false);
+              const msg = e instanceof Error && e.message === 'notification_permission_denied'
+                ? '알림 권한이 필요해요. 설정에서 허용해주세요.'
+                : '리마인더 예약에 실패했어요';
+              toast.show(msg, 'error');
             }
           }}
           onCancelReminder={async () => {
