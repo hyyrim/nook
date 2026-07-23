@@ -12,10 +12,9 @@ type ActionSheetProps = {
   visible: boolean;
   actions: ActionSheetAction[];
   onClose: () => void;
-  handoffDelay?: number;
 };
 
-export function ActionSheet({ visible, actions, onClose, handoffDelay = 0 }: ActionSheetProps) {
+export function ActionSheet({ visible, actions, onClose }: ActionSheetProps) {
   const pendingActionRef = useRef<(() => void) | null>(null);
 
   const runPendingAction = () => {
@@ -25,13 +24,12 @@ export function ActionSheet({ visible, actions, onClose, handoffDelay = 0 }: Act
   };
 
   const handleActionPress = (action: ActionSheetAction) => {
+    // 액션 실행은 onClose로 시트를 닫은 뒤 onDismiss(모달이 완전히 사라진 뒤 iOS가
+    // 발화)에서만 한다. 즉시 실행하거나 setTimeout으로 미리 실행하면 dismiss가 아직
+    // 끝나지 않은 사이에 다음 시트를 present → 두 모달 전환이 겹쳐 orphan container가
+    // 터치를 캡처하는 먹통을 유발한다. onDismiss는 dismiss 완료를 보장하는 신호라 race가 없다.
     pendingActionRef.current = action.onPress;
     onClose();
-    if (handoffDelay > 0) {
-      setTimeout(runPendingAction, handoffDelay);
-      return;
-    }
-    runPendingAction();
   };
 
   return (

@@ -395,7 +395,6 @@ export default function ContentDetailScreen() {
       <ActionSheet
         visible={showSheet}
         onClose={() => setShowSheet(false)}
-        handoffDelay={320}
         actions={[
           { label: '제목 수정', onPress: () => setShowTitleSheet(true) },
           { label: '태그 수정', onPress: () => setShowTagsSheet(true) },
