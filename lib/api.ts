@@ -922,6 +922,22 @@ export async function createInitialCategories(names: string[]) {
 // ─── Account ───
 
 export async function deleteAccount() {
+  // Supabase가 storage.objects 직접 SQL DELETE를 금지해 RPC 안에서 정리 불가.
+  // 클라이언트에서 Storage API로 먼저 정리한 뒤 RPC 호출. 실패는 무시(RPC가 orphan
+  // storage 남기더라도 유저 DB 정리가 우선).
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: files } = await supabase.storage.from('thumbnails').list(user.id);
+      const paths = (files ?? []).map((f) => `${user.id}/${f.name}`);
+      if (paths.length > 0) {
+        await supabase.storage.from('thumbnails').remove(paths);
+      }
+    }
+  } catch {
+    // storage 정리 실패해도 계정 삭제는 계속 진행
+  }
+
   const { error } = await supabase.rpc('delete_user_account');
   if (error) throw error;
 }
