@@ -14,7 +14,7 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.2.4 (시트 터치 먹통 근본 해결 반영) |
-| 최근 앱 작업 | 54차 — 시트 여닫이 후 화면 터치 먹통 근본 해결: ActionSheet 핸드오프를 onDismiss 단일 신호로 구동(setTimeout·magic number·죽은 handoffDelay prop 제거) + category/[id].tsx 시트 조건부 mount 통일(content와 동일 패턴, PR #84 누락분) + OMC 아티팩트 gitignore |
+| 최근 앱 작업 | 54차 — 시트 여닫이 후 화면 터치 먹통 근본 해결: ActionSheet 핸드오프를 onDismiss 단일 신호로 구동(setTimeout·magic number·죽은 handoffDelay prop 제거) + category/[id].tsx 시트 조건부 mount 통일(content와 동일 패턴, PR #84 누락분) + ReminderSheet dismiss 경로 busy 가드(스케줄/취소 중 unmount race) + OMC 아티팩트 gitignore |
 | 최근 문서 작업 | 54차 — 결정 108 (시트 터치 먹통 근본 해결, v1.2.4) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |

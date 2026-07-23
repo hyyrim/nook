@@ -870,6 +870,7 @@ select cron.schedule(
 **결과** (PR #91, v1.2.4):
 - **ActionSheet 핸드오프를 `onDismiss` 단일 신호로 구동**. 액션 실행을 `onClose`로 시트를 닫은 뒤 iOS `onDismiss`(모달이 완전히 사라진 뒤 발화)에서만 수행. `setTimeout` 타이머·magic number(320)·죽은 `handoffDelay` prop(두 콜사이트 모두 320 전달, 사실상 boolean) 전부 제거. `onDismiss`는 dismiss 완료를 보장하는 신호라 present/dismiss가 구조적으로 겹칠 수 없다.
 - **`category/[id].tsx` 시트를 `{show && <Sheet visible/>}` 조건부 mount로 통일**(content와 동일 패턴). 항상 하나의 Modal만 살아있게 함.
+- **`ReminderSheet` dismiss 경로에 busy 가드 추가**(후속 발견). preset·취소는 `disabled={busy}`였지만 backdrop 탭 / 닫기 / hardware back엔 가드가 없어, 스케줄/취소 진행 중 이 경로로 시트를 unmount하면 iOS `scheduleNotificationAsync` 네이티브 호출 도중 Modal이 사라져 orphan backdrop이 터치를 캡처 → 먹통. `animationType="fade"`(fade-out 겹침 window) + 긴 busy(권한 다이얼로그+auth 네트워크+native schedule) + 미가드 dismiss 조합이라 리마인더 시트에서 특히 잦았다. backdrop `onPress`/`onRequestClose`/닫기 모두 busy 중 무시로 해결. (`MoveCategorySheet`도 유사 미가드지만 `animationType="none"`이라 orphan race 미발생, 별도 회차.)
 - OMC 로컬 스킬 아티팩트(`.agents/`, `.claude/skills/`, `skills-lock.json`)가 amend 시 `git add -A`로 커밋에 딸려 들어갔던 것을 스트립 + `.gitignore` 처리.
 - `1.2.3 → 1.2.4` bump.
 
