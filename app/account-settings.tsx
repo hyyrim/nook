@@ -127,7 +127,7 @@ export default function AccountSettingsScreen() {
               onPress={handleLogout}
               style={({ pressed }) => [
                 styles.settingRow,
-                pressed && !isDeleting && { backgroundColor: 'rgba(0,0,0,0.02)' },
+                pressed && !isDeleting && { backgroundColor: Colors.pressOverlay },
               ]}
               disabled={isDeleting}
             >
@@ -143,7 +143,7 @@ export default function AccountSettingsScreen() {
         {/* Delete account - low emphasis footer, right aligned */}
         <Pressable
           onPress={handleDeleteAccount}
-          style={styles.deleteButton}
+          style={({ pressed }) => [styles.deleteButton, pressed && !isDeleting && { opacity: 0.5 }]}
           hitSlop={8}
           disabled={isDeleting}
         >
