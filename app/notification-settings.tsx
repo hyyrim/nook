@@ -25,8 +25,9 @@ import {
 import type { NotificationSettings } from '@/types';
 
 const DEFAULT_SETTINGS = {
-  enabled: true,
+  enabled: false,
   unread_reminder_enabled: true,
+  content_reminder_enabled: true,
   send_at_hour: 20,
   send_at_minute: 0,
   timezone: 'Asia/Seoul',
@@ -51,7 +52,7 @@ export default function NotificationSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Pick<
     NotificationSettings,
-    'enabled' | 'unread_reminder_enabled' | 'send_at_hour' | 'send_at_minute' | 'timezone'
+    'enabled' | 'unread_reminder_enabled' | 'content_reminder_enabled' | 'send_at_hour' | 'send_at_minute' | 'timezone'
   >>(DEFAULT_SETTINGS);
   const [permission, setPermission] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -69,6 +70,7 @@ export default function NotificationSettingsScreen() {
           setSettings({
             enabled: current.enabled,
             unread_reminder_enabled: current.unread_reminder_enabled,
+            content_reminder_enabled: current.content_reminder_enabled,
             send_at_hour: current.send_at_hour,
             send_at_minute: current.send_at_minute,
             timezone: current.timezone,
@@ -204,6 +206,25 @@ export default function NotificationSettingsScreen() {
                   ios_backgroundColor="#D8D8D8"
                 />
               </View>
+              <View style={styles.rowDivider} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingText}>
+                  <Text style={[styles.settingLabel, subDisabled && styles.settingLabelDisabled]}>
+                    리마인더
+                  </Text>
+                  <Text style={styles.settingDescription}>
+                    콘텐츠를 다시 볼 시간을 예약하면 그때 알려드려요
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.content_reminder_enabled}
+                  onValueChange={(v) => patch({ content_reminder_enabled: v })}
+                  disabled={subDisabled}
+                  trackColor={{ false: '#D8D8D8', true: '#1A1A1A' }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor="#D8D8D8"
+                />
+              </View>
             </View>
           </View>
 
@@ -296,6 +317,10 @@ const styles = StyleSheet.create({
   },
   settingsCardDisabled: {
     opacity: 0.5,
+  },
+  rowDivider: {
+    height: 0.5,
+    backgroundColor: Colors.border,
   },
   settingRow: {
     flexDirection: 'row',

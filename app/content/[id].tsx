@@ -11,7 +11,7 @@ import { ContentTitleSheet } from '@/components/ContentTitleSheet';
 import { TagsSheet } from '@/components/TagsSheet';
 import { ReminderSheet } from '@/components/ReminderSheet';
 import { Ionicons } from '@expo/vector-icons';
-import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent } from '@/lib/api';
+import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent, getNotificationSettings } from '@/lib/api';
 import { useContentReminder } from '@/lib/useContentReminder';
 import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
 import { useToast } from '@/lib/toast';
@@ -121,6 +121,8 @@ export default function ContentDetailScreen() {
   const [showTitleSheet, setShowTitleSheet] = useState(false);
   const [showTagsSheet, setShowTagsSheet] = useState(false);
   const [showReminderSheet, setShowReminderSheet] = useState(false);
+  // 리마인더 알림 on 여부(마스터 && 리마인더 채널). focus 시 조회. 기본 true로 두어 조회 전 오탐 차단 방지.
+  const [contentRemindersOn, setContentRemindersOn] = useState(true);
   const toast = useToast();
   const reminderState = useContentReminder(typeof id === 'string' ? id : null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
@@ -185,6 +187,14 @@ export default function ContentDetailScreen() {
       if (!session) return;
       markContentViewed(id).catch(() => {});
       void analytics.contentOpened(id, source);
+      // 알림 설정에서 리마인더를 껐다 켜고 돌아오는 경우도 반영되도록 focus마다 갱신.
+      let cancelled = false;
+      getNotificationSettings()
+        .then((s) => {
+          if (!cancelled) setContentRemindersOn(s ? s.enabled && s.content_reminder_enabled : false);
+        })
+        .catch(() => {});
+      return () => { cancelled = true; };
     }, [id, source, session])
   );
 
@@ -217,6 +227,23 @@ export default function ContentDetailScreen() {
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
+  };
+
+  // 리마인더 알림이 꺼져 있으면(마스터 또는 리마인더 채널 off) 예약을 막고 설정으로 안내.
+  // 상태는 focus 시 미리 조회해둔 contentRemindersOn으로 판단해 시트 열림에 지연이 없게 한다.
+  const handleBellPress = () => {
+    if (!contentRemindersOn) {
+      Alert.alert(
+        '리마인더 알림이 꺼져 있어요',
+        '리마인더를 받으려면 알림 설정에서 알림과 리마인더를 켜주세요.',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: '알림 설정 열기', onPress: () => router.push('/notification-settings') },
+        ],
+      );
+      return;
+    }
+    setShowReminderSheet(true);
   };
 
   const handleDelete = () => {
@@ -265,7 +292,7 @@ export default function ContentDetailScreen() {
               <Ionicons name="chevron-back" size={18} color={Colors.primary} />
             </Pressable>
             <View style={styles.navRight}>
-              <Pressable onPress={() => setShowReminderSheet(true)} style={styles.navButton}>
+              <Pressable onPress={handleBellPress} style={styles.navButton}>
                 <Ionicons
                   name={reminderState.reminder ? 'notifications' : 'notifications-outline'}
                   size={18}
