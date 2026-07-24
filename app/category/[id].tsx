@@ -127,6 +127,7 @@ export default function CategoryDetailScreen() {
         (a.domain ?? '').toLowerCase().includes(query.toLowerCase()) ||
         a.tags.some(t => t.toLowerCase().includes(query.toLowerCase()))
       );
+  const shouldShowEmptyState = !loading && !loadError && filtered.length === 0;
 
   const handleUpdate = async (data: { name: string; color: string | null; icon: string | null }) => {
     if (!category) return;
@@ -334,6 +335,7 @@ export default function CategoryDetailScreen() {
         style={styles.scroll}
         contentContainerStyle={[
           styles.list,
+          shouldShowEmptyState && styles.listEmpty,
           selectionMode && styles.listSelectionMode,
         ]}
         showsVerticalScrollIndicator={false}
@@ -375,12 +377,14 @@ export default function CategoryDetailScreen() {
               icon="document-text-outline"
               title="아직 저장된 콘텐츠가 없어요"
               subtitle="이 카테고리에 콘텐츠를 저장해보세요"
+              variant="center"
             />
           ) : (
             <EmptyState
               icon="search-outline"
               title="검색 결과가 없어요"
               subtitle="다른 검색어를 입력해보세요"
+              variant="center"
             />
           )
         }
@@ -500,6 +504,10 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 12,
     paddingBottom: 32,
+    flexGrow: 1,
+  },
+  listEmpty: {
+    justifyContent: 'center',
   },
   gridRow: {
     justifyContent: 'space-between',
