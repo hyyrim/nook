@@ -238,7 +238,7 @@ export default function ContentDetailScreen() {
     if (status !== 'granted') {
       Alert.alert(
         '알림 권한이 필요해요',
-        'iOS 설정에서 Nook 알림을 허용해주세요.',
+        'iOS 설정에서 Nook 알림을 허용해주세요',
         [
           { text: '취소', style: 'cancel' },
           { text: '설정 열기', onPress: () => Linking.openSettings() },
@@ -265,7 +265,7 @@ export default function ContentDetailScreen() {
     if (permission === 'denied') {
       Alert.alert(
         '알림 권한이 꺼져 있어요',
-        'iOS 설정 > Nook에서 알림을 허용해주세요.',
+        'iOS 설정 > Nook에서 알림을 허용해주세요',
         [
           { text: '취소', style: 'cancel' },
           { text: 'iOS 설정 열기', onPress: () => Linking.openSettings() },

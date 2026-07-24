@@ -155,7 +155,7 @@ export default function RemindersScreen() {
             <EmptyState
               icon="notifications-outline"
               title="예정된 리마인더가 없어요"
-              subtitle={'콘텐츠 상세에서 우상단 알림 아이콘을 눌러\n다시 볼 시간을 지정할 수 있어요.'}
+              subtitle={'콘텐츠 상세에서 우상단 알림 아이콘을 눌러\n다시 볼 시간을 지정할 수 있어요'}
               variant="center"
             />
           </View>

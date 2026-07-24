@@ -374,7 +374,7 @@ function InsufficientCard({ window }: { window: ReportWindowOption }) {
       <Text style={styles.insufficientTitle}>최근 {window.label} 기준으로는 기록이 적어요</Text>
       <Text style={styles.insufficientText}>
         기간을 넓히거나 조금 더 저장하면{'\n'}
-        관심사 분포를 보여드릴게요.
+        관심사 분포를 보여드릴게요
       </Text>
     </View>
   );

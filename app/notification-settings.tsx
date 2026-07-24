@@ -170,9 +170,6 @@ export default function NotificationSettingsScreen() {
               <View style={styles.settingRow}>
                 <View style={styles.settingText}>
                   <Text style={styles.settingLabel}>전체 알림</Text>
-                  <Text style={styles.settingDescription}>
-                    Nook의 모든 알림을 켜고 끕니다
-                  </Text>
                 </View>
                 <Switch
                   value={settings.enabled}
@@ -194,7 +191,7 @@ export default function NotificationSettingsScreen() {
                     미열람 알림
                   </Text>
                   <Text style={styles.settingDescription}>
-                    저장했지만 열어보지 않은 링크가 쌓이면 주 1회 알려드려요
+                    저장만 해두고 잊은 콘텐츠를 다시 발견할 수 있어요
                   </Text>
                 </View>
                 <Switch
@@ -213,7 +210,7 @@ export default function NotificationSettingsScreen() {
                     리마인더
                   </Text>
                   <Text style={styles.settingDescription}>
-                    콘텐츠를 다시 볼 시간을 예약하면 그때 알려드려요
+                    다시 보고 싶은 콘텐츠를 놓치지 않도록 도와드려요
                   </Text>
                 </View>
                 <Switch
@@ -240,7 +237,7 @@ export default function NotificationSettingsScreen() {
                     {formatTime(settings.send_at_hour, settings.send_at_minute)}
                   </Text>
                   <Text style={styles.settingDescription}>
-                    선택한 시간대에 발송해요 (30분 단위)
+                    선택한 시간대에 알림을 보내드려요
                   </Text>
                 </View>
                 <Text style={[styles.chevron, timeDisabled && styles.chevronDisabled]}>›</Text>
