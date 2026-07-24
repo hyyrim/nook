@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -23,8 +24,10 @@ export default function AccountSettingsScreen() {
   const email = session?.user?.email ?? '';
   const provider = session?.user?.app_metadata?.provider;
   const providerLabel = provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : '이메일';
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLogout = () => {
+    if (isDeleting) return;
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
       { text: '취소', style: 'cancel' },
       {
@@ -38,7 +41,36 @@ export default function AccountSettingsScreen() {
     ]);
   };
 
+  const runDeleteAccount = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await cancelAllReminders();
+      await deleteAccount();
+      await supabase.auth.signOut();
+    } catch (e: any) {
+      Alert.alert('오류', e.message || '계정 삭제에 실패했습니다.');
+      setIsDeleting(false);
+    }
+  };
+
+  const showFinalDeleteConfirm = () => {
+    Alert.alert(
+      '마지막 확인',
+      '계정과 저장한 콘텐츠가 영구적으로 삭제돼요. 정말 삭제할까요?',
+      [
+        { text: '아니요', style: 'cancel' },
+        {
+          text: '영구 삭제',
+          style: 'destructive',
+          onPress: runDeleteAccount,
+        },
+      ],
+    );
+  };
+
   const handleDeleteAccount = () => {
+    if (isDeleting) return;
     Alert.alert(
       '계정을 삭제할까요?',
       '저장한 콘텐츠와 카테고리가 모두 삭제돼요. 이 작업은 되돌릴 수 없어요.',
@@ -46,15 +78,7 @@ export default function AccountSettingsScreen() {
         { text: '취소', style: 'cancel' },
         {
           text: '삭제하기', style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelAllReminders();
-              await deleteAccount();
-              await supabase.auth.signOut();
-            } catch (e: any) {
-              Alert.alert('오류', e.message || '계정 삭제에 실패했습니다.');
-            }
-          },
+          onPress: () => requestAnimationFrame(showFinalDeleteConfirm),
         },
       ],
     );
@@ -63,7 +87,9 @@ export default function AccountSettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.headerWrap}>
-        <NavHeader title="계정 설정" backLabel="프로필" onBack={() => router.back()} />
+        <NavHeader title="계정 설정" backLabel="프로필" onBack={() => {
+          if (!isDeleting) router.back();
+        }} />
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -99,20 +125,31 @@ export default function AccountSettingsScreen() {
           <View style={styles.settingsCard}>
             <Pressable
               onPress={handleLogout}
-              style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: 'rgba(0,0,0,0.02)' }]}
+              style={({ pressed }) => [
+                styles.settingRow,
+                pressed && !isDeleting && { backgroundColor: 'rgba(0,0,0,0.02)' },
+              ]}
+              disabled={isDeleting}
             >
               <View style={styles.iconBubble}>
                 <Ionicons name="log-out-outline" size={16} color={Colors.secondary} />
               </View>
-              <Text style={styles.settingLabel}>로그아웃</Text>
+              <Text style={[styles.settingLabel, isDeleting && styles.settingLabelDisabled]}>로그아웃</Text>
               <Ionicons name="chevron-forward" size={14} color={Colors.tertiary} />
             </Pressable>
           </View>
         </View>
 
         {/* Delete account - low emphasis footer, right aligned */}
-        <Pressable onPress={handleDeleteAccount} style={styles.deleteButton} hitSlop={8}>
-          <Text style={styles.deleteText}>계정 삭제하기</Text>
+        <Pressable
+          onPress={handleDeleteAccount}
+          style={styles.deleteButton}
+          hitSlop={8}
+          disabled={isDeleting}
+        >
+          <Text style={[styles.deleteText, isDeleting && styles.deleteTextDisabled]}>
+            {isDeleting ? '삭제 중...' : '계정 삭제하기'}
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -195,6 +232,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.primary,
   },
+  settingLabelDisabled: {
+    color: Colors.tertiary,
+  },
   divider: {
     height: 0.5,
     backgroundColor: 'rgba(0,0,0,0.07)',
@@ -208,5 +248,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.tertiary,
     fontWeight: '400',
+  },
+  deleteTextDisabled: {
+    color: Colors.secondary,
   },
 });

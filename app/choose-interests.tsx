@@ -147,6 +147,7 @@ export default function ChooseInterestsScreen() {
         visible={showAddSheet}
         mode="add"
         existingNames={allCategories}
+        showStyleControls={false}
         onClose={() => setShowAddSheet(false)}
         onSubmit={handleAddCustom}
       />

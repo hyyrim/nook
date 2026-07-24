@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Colors, Radius } from '@/constants';
 import { ContentCard } from '@/components/ContentCard';
+import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { Ionicons } from '@expo/vector-icons';
 import { getRecentContents } from '@/lib/api';
@@ -146,6 +147,9 @@ export default function SearchScreen() {
     clearRecentSearches().then(() => setRecentSearches([]));
   }, []);
 
+  const hasSuggestionContent = debouncedQuery.length === 0 && (recentSearches.length > 0 || topTags.length > 0);
+  const shouldCenterEmpty = !loading && !loadError && filtered.length === 0 && !hasSuggestionContent;
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
@@ -181,7 +185,7 @@ export default function SearchScreen() {
         style={styles.scroll}
         contentContainerStyle={[
           styles.list,
-          filtered.length === 0 && styles.listEmpty,
+          shouldCenterEmpty && styles.listEmptyCentered,
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -211,7 +215,11 @@ export default function SearchScreen() {
             <ErrorState onRetry={loadData} />
           ) : debouncedQuery.length === 0 ? (
             recentSearches.length === 0 && topTags.length === 0 ? (
-              <Text style={styles.hintText}>제목, 출처, 태그로 찾아보세요</Text>
+              <EmptyState
+                icon="search-outline"
+                title="제목, 출처, 태그로 찾아보세요"
+                variant="center"
+              />
             ) : (
               <View style={styles.suggestions}>
                 {recentSearches.length > 0 && (
@@ -277,7 +285,11 @@ export default function SearchScreen() {
               </View>
             )
           ) : (
-            <Text style={styles.emptyText}>"{debouncedQuery}"에 대한 결과가 없어요</Text>
+            <EmptyState
+              icon="search-outline"
+              title={`"${debouncedQuery}"에 대한 결과가 없어요`}
+              variant="center"
+            />
           )
         }
       />
@@ -340,20 +352,8 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
     flexGrow: 1,
   },
-  listEmpty: {
-    justifyContent: 'flex-start',
-  },
-  hintText: {
-    fontSize: 13,
-    color: Colors.tertiary,
-    textAlign: 'center',
-    paddingVertical: 160,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: Colors.tertiary,
-    textAlign: 'center',
-    paddingVertical: 40,
+  listEmptyCentered: {
+    justifyContent: 'center',
   },
   suggestions: {
     marginTop: 4,

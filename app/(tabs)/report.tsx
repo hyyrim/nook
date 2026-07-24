@@ -110,6 +110,7 @@ export default function ReportScreen() {
     () => (items ? deriveReportView(items, selectedWindow) : null),
     [items, selectedWindow]
   );
+  const isEmptyReport = !loading && !loadError && !view;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -117,7 +118,11 @@ export default function ReportScreen() {
         <Text style={styles.title}>리포트</Text>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, isEmptyReport && styles.scrollContentEmpty]}
+        showsVerticalScrollIndicator={false}
+      >
         <ReportWindowDropdown
           selectedWindow={selectedWindow}
           isOpen={isWindowMenuOpen}
@@ -398,6 +403,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 32,
+    flexGrow: 1,
+  },
+  scrollContentEmpty: {
+    flexGrow: 1,
   },
   section: {
     marginBottom: 26,
@@ -601,11 +610,12 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   insufficient: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
     paddingHorizontal: 24,
     gap: 10,
+    transform: [{ translateY: -48 }],
   },
   insufficientTitle: {
     fontSize: 14,

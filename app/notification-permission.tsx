@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -6,7 +6,6 @@ import { Sparkles } from 'lucide-react-native';
 import { Colors, Radius } from '@/constants';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import {
-  getPermissionStatus,
   requestNotificationPermission,
   syncDeviceToken,
 } from '@/lib/notifications';
@@ -15,16 +14,6 @@ import { upsertNotificationSettings } from '@/lib/api';
 export default function NotificationPermissionScreen() {
   const router = useRouter();
   const [asking, setAsking] = useState(false);
-
-  // 이미 결정된 상태(granted/denied)라면 이 화면을 건너뛴다.
-  useEffect(() => {
-    (async () => {
-      const status = await getPermissionStatus();
-      if (status !== 'undetermined') {
-        router.replace('/(tabs)');
-      }
-    })();
-  }, [router]);
 
   const handleAllow = async () => {
     setAsking(true);
@@ -41,6 +30,8 @@ export default function NotificationPermissionScreen() {
   };
 
   const handleSkip = () => {
+    if (asking) return;
+    upsertNotificationSettings({ enabled: false }).catch(() => {});
     router.replace('/(tabs)');
   };
 
@@ -66,8 +57,8 @@ export default function NotificationPermissionScreen() {
             style={styles.cta}
             labelStyle={styles.ctaText}
           />
-          <Pressable onPress={handleSkip} hitSlop={10} style={styles.skipButton}>
-            <Text style={styles.skipText}>나중에</Text>
+          <Pressable onPress={handleSkip} hitSlop={10} style={styles.skipButton} disabled={asking}>
+            <Text style={[styles.skipText, asking && styles.skipTextDisabled]}>나중에</Text>
           </Pressable>
         </View>
       </View>
@@ -138,5 +129,8 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     fontWeight: '500',
     color: Colors.secondary,
+  },
+  skipTextDisabled: {
+    color: Colors.tertiary,
   },
 });

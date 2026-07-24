@@ -6,11 +6,12 @@ type EmptyStateProps = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;
   subtitle?: string;
+  variant?: 'default' | 'center';
 };
 
-export function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
+export function EmptyState({ icon, title, subtitle, variant = 'default' }: EmptyStateProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, variant === 'center' && styles.center]}>
       <Ionicons name={icon} size={36} color={Colors.tertiary} />
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -24,6 +25,10 @@ const styles = StyleSheet.create({
     paddingVertical: 96,
     gap: 4,
   },
+  center: {
+    paddingVertical: 0,
+    transform: [{ translateY: -48 }],
+  },
   title: {
     fontSize: 14,
     fontWeight: '500',
@@ -33,5 +38,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 12,
     color: Colors.tertiary,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

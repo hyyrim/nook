@@ -298,7 +298,10 @@ export async function scheduleReminder(input: {
   };
 }
 
-export async function cancelReminder(contentId: string): Promise<void> {
+export async function cancelReminder(
+  contentId: string,
+  options: { throwOnError?: boolean } = {},
+): Promise<void> {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     for (const notification of scheduled) {
@@ -309,6 +312,7 @@ export async function cancelReminder(contentId: string): Promise<void> {
     }
   } catch (e) {
     console.warn('[reminder] cancelReminder failed', e);
+    if (options.throwOnError) throw e;
   }
 }
 

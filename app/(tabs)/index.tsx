@@ -31,6 +31,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const userId = session?.user.id ?? null;
 
   // §12.4 Rediscover impression — viewport 진입 시 발화. 세션당 같은 content_id는 1회만(라이브러리 dedup).
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
@@ -48,44 +49,64 @@ export default function HomeScreen() {
   // 삭제 이벤트는 서버 재페치 없이 로컬 배열에서만 id를 걸러냄.
   const discoveryLoadedRef = useRef(false);
   const backgroundedAtRef = useRef<number | null>(null);
+  const activeUserIdRef = useRef<string | null>(userId);
   const STALE_MS = 30 * 60 * 1000;
+
+  useEffect(() => {
+    activeUserIdRef.current = userId;
+    discoveryLoadedRef.current = false;
+    setRecentItems([]);
+    setRediscoverItems([]);
+    setForgottenItems([]);
+    setInsight(null);
+    setLoadError(false);
+    setLoading(Boolean(userId));
+  }, [userId]);
 
   const loadFresh = useCallback(async () => {
     if (isAuthLoading) return;
-    if (!session) {
+    if (!userId) {
       setLoading(false);
       return;
     }
+    const requestUserId = userId;
     setLoadError(false);
     try {
       const [recent, nextInsight] = await Promise.all([
         getRecentContents(6),
         getInterestInsight(),
       ]);
+      if (activeUserIdRef.current !== requestUserId) return;
       setRecentItems(recent);
       setInsight(nextInsight);
     } catch (e) {
+      if (activeUserIdRef.current !== requestUserId) return;
       console.error('Home fresh load error:', e);
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (activeUserIdRef.current === requestUserId) {
+        setLoading(false);
+      }
     }
-  }, [session, isAuthLoading]);
+  }, [userId, isAuthLoading]);
 
   const loadDiscovery = useCallback(async () => {
-    if (isAuthLoading || !session) return;
+    if (isAuthLoading || !userId) return;
+    const requestUserId = userId;
     try {
       const [rediscover, forgotten] = await Promise.all([
         getRediscoverContents(10),
         getForgottenContents(10),
       ]);
+      if (activeUserIdRef.current !== requestUserId) return;
       setRediscoverItems(rediscover);
       setForgottenItems(forgotten);
       discoveryLoadedRef.current = true;
     } catch (e) {
+      if (activeUserIdRef.current !== requestUserId) return;
       console.error('Home discovery load error:', e);
     }
-  }, [session, isAuthLoading]);
+  }, [userId, isAuthLoading]);
 
   useFocusEffect(
     useCallback(() => {
@@ -109,7 +130,7 @@ export default function HomeScreen() {
 
   // 삭제된 id는 로컬 배열에서만 제거 (서버 재페치 안 함 — 재발견 안정성 유지).
   useEffect(() => {
-    if (!session) return;
+    if (!userId) return;
     const offSaved = on('content-saved', scheduleLoadFresh);
     const offClassified = on('content-classified', scheduleLoadFresh);
     const offDeleted = on('content-deleted', (payload) => {
@@ -131,7 +152,7 @@ export default function HomeScreen() {
         loadFreshTimerRef.current = null;
       }
     };
-  }, [session, scheduleLoadFresh]);
+  }, [userId, scheduleLoadFresh]);
 
   // AppState: 30분 이상 백그라운드 후 복귀하면 discovery 새로고침.
   useEffect(() => {
