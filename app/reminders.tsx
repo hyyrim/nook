@@ -23,6 +23,8 @@ type ReminderRow = {
 type SwipeRef = ComponentRef<typeof ReanimatedSwipeable>;
 
 const UNDO_WINDOW_MS = 4000;
+const SWIPE_ACTION_WIDTH = 76;
+const SWIPE_ACTION_GAP = 8;
 // 리스트 재배치는 spring으로 정착시켜 삭제 후 빈 자리가 부드럽게 닫히게 한다(Apple: 물리적 settle).
 const rowLayout = LinearTransition.springify().damping(20).stiffness(200).mass(0.9);
 
@@ -203,10 +205,12 @@ function ReminderCard({
   const swipeRef = useRef<SwipeRef>(null);
 
   const renderRightActions = () => (
-    <Pressable onPress={onDelete} style={styles.swipeAction}>
-      <Ionicons name="trash-outline" size={17} color="#FFFFFF" />
-      <Text style={styles.swipeActionText}>삭제</Text>
-    </Pressable>
+    <View style={styles.swipeActionWrap}>
+      <Pressable onPress={onDelete} style={styles.swipeAction}>
+        <Ionicons name="trash-outline" size={17} color="#FFFFFF" />
+        <Text style={styles.swipeActionText}>삭제</Text>
+      </Pressable>
+    </View>
   );
 
   return (
@@ -219,7 +223,7 @@ function ReminderCard({
         onSwipeableOpenStartDrag={() => onWillOpen(swipeRef.current)}
         rightThreshold={40}
         overshootRight={false}
-        friction={1.5}
+        friction={1}
         containerStyle={styles.swipeContainer}
       >
         <Pressable
@@ -285,6 +289,12 @@ const styles = StyleSheet.create({
   swipeContainer: {
     borderRadius: Radius.md,
   },
+  swipeActionWrap: {
+    width: SWIPE_ACTION_WIDTH + SWIPE_ACTION_GAP,
+    paddingLeft: SWIPE_ACTION_GAP,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,
@@ -329,9 +339,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 76,
+    width: SWIPE_ACTION_WIDTH,
+    height: '100%',
     gap: 3,
-    marginLeft: 8,
     borderRadius: Radius.md,
   },
   swipeActionText: {

@@ -39,3 +39,12 @@ Archived records:
 |---------|----------|
 | Codex | TestFlight 발견 이슈 P0-P3 안정화 — 계정 전환 잔상 차단, 계정 삭제 이중 확인, 온보딩/바텀시트/리마인더/empty state UX 수정 (→ 결정 109) |
 | Codex | TestFlight 후속 UX/알림 설정 안정화 — empty state 시각 중심 보정, 예정된 리마인더 삭제 UX, 알림 skip 기본값 off 저장, Claude Code handoff 작성 |
+
+## 2026-07-24
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Codex | 예정된 리마인더 스와이프 삭제 버튼이 열림 정착 시 튀어 보이는 현상 수정 |
+| Codex | 카테고리 이동 시 중첩 native Modal을 onDismiss 기반 순차 전환으로 변경해 터치 먹통 위험 제거 |
+| Codex | 리포트 막대 애니메이션의 탭 재진입 반복 제거, 재생 시간 단축 및 reduced motion 대응 |
+| Codex | 실기기 체감 피드백에 따라 리마인더 스와이프와 리포트 모션 변경을 이전 상태로 복원하고 카테고리 Modal 안정화만 유지 |

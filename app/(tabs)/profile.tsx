@@ -233,10 +233,9 @@ const styles = StyleSheet.create({
   badge: {
     minWidth: 22,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 20,
     paddingHorizontal: 7,
-    // 레드 accent는 재발견 닷·CTA 전용이라, 중립 카운트 배지는 secondary 그레이로.
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,

@@ -22,6 +22,10 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   const [loadError, setLoadError] = useState(false);
   const [isMounted, setIsMounted] = useState(visible);
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [openAddAfterDismiss, setOpenAddAfterDismiss] = useState(false);
+  const reopenAfterAddDismiss = useRef(false);
+  const addSheetDismissed = useRef(false);
+  const pendingCreatedCategoryId = useRef<string | null>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   // 시트 max height(480)보다 크게 잡아 close 시 완전히 화면 밖으로 나간 뒤 unmount.
   // CategoryBottomSheet과 동일한 값으로 맞춤.
@@ -82,15 +86,75 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
     onClose();
   };
 
+  const reopenMoveSheet = () => {
+    backdropOpacity.setValue(0);
+    sheetTranslateY.setValue(600);
+    setIsMounted(true);
+    Animated.parallel([
+      Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.spring(sheetTranslateY, {
+        toValue: 0,
+        damping: 22,
+        stiffness: 230,
+        mass: 0.9,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   const handleAddCategory = async (data: { name: string; color: string | null; icon: string | null }) => {
+    reopenAfterAddDismiss.current = false;
     try {
       const created = await createCategory(data.name, { color: data.color, icon: data.icon });
       setCategories((prev) => [...prev, created]);
       setShowAddSheet(false);
-      handleSelect(created.id);
+      if (addSheetDismissed.current) {
+        handleSelect(created.id);
+      } else {
+        pendingCreatedCategoryId.current = created.id;
+      }
     } catch (error: any) {
       console.error('Inline category create error:', error);
+      reopenAfterAddDismiss.current = true;
+      if (addSheetDismissed.current) reopenMoveSheet();
     }
+  };
+
+  const handleOpenAddSheet = () => {
+    reopenAfterAddDismiss.current = true;
+    addSheetDismissed.current = false;
+    pendingCreatedCategoryId.current = null;
+    setOpenAddAfterDismiss(true);
+    Animated.parallel([
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 600,
+        duration: 190,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) setIsMounted(false);
+    });
+  };
+
+  const handleMoveSheetDismiss = () => {
+    if (!openAddAfterDismiss) return;
+    setOpenAddAfterDismiss(false);
+    setShowAddSheet(true);
+  };
+
+  const handleAddSheetDismiss = () => {
+    addSheetDismissed.current = true;
+    if (!reopenAfterAddDismiss.current) {
+      const createdId = pendingCreatedCategoryId.current;
+      if (createdId) {
+        pendingCreatedCategoryId.current = null;
+        handleSelect(createdId);
+      }
+      return;
+    }
+    reopenMoveSheet();
   };
 
   const options: Array<{ id: string | null; name: string; color: string | null; icon: string | null }> = [
@@ -99,79 +163,88 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   ];
 
   return (
-    <Modal visible={isMounted} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View pointerEvents="none" style={[styles.dim, { opacity: backdropOpacity }]} />
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Animated.View
-          style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
-          onStartShouldSetResponder={() => true}
-        >
-          <View style={styles.sheet}>
-            <View style={styles.dragHandle} />
-            <View style={styles.header}>
-              <Text style={styles.title}>카테고리 변경</Text>
-              <Pressable onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={14} color={Colors.secondary} />
-              </Pressable>
-            </View>
-
-            {loading ? (
-              <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginVertical: 24 }} />
-            ) : loadError ? (
-              <View style={styles.errorState}>
-                <Ionicons name="cloud-offline-outline" size={28} color={Colors.tertiary} />
-                <Text selectable style={styles.errorText}>카테고리를 불러오지 못했어요</Text>
-                <PrimaryButton label="다시 시도" size="small" onPress={loadCategories} />
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
-                {options.map(opt => {
-                  const isSelected = opt.id === currentCategoryId;
-                  const isUncategorized = opt.id === null;
-                  const { bg } = getCategoryColor(opt.color);
-                  const iconName = isUncategorized ? 'inbox' : getCategoryIcon(opt.icon);
-                  return (
-                    <Pressable
-                      key={opt.id ?? 'uncategorized'}
-                      style={styles.option}
-                      onPress={() => handleSelect(opt.id)}
-                    >
-                      <View style={styles.optionLeft}>
-                        {iconName ? (
-                          <View style={[styles.optionIconWrap, { backgroundColor: bg }]}>
-                            <CategoryIcon name={iconName} size={16} color={Colors.primary} />
-                          </View>
-                        ) : null}
-                        <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                          {opt.name}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={16} color={Colors.accent} />
-                      )}
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  style={[styles.option, styles.addOption]}
-                  onPress={() => setShowAddSheet(true)}
-                >
-                  <Ionicons name="add" size={18} color={Colors.secondary} />
-                  <Text style={styles.addOptionText}>새 카테고리 만들기</Text>
+    <>
+      <Modal
+        visible={isMounted}
+        transparent
+        animationType="none"
+        onDismiss={handleMoveSheetDismiss}
+        onRequestClose={onClose}
+      >
+        <Animated.View pointerEvents="none" style={[styles.dim, { opacity: backdropOpacity }]} />
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Animated.View
+            style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={styles.sheet}>
+              <View style={styles.dragHandle} />
+              <View style={styles.header}>
+                <Text style={styles.title}>카테고리 변경</Text>
+                <Pressable onPress={onClose} style={styles.closeButton}>
+                  <Ionicons name="close" size={14} color={Colors.secondary} />
                 </Pressable>
-              </ScrollView>
-            )}
-          </View>
-        </Animated.View>
-      </Pressable>
+              </View>
+
+              {loading ? (
+                <ActivityIndicator size="small" color={Colors.tertiary} style={{ marginVertical: 24 }} />
+              ) : loadError ? (
+                <View style={styles.errorState}>
+                  <Ionicons name="cloud-offline-outline" size={28} color={Colors.tertiary} />
+                  <Text selectable style={styles.errorText}>카테고리를 불러오지 못했어요</Text>
+                  <PrimaryButton label="다시 시도" size="small" onPress={loadCategories} />
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false} style={styles.list}>
+                  {options.map(opt => {
+                    const isSelected = opt.id === currentCategoryId;
+                    const isUncategorized = opt.id === null;
+                    const { bg } = getCategoryColor(opt.color);
+                    const iconName = isUncategorized ? 'inbox' : getCategoryIcon(opt.icon);
+                    return (
+                      <Pressable
+                        key={opt.id ?? 'uncategorized'}
+                        style={styles.option}
+                        onPress={() => handleSelect(opt.id)}
+                      >
+                        <View style={styles.optionLeft}>
+                          {iconName ? (
+                            <View style={[styles.optionIconWrap, { backgroundColor: bg }]}>
+                              <CategoryIcon name={iconName} size={16} color={Colors.primary} />
+                            </View>
+                          ) : null}
+                          <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                            {opt.name}
+                          </Text>
+                        </View>
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={16} color={Colors.accent} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                  <Pressable
+                    style={[styles.option, styles.addOption]}
+                    onPress={handleOpenAddSheet}
+                  >
+                    <Ionicons name="add" size={18} color={Colors.secondary} />
+                    <Text style={styles.addOptionText}>새 카테고리 만들기</Text>
+                  </Pressable>
+                </ScrollView>
+              )}
+            </View>
+          </Animated.View>
+        </Pressable>
+      </Modal>
       <CategoryBottomSheet
         visible={showAddSheet}
         mode="add"
         existingNames={categories.map((c) => c.name)}
         onClose={() => setShowAddSheet(false)}
+        onDismiss={handleAddSheetDismiss}
         onSubmit={handleAddCategory}
       />
-    </Modal>
+    </>
   );
 }
 

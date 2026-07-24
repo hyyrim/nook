@@ -28,6 +28,7 @@ type CategoryBottomSheetProps = {
   existingNames?: string[];
   showStyleControls?: boolean;
   onClose: () => void;
+  onDismiss?: () => void;
   onSubmit?: (data: CategorySubmitData) => void;
 };
 
@@ -40,6 +41,7 @@ export function CategoryBottomSheet({
   existingNames = [],
   showStyleControls = true,
   onClose,
+  onDismiss,
   onSubmit,
 }: CategoryBottomSheetProps) {
   const { height: windowHeight } = useWindowDimensions();
@@ -152,6 +154,7 @@ export function CategoryBottomSheet({
       transparent
       animationType="none"
       presentationStyle="overFullScreen"
+      onDismiss={onDismiss}
       onRequestClose={handleClose}
     >
       <Animated.View
