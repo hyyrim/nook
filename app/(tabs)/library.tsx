@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Reanimated, { FadeIn, LinearTransition, useReducedMotion } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -12,39 +13,56 @@ import { on } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import type { Category } from '@/types';
 
+// 폴더 그리드 추가/재배치 spring settle. 카테고리 추가는 저빈도라 새 카드에 FadeIn도 허용.
+const GRID_LAYOUT = LinearTransition.springify().damping(20).stiffness(200).mass(0.9);
+
 export default function LibraryScreen() {
   const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
+  const userId = session?.user.id ?? null;
+  const reduceMotion = useReducedMotion();
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [categories, setCategories] = useState<(Category & { count: number })[]>([]);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const activeUserIdRef = useRef<string | null>(userId);
+
+  // 계정 전환 시 이전 카테고리 잔상 제거 + 진행 중이던 stale load 결과 무시 (홈과 동일, 결정 109).
+  useEffect(() => {
+    activeUserIdRef.current = userId;
+    setCategories([]);
+    setUncategorizedCount(0);
+    setLoadError(false);
+    setLoading(Boolean(userId));
+  }, [userId]);
 
   const loadData = useCallback(async () => {
     if (isAuthLoading) return;
-    if (!session) {
+    if (!userId) {
       setLoading(false);
       return;
     }
 
+    const requestUserId = userId;
     setLoadError(false);
     try {
       const [cats, uncategorized] = await Promise.all([
         getCategoriesWithCounts(),
         getUncategorizedContents(),
       ]);
-
+      if (activeUserIdRef.current !== requestUserId) return;
       setCategories(cats);
       setUncategorizedCount(uncategorized.length);
     } catch (e) {
+      if (activeUserIdRef.current !== requestUserId) return;
       console.error('Library load error:', e);
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (activeUserIdRef.current === requestUserId) setLoading(false);
     }
-  }, [session, isAuthLoading]);
+  }, [userId, isAuthLoading]);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,7 +101,7 @@ export default function LibraryScreen() {
             <Pressable
               onPress={() => router.push('/reorder-categories')}
               hitSlop={8}
-              style={styles.editButton}
+              style={({ pressed }) => [styles.editButton, pressed && { opacity: 0.5 }]}
             >
               <Text style={styles.editButtonText}>순서 편집</Text>
             </Pressable>
@@ -96,23 +114,37 @@ export default function LibraryScreen() {
           <ErrorState onRetry={loadData} />
         ) : (
           <View style={styles.grid}>
-            <AddCategoryCard onPress={() => setShowAddCategory(true)} />
+            <Reanimated.View style={styles.gridItem} layout={reduceMotion ? undefined : GRID_LAYOUT}>
+              <AddCategoryCard onPress={() => setShowAddCategory(true)} />
+            </Reanimated.View>
             {uncategorizedCount > 0 && (
-              <FolderCard
-                name="미분류"
-                count={uncategorizedCount}
-                onPress={() => router.push('/category/uncategorized')}
-              />
+              <Reanimated.View
+                style={styles.gridItem}
+                layout={reduceMotion ? undefined : GRID_LAYOUT}
+                entering={reduceMotion ? undefined : FadeIn.duration(200)}
+              >
+                <FolderCard
+                  name="미분류"
+                  count={uncategorizedCount}
+                  onPress={() => router.push('/category/uncategorized')}
+                />
+              </Reanimated.View>
             )}
             {categories.map((cat) => (
-              <FolderCard
+              <Reanimated.View
                 key={cat.id}
-                name={cat.name}
-                count={cat.count}
-                color={cat.color}
-                icon={cat.icon}
-                onPress={() => router.push(`/category/${cat.id}`)}
-              />
+                style={styles.gridItem}
+                layout={reduceMotion ? undefined : GRID_LAYOUT}
+                entering={reduceMotion ? undefined : FadeIn.duration(200)}
+              >
+                <FolderCard
+                  name={cat.name}
+                  count={cat.count}
+                  color={cat.color}
+                  icon={cat.icon}
+                  onPress={() => router.push(`/category/${cat.id}`)}
+                />
+              </Reanimated.View>
             ))}
           </View>
         )}
@@ -166,5 +198,8 @@ const styles = StyleSheet.create({
     rowGap: 18,
     paddingHorizontal: 20,
     paddingBottom: 32,
+  },
+  gridItem: {
+    width: '47.8%',
   },
 });

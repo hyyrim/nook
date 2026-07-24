@@ -68,7 +68,7 @@ export function AddCategoryCard({ onPress }: { onPress?: () => void }) {
 
 const styles = StyleSheet.create({
   cardItem: {
-    width: '47.8%',
+    width: '100%',
   },
   pressed: {
     opacity: 0.72,
