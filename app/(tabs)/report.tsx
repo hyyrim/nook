@@ -9,6 +9,7 @@ import {
   Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Reanimated, { FadeInDown, FadeOutUp, useReducedMotion } from 'react-native-reanimated';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -172,6 +173,14 @@ export default function ReportScreen() {
             )}
           </>
         )}
+
+        {/* 드롭다운 열려있을 때 바깥 탭으로 닫기. windowDropdown(zIndex:1) 아래라 메뉴/버튼은 위에 남는다. */}
+        {isWindowMenuOpen && (
+          <Pressable
+            style={styles.dropdownBackdrop}
+            onPress={() => setIsWindowMenuOpen(false)}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -188,6 +197,7 @@ function ReportWindowDropdown({
   onToggle: () => void;
   onSelect: (key: ReportWindowKey) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   return (
     <View style={styles.windowDropdown}>
       <Text style={styles.windowPrefix}>최근</Text>
@@ -206,7 +216,11 @@ function ReportWindowDropdown({
         </Pressable>
 
         {isOpen && (
-          <View style={styles.windowMenu}>
+          <Reanimated.View
+            style={styles.windowMenu}
+            entering={reduceMotion ? undefined : FadeInDown.duration(140)}
+            exiting={reduceMotion ? undefined : FadeOutUp.duration(120)}
+          >
             {REPORT_WINDOW_OPTIONS.map((option) => {
               const isSelected = selectedWindow.key === option.key;
               return (
@@ -232,7 +246,7 @@ function ReportWindowDropdown({
                 </Pressable>
               );
             })}
-          </View>
+          </Reanimated.View>
         )}
       </View>
     </View>
@@ -302,27 +316,23 @@ function AnimatedProgressBar({
   index: number;
   animationKey: string;
 }) {
-  const progress = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progress.setValue(0);
-    const animation = Animated.timing(progress, {
-      toValue: percentage,
-      duration: 620,
-      delay: index * 70,
+    scale.setValue(0);
+    const animation = Animated.timing(scale, {
+      // width 대신 scaleX(transformOrigin left)로 채워 GPU(native driver)로 돌린다 — 리레이아웃 제거.
+      toValue: percentage / 100,
+      duration: 520,
+      delay: index * 55,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     });
     animation.start();
     return () => animation.stop();
-  }, [animationKey, index, percentage, progress]);
+  }, [animationKey, index, percentage, scale]);
 
-  const width = progress.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  });
-
-  return <Animated.View style={[styles.barFill, { width }]} />;
+  return <Animated.View style={[styles.barFill, { transform: [{ scaleX: scale }] }]} />;
 }
 
 function SubjectsCard({ stats }: { stats: SubjectStat[] }) {
@@ -407,6 +417,14 @@ const styles = StyleSheet.create({
   },
   scrollContentEmpty: {
     flexGrow: 1,
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
   },
   section: {
     marginBottom: 26,
@@ -546,6 +564,8 @@ const styles = StyleSheet.create({
   },
   barFill: {
     height: '100%',
+    width: '100%',
+    transformOrigin: 'left',
     backgroundColor: Colors.primary,
     borderRadius: 3,
   },
