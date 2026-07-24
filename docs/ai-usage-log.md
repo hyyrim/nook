@@ -32,3 +32,10 @@ Archived records:
 | Claude | lucide-react-native 1.23.0 배포 손상(존재 안 하는 exports 대상 + Metro packageExports 강제) 분석 후 0.577.0 다운그레이드 + 아이콘 세트를 12그룹 41개로 재구성 (→ 결정 088) |
 | Claude | 카테고리 컬러 팔레트에서 이름·톤이 어긋난 red / gray와 근접한 slate를 coral / sage로 교체 (→ 결정 089) |
 | Codex | 카테고리 순서 편집 드롭 모션 조정 + 리포트 섹션 설명 문구 톤 정리 (→ 결정 090) |
+
+## 2026-07-23
+
+| AI 도구 | 작업 내용 |
+|---------|----------|
+| Codex | TestFlight 발견 이슈 P0-P3 안정화 — 계정 전환 잔상 차단, 계정 삭제 이중 확인, 온보딩/바텀시트/리마인더/empty state UX 수정 (→ 결정 109) |
+| Codex | TestFlight 후속 UX/알림 설정 안정화 — empty state 시각 중심 보정, 예정된 리마인더 삭제 UX, 알림 skip 기본값 off 저장, Claude Code handoff 작성 |

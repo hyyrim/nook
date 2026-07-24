@@ -1,8 +1,8 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-23 (54차 — v1.2.4 시트 터치 먹통 근본 해결)
+최종 업데이트: 2026-07-24 (57차 — 리마인더 UX 재정비 + 리마인더 알림 채널)
 
-> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.2.4 — 시트 여닫이 후 터치 먹통 근본 해결 반영).
+> v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.2.4 기반 TestFlight 안정화 진행).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
 
 Archived records:
@@ -13,11 +13,40 @@ Archived records:
 
 | 항목 | 상태 |
 |------|------|
-| 현재 Phase | Phase 2 / v1.2.4 (시트 터치 먹통 근본 해결 반영) |
-| 최근 앱 작업 | 54차 — 시트 여닫이 후 화면 터치 먹통 근본 해결: ActionSheet 핸드오프를 onDismiss 단일 신호로 구동(setTimeout·magic number·죽은 handoffDelay prop 제거) + category/[id].tsx 시트 조건부 mount 통일(content와 동일 패턴, PR #84 누락분) + ReminderSheet dismiss 경로 busy 가드(스케줄/취소 중 unmount race) + OMC 아티팩트 gitignore |
-| 최근 문서 작업 | 54차 — 결정 108 (시트 터치 먹통 근본 해결, v1.2.4) |
+| 현재 Phase | Phase 2 / v1.2.4 기반 TestFlight 안정화 |
+| 최근 앱 작업 | 57차 — 리마인더 UX 재정비 + 리마인더 알림 채널: 카테고리 시트 키보드 회피 SaveBottomSheet식으로 교체, 예정 리마인더 스와이프 삭제+Undo+단일 열림, 상세 복귀 깜빡임 제거, 리마인더 알림 토글 신설 + 콘텐츠 벨 게이팅 (마이그레이션 020) |
+| 최근 문서 작업 | 57차 — 결정 110 (리마인더 UX 재정비 + 리마인더 알림 채널) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
+
+## 완료 (56차 — TestFlight 후속 UX/알림 설정 안정화)
+
+| 항목 | 상태 |
+|------|------|
+| `components/EmptyState.tsx` — `variant="center"` 추가 + 주요 empty state를 시각 중심 기준으로 `translateY: -48` 보정 | ✅ |
+| `app/reminders.tsx` — 예정된 리마인더 empty state를 공용 `EmptyState`로 전환 | ✅ |
+| `app/reminders.tsx` — 리마인더 개별 삭제 optimistic update + trash 버튼 + 헤더 "전체 삭제" 액션 | ✅ |
+| `app/(tabs)/report.tsx` — 기록 부족 empty state를 검색/리마인더와 같은 시각 중심 기준으로 보정 | ✅ |
+| `app/notification-permission.tsx` — 온보딩 알림 "나중에" 선택 시 `notification_settings.enabled=false` 저장 | ✅ |
+| `app/notification-settings.tsx` — 알림 설정 fallback 기본값을 `enabled=false`로 변경 | ✅ |
+| 알림 설정 IA — "전체 알림"과 개별 콘텐츠 리마인더 의미 혼용은 추가 검토로 보류 | ⏸ |
+| 카테고리 추가 바텀시트 키보드 UX — style controls 숨김 시도는 UX가 더 나빠져 되돌림, 후속 검토 | ⏸ |
+| 실기기 테스트 — 사용자가 시뮬레이터 대신 실제 기기에서 확인 예정 | ⏸ |
+| `npx tsc --noEmit` 통과 | ✅ |
+
+## 완료 (55차 — TestFlight 발견 이슈 P0-P3 안정화)
+
+| 항목 | 상태 |
+|------|------|
+| 홈에서 로그인 사용자 변경 시 이전 계정 콘텐츠 state 즉시 초기화 + stale async load 결과 무시 (→ 결정 109) | ✅ |
+| Root Stack user-scoped key로 사용자 변경 시 화면 로컬 상태 재사용 차단 | ✅ |
+| 계정 삭제 1차 Alert + 마지막 확인 Alert + 삭제 중 중복 탭 방지 | ✅ |
+| 알림 권한이 이미 결정된 상태에서도 온보딩 알림 안내 화면 노출 | ✅ |
+| 온보딩 카테고리 추가는 이름만 입력하도록 `CategoryBottomSheet showStyleControls=false` 적용 | ✅ |
+| 카테고리 바텀시트 키보드 회피를 padding 확장 방식에서 시트 이동 방식으로 변경 | ✅ |
+| 예정된 리마인더 개별 삭제 시 전체 reload 제거 + 헤더 전체 삭제 액션 + trash 아이콘 버튼 적용 | ✅ |
+| Report / Search / Category Detail empty state 중앙 배치 | ✅ |
+| `npx tsc --noEmit`, `git diff --check` 통과 | ✅ |
 
 ## 완료 (30차 — Anthropic API 키 서버 이전)
 
