@@ -1,4 +1,4 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
@@ -69,6 +69,7 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
       Animated.timing(sheetTranslateY, {
         toValue: 360,
         duration: 190,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {

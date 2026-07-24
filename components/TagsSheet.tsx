@@ -1,4 +1,4 @@
-import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius, Typography } from '@/constants';
@@ -71,6 +71,7 @@ export function TagsSheet({ visible, initialTags = [], onClose, onSubmit }: Tags
       Animated.timing(sheetTranslateY, {
         toValue: 360,
         duration: 190,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {

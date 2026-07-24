@@ -1,4 +1,4 @@
-import { Animated, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
+import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors, Radius } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
@@ -71,6 +71,7 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
       Animated.timing(sheetTranslateY, {
         toValue: 600,
         duration: 190,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => { if (finished) setIsMounted(false); });

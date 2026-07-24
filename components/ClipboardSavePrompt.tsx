@@ -1,4 +1,4 @@
-import { Animated, View, Text, StyleSheet, Pressable, Modal } from 'react-native';
+import { Animated, Easing, View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,6 +55,7 @@ export function ClipboardSavePrompt({ visible, url, saving, onSave, onDismiss }:
         Animated.timing(sheetTranslateY, {
           toValue: 260,
           duration: 190,
+          easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start();

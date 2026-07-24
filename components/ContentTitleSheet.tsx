@@ -40,11 +40,13 @@ export function ContentTitleSheet({ visible, initialValue = '', onClose, onSubmi
       setIsMounted(true);
       requestAnimationFrame(() => {
         Animated.parallel([
-          Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-          Animated.timing(sheetTranslateY, {
+          Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+          // 형제 시트(Save/Category/Tags/Move/Clipboard)와 동일 spring으로 통일 — settle bounce 일관성.
+          Animated.spring(sheetTranslateY, {
             toValue: 0,
-            duration: 280,
-            easing: Easing.out(Easing.cubic),
+            damping: 22,
+            stiffness: 230,
+            mass: 0.9,
             useNativeDriver: true,
           }),
         ]).start();
