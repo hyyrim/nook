@@ -23,7 +23,7 @@ function SettingRow({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: 'rgba(0,0,0,0.02)' }]}
+      style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: Colors.pressOverlay }]}
     >
       <View style={[styles.iconBubble, danger && styles.iconBubbleDanger]}>
         <Ionicons name={icon} size={16} color={danger ? Colors.accent : Colors.secondary} />
@@ -79,7 +79,7 @@ export default function ProfileScreen() {
           {/* User info card */}
           <Pressable
             onPress={() => router.push('/account-settings')}
-            style={({ pressed }) => [styles.userCard, pressed && { backgroundColor: 'rgba(255,255,255,0.72)' }]}
+            style={({ pressed }) => [styles.userCard, pressed && { backgroundColor: Colors.pressOverlay }]}
           >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initial}</Text>
@@ -235,7 +235,8 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     paddingHorizontal: 7,
-    backgroundColor: Colors.accent,
+    // 레드 accent는 재발견 닷·CTA 전용이라, 중립 카운트 배지는 secondary 그레이로.
+    backgroundColor: Colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,
