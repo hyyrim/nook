@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, FlatList, StyleSheet, Pressable, ActivityIndicator, Image, RefreshControl, AppState, type ViewToken, type AppStateStatus } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Reanimated, { LinearTransition, useReducedMotion } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -21,6 +22,10 @@ import type { Content } from '@/types';
 
 type ContentWithCategory = Content & { categories: { name: string } | null };
 
+// 최근 저장 리스트의 추가/삭제 시 자리 이동을 spring으로 정착시킨다(등장 fade 없이 layout만).
+// 홈은 고빈도 화면이라 화려한 entrance는 지양.
+const RECENT_LAYOUT = LinearTransition.springify().damping(20).stiffness(200).mass(0.9);
+
 export default function HomeScreen() {
   const router = useRouter();
   const { session, isLoading: isAuthLoading } = useAuth();
@@ -32,6 +37,7 @@ export default function HomeScreen() {
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const userId = session?.user.id ?? null;
+  const reduceMotion = useReducedMotion();
 
   // §12.4 Rediscover impression — viewport 진입 시 발화. 세션당 같은 content_id는 1회만(라이브러리 dedup).
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
@@ -211,7 +217,7 @@ export default function HomeScreen() {
           />
           <Pressable
             onPress={() => router.push('/search')}
-            style={styles.searchButton}
+            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
             hitSlop={8}
           >
             <Ionicons name="search-outline" size={21} color={Colors.secondary} />
@@ -279,20 +285,21 @@ export default function HomeScreen() {
                 />
                 {visibleRecentItems.length > 0 ? (
                   visibleRecentItems.map((item) => (
-                    <ContentCard
-                      key={item.id}
-                      title={item.title ?? item.url}
-                      source={formatSource(item.domain)}
-                      tags={item.tags}
-                      thumbnailUrl={item.thumbnail_url}
-                      thumbnailColor={THUMBNAIL_PLACEHOLDER}
-                      savedAt={formatRelativeTime(item.saved_at)}
-                      isClassifying={isClassifying(item.id)}
-                      onPress={() => router.push({
-                        pathname: '/content/[id]',
-                        params: { id: item.id, source: 'recent' },
-                      })}
-                    />
+                    <Reanimated.View key={item.id} layout={reduceMotion ? undefined : RECENT_LAYOUT}>
+                      <ContentCard
+                        title={item.title ?? item.url}
+                        source={formatSource(item.domain)}
+                        tags={item.tags}
+                        thumbnailUrl={item.thumbnail_url}
+                        thumbnailColor={THUMBNAIL_PLACEHOLDER}
+                        savedAt={formatRelativeTime(item.saved_at)}
+                        isClassifying={isClassifying(item.id)}
+                        onPress={() => router.push({
+                          pathname: '/content/[id]',
+                          params: { id: item.id, source: 'recent' },
+                        })}
+                      />
+                    </Reanimated.View>
                   ))
                 ) : (
                   <EmptyState
@@ -446,6 +453,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+  },
+  searchButtonPressed: {
+    transform: [{ scale: 0.92 }],
+    opacity: 0.6,
   },
   content: {
     paddingHorizontal: 20,
