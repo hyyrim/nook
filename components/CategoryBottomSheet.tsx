@@ -1,6 +1,7 @@
 import { Animated, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard, ScrollView, useWindowDimensions } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius, Typography } from '@/constants';
 import {
   CATEGORY_COLOR_PRESETS,
@@ -25,6 +26,7 @@ type CategoryBottomSheetProps = {
   initialColor?: string | null;
   initialIcon?: string | null;
   existingNames?: string[];
+  showStyleControls?: boolean;
   onClose: () => void;
   onSubmit?: (data: CategorySubmitData) => void;
 };
@@ -36,10 +38,12 @@ export function CategoryBottomSheet({
   initialColor = null,
   initialIcon = null,
   existingNames = [],
+  showStyleControls = true,
   onClose,
   onSubmit,
 }: CategoryBottomSheetProps) {
   const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [value, setValue] = useState(initialValue);
   const [color, setColor] = useState<string | null>(initialColor);
   const [icon, setIcon] = useState<string | null>(initialIcon);
@@ -49,7 +53,15 @@ export function CategoryBottomSheet({
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(600)).current;
 
+  // 시트 상단이 절대 넘지 않아야 하는 최소 top 여백(노치/상태바 회피).
+  const topGap = insets.top + 12;
+  // 시트 최대 높이 상한. 키보드로 시트가 커져도 상단이 topGap 아래로 안 넘게 고정.
+  // 초과분은 아이콘 그리드(flexShrink)가 흡수한다. (평소엔 내용이 이보다 작아 content-sized)
+  const sheetMaxHeight = windowHeight - topGap;
+
   const keyboard = useAnimatedKeyboard();
+  // 링크 저장 시트(SaveBottomSheet)와 동일: 키보드 높이만큼 시트 paddingBottom을 늘려
+  // 흰 시트 배경이 키보드 뒤까지 이어지게 한다(어두운 backdrop 틈 없음). 내용은 자연히 키보드 위로 밀림.
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
     paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM + keyboard.height.value,
   }));
@@ -105,11 +117,6 @@ export function CategoryBottomSheet({
   const isEdit = mode === 'edit';
   const title = isEdit ? '카테고리 수정' : '카테고리 추가';
   const cta = isEdit ? '수정' : '추가';
-  const maxSheetHeight = windowHeight * 0.82;
-  // 이름/색상/CTA는 고정, 아이콘 그리드만 별도 스크롤.
-  // 3.5행(≈ 3.5 × 46px = 161)만 노출해 4번째 행이 절반만 잘려 보이게 하는 peek 패턴.
-  // 잘린 행이 "더 있음"을 시각적으로 알린다.
-  const iconScrollMaxHeight = Math.min(161, maxSheetHeight - 360);
 
   const handleValueChange = (text: string) => {
     setValue(text);
@@ -126,7 +133,11 @@ export function CategoryBottomSheet({
       setError('이미 같은 이름의 카테고리가 있어요');
       return;
     }
-    onSubmit?.({ name: trimmed, color, icon });
+    onSubmit?.({
+      name: trimmed,
+      color: showStyleControls ? color : null,
+      icon: showStyleControls ? icon : null,
+    });
     handleClose();
   };
 
@@ -151,7 +162,7 @@ export function CategoryBottomSheet({
           style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
           onStartShouldSetResponder={() => true}
         >
-          <Reanimated.View style={[styles.sheet, { maxHeight: maxSheetHeight }, sheetAnimatedStyle]}>
+          <Reanimated.View style={[styles.sheet, { maxHeight: sheetMaxHeight }, sheetAnimatedStyle]}>
             <View style={styles.dragHandle} />
 
             <View style={styles.header}>
@@ -174,86 +185,90 @@ export function CategoryBottomSheet({
               {error ? <Text style={Typography.errorText}>{error}</Text> : null}
             </View>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>색상</Text>
-              <View style={styles.swatchRow}>
-                <Pressable
-                  key="no-color"
-                  onPress={() => {
-                    dismissKeyboardOnPickerTap();
-                    setColor(null);
-                  }}
-                  style={[
-                    styles.swatch,
-                    styles.swatchNoColor,
-                    color === null && styles.swatchSelected,
-                  ]}
-                >
-                  <Ionicons name="close" size={14} color={Colors.tertiary} />
-                </Pressable>
-                {CATEGORY_COLOR_PRESETS.map((preset) => {
-                  const selected = color === preset.key;
-                  return (
-                    <Pressable
-                      key={preset.key}
-                      onPress={() => {
-                        dismissKeyboardOnPickerTap();
-                        setColor(preset.key);
-                      }}
-                      style={[
-                        styles.swatch,
-                        { backgroundColor: preset.bg },
-                        selected && styles.swatchSelected,
-                      ]}
-                    >
-                      {selected && <Ionicons name="checkmark" size={14} color={Colors.primary} />}
-                    </Pressable>
-                  );
-                })}
+            {showStyleControls && (
+              <View style={styles.field}>
+                <Text style={styles.label}>색상</Text>
+                <View style={styles.swatchRow}>
+                  <Pressable
+                    key="no-color"
+                    onPress={() => {
+                      dismissKeyboardOnPickerTap();
+                      setColor(null);
+                    }}
+                    style={[
+                      styles.swatch,
+                      styles.swatchNoColor,
+                      color === null && styles.swatchSelected,
+                    ]}
+                  >
+                    <Ionicons name="close" size={14} color={Colors.tertiary} />
+                  </Pressable>
+                  {CATEGORY_COLOR_PRESETS.map((preset) => {
+                    const selected = color === preset.key;
+                    return (
+                      <Pressable
+                        key={preset.key}
+                        onPress={() => {
+                          dismissKeyboardOnPickerTap();
+                          setColor(preset.key);
+                        }}
+                        style={[
+                          styles.swatch,
+                          { backgroundColor: preset.bg },
+                          selected && styles.swatchSelected,
+                        ]}
+                      >
+                        {selected && <Ionicons name="checkmark" size={14} color={Colors.primary} />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
+            )}
 
-            <View style={styles.iconField}>
-              <Text style={styles.label}>아이콘</Text>
-              <ScrollView
-                style={[styles.iconScroll, { maxHeight: iconScrollMaxHeight }]}
-                contentContainerStyle={styles.iconGrid}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                <Pressable
-                  key="no-icon"
-                  onPress={() => {
-                    dismissKeyboardOnPickerTap();
-                    setIcon(null);
-                  }}
-                  style={[
-                    styles.iconTile,
-                    icon === null && styles.iconTileSelected,
-                  ]}
+            {showStyleControls && (
+              <View style={styles.iconField}>
+                <Text style={styles.label}>아이콘</Text>
+                <ScrollView
+                  style={[styles.iconScroll, { maxHeight: ICON_PEEK_MAX }]}
+                  contentContainerStyle={styles.iconGrid}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
                 >
-                  <Ionicons name="close" size={15} color={Colors.tertiary} />
-                </Pressable>
-                {CATEGORY_ICON_PRESETS.map((iconName) => {
-                  const selected = icon === iconName;
-                  return (
-                    <Pressable
-                      key={iconName}
-                      onPress={() => {
-                        dismissKeyboardOnPickerTap();
-                        setIcon(iconName);
-                      }}
-                      style={[
-                        styles.iconTile,
-                        selected && styles.iconTileSelected,
-                      ]}
-                    >
-                      <CategoryIcon name={iconName} size={17} color={Colors.secondary} />
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
+                  <Pressable
+                    key="no-icon"
+                    onPress={() => {
+                      dismissKeyboardOnPickerTap();
+                      setIcon(null);
+                    }}
+                    style={[
+                      styles.iconTile,
+                      icon === null && styles.iconTileSelected,
+                    ]}
+                  >
+                    <Ionicons name="close" size={15} color={Colors.tertiary} />
+                  </Pressable>
+                  {CATEGORY_ICON_PRESETS.map((iconName) => {
+                    const selected = icon === iconName;
+                    return (
+                      <Pressable
+                        key={iconName}
+                        onPress={() => {
+                          dismissKeyboardOnPickerTap();
+                          setIcon(iconName);
+                        }}
+                        style={[
+                          styles.iconTile,
+                          selected && styles.iconTileSelected,
+                        ]}
+                      >
+                        <CategoryIcon name={iconName} size={17} color={Colors.secondary} />
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             <PrimaryButton
               label={cta}
@@ -270,6 +285,9 @@ export function CategoryBottomSheet({
 
 const SWATCH_SIZE = 30;
 const ICON_TILE_SIZE = 38;
+// 아이콘 그리드 peek 상한: 3.5행(≈ 3.5 × 46px)만 노출해 "더 있음"을 알린다.
+// 키보드로 시트가 좁아지면 flexShrink로 이 값 아래까지 줄어든다.
+const ICON_PEEK_MAX = 161;
 
 const styles = StyleSheet.create({
   dim: {
@@ -293,6 +311,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: BOTTOM_SHEET_PADDING_BOTTOM,
   },
   dragHandle: {
     width: 36,
@@ -327,9 +346,13 @@ const styles = StyleSheet.create({
   },
   iconField: {
     marginBottom: 8,
+    // 시트가 키보드 위 공간으로 clamp될 때 남는 세로 압박을 이 영역이 흡수한다.
+    flexShrink: 1,
+    minHeight: 0,
   },
   iconScroll: {
     flexGrow: 0,
+    flexShrink: 1,
   },
   label: {
     fontSize: 12,
