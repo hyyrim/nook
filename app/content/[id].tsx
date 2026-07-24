@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -11,7 +11,8 @@ import { ContentTitleSheet } from '@/components/ContentTitleSheet';
 import { TagsSheet } from '@/components/TagsSheet';
 import { ReminderSheet } from '@/components/ReminderSheet';
 import { Ionicons } from '@expo/vector-icons';
-import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent, getNotificationSettings } from '@/lib/api';
+import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent, getNotificationSettings, upsertNotificationSettings } from '@/lib/api';
+import { getPermissionStatus, requestNotificationPermission, syncDeviceToken } from '@/lib/notifications';
 import { useContentReminder } from '@/lib/useContentReminder';
 import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
 import { useToast } from '@/lib/toast';
@@ -229,16 +230,48 @@ export default function ContentDetailScreen() {
     }
   };
 
-  // 리마인더 알림이 꺼져 있으면(마스터 또는 리마인더 채널 off) 예약을 막고 설정으로 안내.
+  // 리마인더 알림을 콘텐츠 상세에서 바로 켠다. OS 권한 확보 → 마스터 + 리마인더 채널 on.
+  // 권한 거부 시엔 켜지 않고 iOS 설정으로 안내한다. 성공하면 true.
+  const enableRemindersInline = async (): Promise<boolean> => {
+    let status = await getPermissionStatus();
+    if (status !== 'granted') status = await requestNotificationPermission();
+    if (status !== 'granted') {
+      Alert.alert(
+        '알림 권한이 필요해요',
+        'iOS 설정에서 Nook 알림을 허용해주세요.',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: '설정 열기', onPress: () => Linking.openSettings() },
+        ],
+      );
+      return false;
+    }
+    try {
+      await upsertNotificationSettings({ enabled: true, content_reminder_enabled: true });
+      syncDeviceToken().catch(() => {});
+      setContentRemindersOn(true);
+      return true;
+    } catch (e) {
+      Alert.alert('오류', '알림을 켜지 못했어요. 잠시 후 다시 시도해주세요.');
+      return false;
+    }
+  };
+
   // 상태는 focus 시 미리 조회해둔 contentRemindersOn으로 판단해 시트 열림에 지연이 없게 한다.
   const handleBellPress = () => {
     if (!contentRemindersOn) {
       Alert.alert(
         '리마인더 알림이 꺼져 있어요',
-        '리마인더를 받으려면 알림 설정에서 알림과 리마인더를 켜주세요.',
+        '지금 켜고 이 링크의 리마인더를 예약할까요?',
         [
           { text: '취소', style: 'cancel' },
-          { text: '알림 설정 열기', onPress: () => router.push('/notification-settings') },
+          { text: '알림 설정', onPress: () => router.push('/notification-settings') },
+          {
+            text: '켜기',
+            onPress: async () => {
+              if (await enableRemindersInline()) setShowReminderSheet(true);
+            },
+          },
         ],
       );
       return;
