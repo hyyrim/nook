@@ -257,15 +257,30 @@ export default function ContentDetailScreen() {
     }
   };
 
-  // 상태는 focus 시 미리 조회해둔 contentRemindersOn으로 판단해 시트 열림에 지연이 없게 한다.
-  const handleBellPress = () => {
+  // 벨 게이트는 2단계. 권한은 로컬 호출이라 탭 시점에 즉석 확인해 iOS 설정에서
+  // 바꾸고 돌아온 경우까지 정확히 반영한다. 앱 토글(contentRemindersOn)은 focus 캐시 사용.
+  const handleBellPress = async () => {
+    // 1. iOS 알림 권한이 거부됨 → 앱에서 못 켜니 iOS 설정으로 안내.
+    const permission = await getPermissionStatus();
+    if (permission === 'denied') {
+      Alert.alert(
+        '알림 권한이 꺼져 있어요',
+        'iOS 설정 > Nook에서 알림을 허용해주세요.',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: 'iOS 설정 열기', onPress: () => Linking.openSettings() },
+        ],
+      );
+      return;
+    }
+    // 2. 전체 알림 또는 리마인더 채널이 off → "켜기" 하나로 둘 다(이미 전체 알림 on이면
+    //    채널만) 켠다. 권한 undetermined면 켜는 과정에서 요청한다.
     if (!contentRemindersOn) {
       Alert.alert(
         '리마인더 알림이 꺼져 있어요',
         '지금 켜고 이 링크의 리마인더를 예약할까요?',
         [
           { text: '취소', style: 'cancel' },
-          { text: '알림 설정', onPress: () => router.push('/notification-settings') },
           {
             text: '켜기',
             onPress: async () => {
