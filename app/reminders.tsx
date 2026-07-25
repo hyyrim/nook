@@ -11,7 +11,7 @@ import { Colors, Radius } from '@/constants';
 import { NavHeader } from '@/components/NavHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { getContentsByIds } from '@/lib/api';
-import { cancelReminder, formatReminderStatus, getAllReminders, scheduleReminder, type ReminderRecord } from '@/lib/reminders';
+import { cancelReminder, formatReminderStatus, getAllReminders, scheduleReminder, setCachedReminderCount, type ReminderRecord } from '@/lib/reminders';
 import { THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Content } from '@/types';
 
@@ -88,7 +88,9 @@ export default function RemindersScreen() {
     setRows((prev) => {
       const index = prev?.findIndex((r) => r.reminder.contentId === row.reminder.contentId) ?? -1;
       if (index >= 0) setPendingUndo({ row, index });
-      return prev?.filter((r) => r.reminder.contentId !== row.reminder.contentId) ?? prev;
+      const next = prev?.filter((r) => r.reminder.contentId !== row.reminder.contentId) ?? prev;
+      if (next) setCachedReminderCount(next.length); // 프로필 뱃지가 뒤로가기 즉시 반영되도록
+      return next;
     });
     void cancelReminder(row.reminder.contentId).catch(() => {});
     undoTimer.current = setTimeout(() => setPendingUndo(null), UNDO_WINDOW_MS);
@@ -109,6 +111,7 @@ export default function RemindersScreen() {
           setRows((prev) => {
             const next = [...(prev ?? [])];
             next.splice(Math.min(pending.index, next.length), 0, restored);
+            setCachedReminderCount(next.length);
             return next;
           });
         } catch {

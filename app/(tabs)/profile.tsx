@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/AuthProvider';
-import { getAllReminders } from '@/lib/reminders';
+import { getAllReminders, getCachedReminderCount } from '@/lib/reminders';
 
 function SettingRow({
   icon,
@@ -54,10 +54,14 @@ export default function ProfileScreen() {
   const email = user?.email ?? '';
   const initial = (user?.user_metadata?.full_name?.[0] ?? email[0] ?? 'U').toUpperCase();
   const displayName = user?.user_metadata?.full_name ?? email.split('@')[0] ?? 'User';
-  const [reminderCount, setReminderCount] = useState(0);
+  const [reminderCount, setReminderCount] = useState(() => getCachedReminderCount() ?? 0);
 
   useFocusEffect(
     useCallback(() => {
+      // 삭제 등 직전 변경이 반영된 캐시로 즉시 갱신(느린 OS 큐 조회를 기다리지 않음),
+      // 그 뒤 OS 큐로 최종 정합.
+      const cached = getCachedReminderCount();
+      if (cached !== null) setReminderCount(cached);
       let cancelled = false;
       void getAllReminders().then((list) => {
         if (!cancelled) setReminderCount(list.length);
