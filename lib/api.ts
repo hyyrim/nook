@@ -495,6 +495,9 @@ export async function deleteContent(id: string) {
     .eq('user_id', userId)
     .eq('id', id);
   if (error) throw error;
+  // 콘텐츠와 함께 예약된 로컬 리마인더도 취소 (안 하면 예정 목록에 "(삭제된 콘텐츠)"로 잔존).
+  // reminders가 api를 import하므로 순환 회피 위해 동적 import.
+  await import('./reminders').then((m) => m.cancelReminder(id)).catch(() => {});
   emit('content-deleted', [id]);
 }
 
@@ -533,6 +536,9 @@ export async function deleteContents(ids: string[]) {
     .eq('user_id', userId)
     .in('id', ids);
   if (error) throw error;
+  await import('./reminders').then((m) =>
+    Promise.all(ids.map((id) => m.cancelReminder(id))),
+  ).catch(() => {});
   emit('content-deleted', ids);
 }
 
