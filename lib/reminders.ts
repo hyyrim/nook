@@ -49,6 +49,23 @@ export function getCachedUserTime(): { hour: number; minute: number } | null {
   return cachedUserTime;
 }
 
+// 발송 시간 변경 시 캐시를 즉시 갱신. 안 하면 앱 재시작 전까지 옛 시간이 preset에 남는다.
+export function setCachedUserTime(time: { hour: number; minute: number } | null): void {
+  cachedUserTime = time;
+}
+
+// 프로필 뱃지가 OS 큐 조회(느리고 cancel 직후 eventual-consistent)를 기다리지 않고
+// 즉시 그릴 수 있도록 하는 동기 카운트 캐시. getAllReminders와 리마인더 목록 화면이 갱신한다.
+let cachedReminderCount: number | null = null;
+
+export function getCachedReminderCount(): number | null {
+  return cachedReminderCount;
+}
+
+export function setCachedReminderCount(n: number): void {
+  cachedReminderCount = n;
+}
+
 // ─── 시간 계산 ─────────────────────────────────────────
 
 export function computePresetTime(
@@ -361,6 +378,7 @@ export async function getAllReminders(): Promise<ReminderRecord[]> {
       });
     }
     list.sort((a, b) => a.remindAt.getTime() - b.remindAt.getTime());
+    cachedReminderCount = list.length;
     return list;
   } catch (e) {
     console.warn('[reminder] getAllReminders failed', e);

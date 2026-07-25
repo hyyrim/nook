@@ -22,6 +22,7 @@ import {
   requestNotificationPermission,
   syncDeviceToken,
 } from '@/lib/notifications';
+import { setCachedUserTime } from '@/lib/reminders';
 import type { NotificationSettings } from '@/types';
 
 const DEFAULT_SETTINGS = {
@@ -98,11 +99,18 @@ export default function NotificationSettingsScreen() {
   const patch = useCallback(
     async (partial: Partial<typeof settings>) => {
       const previous = settings;
-      setSettings({ ...settings, ...partial });
+      const merged = { ...settings, ...partial };
+      setSettings(merged);
+      // 발송 시간이 바뀌면 리마인더 시간 캐시를 즉시 교체. 안 하면 콘텐츠 상세 preset이
+      // 앱 재시작 전까지 옛 시간을 보여준다.
+      if (partial.send_at_hour !== undefined || partial.send_at_minute !== undefined) {
+        setCachedUserTime({ hour: merged.send_at_hour, minute: merged.send_at_minute });
+      }
       try {
         await upsertNotificationSettings(partial);
       } catch (e) {
         setSettings(previous);
+        setCachedUserTime({ hour: previous.send_at_hour, minute: previous.send_at_minute });
         Alert.alert('알림 설정을 저장하지 못했어요', '잠시 후 다시 시도해주세요.');
       }
     },
