@@ -113,6 +113,8 @@ export default function ProfileScreen() {
               <SettingRow icon="shield-checkmark-outline" label="개인정보 처리방침" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb808e9547d64c065bae52')} />
               <Divider />
               <SettingRow icon="document-text-outline" label="서비스 이용약관" onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')} />
+              <Divider />
+              <SettingRow icon="chatbubble-ellipses-outline" label="문의 및 오류 제보" onPress={() => Linking.openURL('https://forms.gle/R4Y8PSJaT61HC1FK9')} />
             </View>
           </View>
         </View>
