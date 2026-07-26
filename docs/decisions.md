@@ -923,3 +923,23 @@ select cron.schedule(
 - **콘텐츠 리마인더를 로컬(AsyncStorage) 설정으로**: 로컬 알림이라 가능하나, 설정 화면이 DB(notification_settings) 기반이라 채널 컬럼으로 통일하는 게 일관적.
 
 **교훈**: 같은 이슈라도 실기기 피드백을 받으면 직전 결정을 되돌리는 게 정답일 수 있다(109의 translateY·전체삭제 → 110에서 교체). 근본은 "앱에 이미 검증된 패턴"에 정렬하는 것 — 키보드는 SaveBottomSheet, 삭제는 iOS 스와이프, 토스트는 기존 Toast 스타일. 로컬 전용 기능이라도 사용자에게 노출되는 설정은 기존 설정 저장소/화면 언어에 맞추는 편이 예측 가능하다.
+
+## 111. 리마인더 상태를 동기 캐시로 즉시 반영 (2026-07-26)
+
+**결정**: 리마인더 관련 파생 상태(콘텐츠 상세의 발송 시간 preset, 프로필의 예정 리마인더 뱃지)를 `lib/reminders.ts`의 모듈 캐시로 즉시 반영하고, mutation 시점에 그 캐시를 명시적으로 갱신한다.
+
+**배경**: 실기기에서 두 증상 보고. (1) 알림 설정에서 발송 시간을 바꿔도 콘텐츠 상세 리마인더 preset이 옛 시간을 보여주고 앱을 껐다 켜야 반영됨. (2) 예정된 리마인더를 삭제하고 뒤로 가면 프로필 뱃지 갱신이 느림. 두 증상의 근본 원인은 동일 — `lib/reminders.ts`의 모듈 레벨 캐시가 최초 1회만 채워지고 mutation 시 무효화되지 않는 것. (1)은 `cachedUserTime`이 발송 시간 저장 시 갱신되지 않아 앱 재시작(모듈 재평가) 전까지 옛 값 유지. (2)는 뱃지가 매번 OS pending 큐(`getAllScheduledNotificationsAsync`)를 조회하는데, cancel 직후 iOS 큐가 eventual-consistent라 삭제분이 잠깐 남아 카운트가 늦게 정합됨.
+
+**결과**:
+- `lib/reminders.ts`: `setCachedUserTime(time)` 세터 신설. `cachedReminderCount` 동기 카운트 캐시 + `getCachedReminderCount`/`setCachedReminderCount` 추가. `getAllReminders`가 조회를 마칠 때마다 `cachedReminderCount`를 최신 length로 갱신(authoritative 재정합 지점).
+- `notification-settings.tsx`: `patch`에서 `send_at_hour`/`send_at_minute`가 바뀌면 `setCachedUserTime(merged)`로 즉시 교체, 저장 실패 롤백 시 `previous` 값으로 되돌림.
+- `profile.tsx`: 뱃지 초기값과 focus 진입을 `getCachedReminderCount()`로 즉시 그리고(느린 OS 큐를 기다리지 않음), 이어서 `getAllReminders`로 최종 정합.
+- `reminders.tsx`: 삭제(optimistic filter)/Undo(재삽입) 직후 `setCachedReminderCount(next.length)`로 캐시를 정확히 맞춰 뒤로가기 즉시 반영.
+- PR #95 머지.
+
+**대안 검토**:
+- **매번 OS 큐/DB 재조회로 최신화**: 이미 그러고 있었고, 그게 느림의 원인. cancel 직후 eventual-consistency + async 왕복 지연이 UX로 노출됨. 동기 캐시로 즉시 paint 후 재정합이 정답.
+- **리액티브 스토어/구독 도입**: 화면이 붙어 있는 상태에서 실시간 갱신까지 되지만, 지금 두 화면은 focus 시점 갱신으로 충분해 과함(YAGNI). 화면이 리스트와 나란히 떠 있는 요구가 생기면 그때.
+- **카운트를 schedule/cancel에서 ±1 증감**: schedule은 기존 예약 취소 후 재등록이라 net 증감이 불확실해 fragile. `getAllReminders`가 조회 시 authoritative하게 덮고, mutation 화면(reminders.tsx)이 정확한 결과 length를 넣는 방식이 안전.
+
+**교훈**: 모듈 레벨 캐시는 "언제 무효화되는가"가 설계의 절반이다. 채우는 코드만 있고 갱신 지점이 없으면 앱 재시작이 유일한 무효화가 되어 "재시작하면 고쳐짐"류 버그가 된다. OS/서버가 eventual-consistent한 소스일 때는 동기 캐시로 즉시 그리고 비동기로 재정합하는 편이 매번 재조회보다 체감이 빠르다.

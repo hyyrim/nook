@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-24 (57차 — 리마인더 UX 재정비 + 리마인더 알림 채널)
+최종 업데이트: 2026-07-26 (58차 — 리마인더 동기 캐시로 뱃지·발송시간 즉시 갱신)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.2.4 기반 TestFlight 안정화 진행).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,10 +14,21 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.2.4 기반 TestFlight 안정화 |
-| 최근 앱 작업 | 57차 — 리마인더 UX 재정비 + 리마인더 알림 채널: 카테고리 시트 키보드 회피 SaveBottomSheet식으로 교체, 예정 리마인더 스와이프 삭제+Undo+단일 열림, 상세 복귀 깜빡임 제거, 리마인더 알림 토글 신설 + 콘텐츠 벨 게이팅 (마이그레이션 020) |
-| 최근 문서 작업 | 57차 — 결정 110 (리마인더 UX 재정비 + 리마인더 알림 채널) |
+| 최근 앱 작업 | 58차 — 리마인더 동기 캐시: 발송 시간 수정 후 콘텐츠 상세 preset 즉시 반영 + 예정 리마인더 삭제 후 프로필 뱃지 즉시 갱신 (PR #95) |
+| 최근 문서 작업 | 58차 — 결정 111 (리마인더 상태를 동기 캐시로 즉시 반영) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
+
+## 완료 (58차 — 리마인더 동기 캐시로 뱃지·발송시간 즉시 갱신)
+
+| 항목 | 상태 |
+|------|------|
+| **버그**: 발송 시간 수정 후 콘텐츠 상세 preset이 앱 재시작 전까지 옛 시간 유지 / 예정 리마인더 삭제 후 뒤로가기 시 프로필 뱃지 갱신 지연. 둘 다 `lib/reminders.ts` 모듈 캐시가 mutation 시 무효화되지 않던 게 근본 원인 (→ 결정 111) | ✅ |
+| `lib/reminders.ts` — `cachedUserTime` 세터(`setCachedUserTime`) 신설, `cachedReminderCount` 동기 카운트 캐시 + getter/setter 추가, `getAllReminders`가 조회 시 카운트 캐시 갱신 | ✅ |
+| `notification-settings.tsx` — 발송 시간 patch/롤백 시 `setCachedUserTime`으로 시간 캐시 즉시 교체 | ✅ |
+| `profile.tsx` — 뱃지를 카운트 캐시로 즉시 그린 뒤 OS 큐(`getAllReminders`)로 최종 정합 | ✅ |
+| `reminders.tsx` — 삭제/Undo 시 카운트 캐시 갱신으로 뒤로가기 즉시 반영 | ✅ |
+| PR #95 머지 (`feat(reminders): 동기 캐시로 뱃지·preset 즉시 갱신`) | ✅ |
 
 ## 완료 (56차 — TestFlight 후속 UX/알림 설정 안정화)
 
@@ -372,7 +383,23 @@ Archived records:
 |------|------|
 | 카테고리 폴더 컬러칩 | ✅ 23차 1차 완료. `categories.color/icon` 컬럼 + 폴더 카드/이동 시트/수정 시트 반영. 향후 필요 시 정렬/리스트 뷰와 함께 고도화 |
 | 다른 플랫폼 본문 복구 | X는 oEmbed fallback, Notion은 public page API로 보강 완료. Naver Blog / Medium / Velog 본문 복구는 필요 시 별도 평가 |
+| 알림 클릭 트래킹 (콘텐츠 리마인더) | 미열람 알림 탭은 `markNotificationOpened(log_id)`로 서버 기록됨. **콘텐츠 리마인더(`type:'reminder'`) 탭은 추적 없음 + `/content/{id}?source=direct`로 잘못 라벨링** → 리마인더 유입을 분석에서 구분 불가. 새 이벤트/테이블 불필요 — `content_opened(id, source)` 파이프 재사용: `ContentOpenedSource` union + `CONTENT_OPENED_SOURCES` set에 `'reminder'` 추가하고 `notifications.ts` `resolveRoute`의 리마인더 경로를 `source=reminder`로. 약 3줄. 집계는 `content_opened where source=reminder` |
 | 링크 수명 관리 | 1차는 수동 삭제 UX 유지/강화. 2차는 `viewed_at`/`saved_at` 기준 정리 후보 섹션, 일괄 선택, 보관 또는 삭제 검토. 완전 자동 삭제는 opt-in + 복구 기간이 있을 때만 Phase 3로 검토 |
+| └ "정리" 화면 아이디어 (기록만) | **오래돼 불필요해진 콘텐츠 일괄 정리** 니즈. 현행 삭제 규칙(카테고리 상세=선택 일괄삭제 / 콘텐츠 상세=confirm)은 유지. 필요한 조각이 대부분 있어 **화면 1개 + 쿼리 1개 + 컬럼 1개**로 조립. **재사용**: ① 일괄 선택삭제 = 카테고리 상세 선택모드 + `deleteContents(ids)` ② 기간칩 = Report 기간 선택. **후보 선정 규칙(핵심)**: "오래됨 ≠ 버려도 됨"이라 순수 나이순은 부적합 — 오래됐어도 계속 둘 에버그린이 매번 상단 재등장하는 피로. 그래서 **A+B+C 조합**: **A(참여도 기준)** 나이 대신 `lastInteraction(viewed_at ?? saved_at)` → 가끔 다시 여는 오래된 건 애초에 후보 제외(Forgotten 로직과 동일). **B(킵 제외)** `contents.kept_at`(nullable) 컬럼 신설 + 후보에서 "보관" 액션 한 번 → 이후 정리 목록에서 영구 제외. **전체 아카이브 뷰는 안 만들고 "정리 목록 제외" 용도로만** 최소화(YAGNI 회피). **C(자동삭제 금지)** 후보는 시작점일 뿐, 실제 삭제는 사용자 선택. → 정리 목록 = `오래됨 AND 참여 없음(lastInteraction old) AND kept_at IS NULL`. **새로 필요**: 위 조건으로 stale 콘텐츠 **전체**를 오래된 순으로 뽑는 쿼리(Forgotten은 홈 발견용이라 `maxPerCategory`·limit로 큐레이션됨 → 정리용은 캡 없이 전부) + `kept_at` 마이그레이션. 진입은 프로필 or 홈 Forgotten 헤더. **정할 것**: 기준일 = 고정(6개월) vs 기간칩 선택 → 기간칩 추천. bulk 삭제는 confirm Alert 유지. 휴지통은 실수삭제 CS 쌓일 때 Phase 3 |
+
+### C-2. 트래픽 증가 대비 (지표 기반 — 아플 때만 착수)
+
+원칙: 유저별 RLS + `user_id` 스코프 쿼리라 데이터는 이미 유저 단위로 자연 분할. "확장" 작업의 대부분은 지금 만들면 죽은 코드. **특정 지표가 실제로 아플 때 그 지점만** 손댄다. 샤딩·마이크로서비스·Redis 캐시·읽기 복제본·자체 큐는 전부 지표 초과 시 하나씩(YAGNI).
+
+**실제 부하 지점 3곳**
+
+| 지점 | 병목 | 지금 | 아플 때 |
+|------|------|------|---------|
+| 저장 플로우 (`classify` Edge Function) | DB 아님 → **Anthropic Haiku rate limit / 비용** + OG 스크랩 | 이미 비동기라 저장 UX 안전. `classify` 실패 재시도 경로만 점검 | 저장 즉시 커밋 → 분류를 큐(`pgmq`/Supabase Queues 또는 `contents.classify_status` + 크론 워커)로 분리, 동시 호출 워커 수로 제한. **add when Anthropic 429 실측 시** |
+| DB 읽기 (Home/Library/Report) | 인덱스 부재 시 풀스캔 | `contents(user_id, saved_at desc)`, `(user_id, viewed_at)`, `(user_id, category_id)` 복합 인덱스 점검. Report 집계 `EXPLAIN` | 느린 쿼리 하나에만 부분 인덱스/materialized view. **add when 해당 쿼리가 EXPLAIN에서 느릴 때** |
+| 푸시 크론 (`send-unread-reminder`) | 전 유저 순회 → Edge Function 타임아웃 | 유저 적어 단일 실행 충분 | 유저 N명씩 페이지네이션 배치. **add when 실행시간이 타임아웃 근접 시** |
+
+**지금 당장(측정 기반, 코드 최소):** ① Supabase 대시보드 slow query + Edge Function 에러율/실행시간 지표 켜기 ② `contents` 인덱스 3개 점검(없으면 추가 — 지금 해도 무해) ③ `classify` 실패 재시도 경로 확인.
 
 ### D. 플랫폼 확장 — 웹 + Chrome 확장 (Phase 2~3)
 
