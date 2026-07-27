@@ -433,7 +433,7 @@ Archived records:
 
 **화면**: 홈/폴더/카테고리 상세/콘텐츠 상세/Report/Search 거의 그대로 + `max-width` 중앙 정렬. 탭바 → 데스크탑 nav로 `.web` 분기. Save Sheet = 데스크탑 중앙 모달, 저장 경로만 웹 메타로 교체.
 
-**배포 스펙**: `app.json` `web.output:"static"`+`web.bundler:"metro"`, `expo export -p web` → `dist/`, `vercel.json` SPA rewrite `/* → /index.html`, Supabase OAuth redirect에 배포 도메인 등록.
+**배포 스펙**: `app.json` `web.output:"single"`+`web.bundler:"metro"`, `expo export -p web` → `dist/`, `vercel.json` SPA rewrite `/* → /index.html`, Supabase OAuth redirect에 배포 도메인 등록. (`"static"`은 라우트 프리렌더 중 `supabase createClient`가 Node WebSocket 부재로 실패 → `"single"` SPA로 확정. 인증 게이트 개인앱이라 SEO 불필요, SPA가 맞음.)
 
 **범위 제외(YAGNI)**: Chrome 확장(별도 페르소나, 웹 검증 후 하위 폴더로), 모바일 웹 최적화(iOS가 커버, 데스크탑 ≥1024 우선), 데스크탑 전용 시안(stretch 출시 후 국소 개선), 푸시/리마인더 웹.
 
@@ -451,7 +451,7 @@ Archived records:
 **핵심 시퀀싱**: "PC에서 조회"는 **메타 Edge Function 없이도 충족**(메타는 웹 *저장*용). → 제일 싸고 가치 높은 슬라이스(조회)부터. 로컬 `expo start --web`로 북극성("앱 저장→PC 조회")을 며칠 안에 검증한 뒤 저장/배포로 확장.
 
 **Lane B — 코드 (구현 순서)**
-1. **웹 활성**: `react-dom`·`react-native-web`·`@expo/metro-runtime` 설치(`npx expo install`) + `app.json`에 `web.output:"static"`+`web.bundler:"metro"`
+1. **웹 활성**: `react-dom`·`react-native-web`·`@expo/metro-runtime` 설치(`npx expo install`) + `app.json`에 `web.output:"single"`+`web.bundler:"metro"`
 2. **`lib/supabase.ts` `.web` 분기**: storage→localStorage, `detectSessionInUrl:true` (없으면 웹 로그인 조용히 실패 — 검증됨)
 3. **웹 로그인(구글 먼저)**: `lib/auth.web.ts` = `signInWithOAuth({provider:'google'})`. → 로그인되면 **기존 홈/폴더/상세/Search/Report 렌더 확인 = 북극성 검증** (메타 불필요)
 4. **깨지는 꼬리 triage**: reanimated/gesture/share-intent/notifications/clipboard 등 `.web` 분기 or 숨김. `max-width` 중앙 정렬 + 탭바→데스크탑 nav
