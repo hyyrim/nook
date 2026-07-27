@@ -405,6 +405,68 @@ Archived records:
 
 플랫폼 로드맵상 iOS 앱 다음 우선순위. 사용자 핵심 니즈: **모바일에서 저장 + 데스크탑에서 조회**.
 
+#### D-1. 웹(PC) 조회 버전 — 확정 스펙 (코드 검증 2026-07-26)
+
+**북극성 요구**: 앱에서 저장한 콘텐츠를 PC에서 확인할 수 있어야 한다. → 콘텐츠는 전부 Supabase `contents`(RLS user_id)에 있으므로 **웹에서 같은 계정 로그인 = 같은 행 조회. 동기화 로직 불필요.** "저장→조회"는 웹 인증 + 기존 화면 렌더로 자동 충족.
+
+**아키텍처**: 동일 Expo 레포. **레포 분리·모노레포 안 함**(RN Web 선택 이유가 코드 재사용). `expo export -p web` → 정적 SPA → **Vercel**. 백엔드는 Supabase 그대로. 플랫폼 차이는 `*.web.tsx` **파일 확장자 분기**.
+
+**검증된 사실 (2026-07-26 코드 확인)**:
+- AI 분류는 이미 서버화(`lib/ai.ts` = `classify` Edge Function) → 웹 추가 작업 0.
+- `+api` 라우트 없음, 백엔드 Supabase 단일 → **정적 익스포트 + Vercel 유효** (EAS Hosting 불필요; API 라우트 쓸 때만).
+- **메타데이터가 유일한 웹 블로커**: `lib/metadata.ts`(937줄)가 임의 외부 URL raw `fetch` + **User-Agent 스푸핑**(Instagram/X). 브라우저는 CORS + UA 헤더 설정 금지로 **원천 불가** → 서버 이전 필수. `saveContent`(저장)와 `refreshContentMetadata`(상세)가 iOS에서 이걸 호출 → iOS 의존 경로 2개.
+
+**저장 흐름(웹) — 유일한 로직 교체**: `lib/metadata.web.ts` 신설(같은 `fetchLinkMetadata` 시그니처로 신규 **메타 Edge Function invoke**). iOS `metadata.ts`는 무수정 → `saveContent`/`refreshContentMetadata` 코드 0줄 변경(import가 플랫폼별 해소). **iOS를 통합 대상에서 제외해 회귀 표면을 웹으로만 한정.**
+
+**메타 Edge Function 계약(신규, iOS 무영향)**: `POST /functions/v1/extract-metadata` (JWT) `{url}` → `{title, description, thumbnail_url, domain}` (`fetchLinkMetadata` 반환형 동일). 내부 = metadata.ts 로직 Deno 포팅. **이 스펙 최대 리스크 = 포팅 1~2주 + 실 URL 스모크 테스트**(Deno fetch 헤더/리다이렉트 거동 차이).
+
+**인증(웹)** — `lib/auth.web.ts` 신설, iOS 네이티브 `auth.ts` 무수정:
+- Google: `signInWithOAuth({provider:'google'})` 리다이렉트
+- **Apple: 지원 확정**(애플 가입자도 PC 접근 필수). `signInWithOAuth({provider:'apple'})` 리다이렉트. **필요 셋업**: Apple Services ID + 도메인 검증(Vercel 도메인) + Return URL 등록 + Supabase에 `.p8` 서명 **Client Secret(JWT)**. 계정 동일성은 Apple `sub` 매칭으로 **iOS 애플 계정 = 웹 동일 유저(중복 없음)**.
+- 세션 저장: 네이티브 expo-secure-store → 웹 localStorage (Supabase storage 어댑터 `.web` 분기)
+
+**플랫폼 분기(`.web`) — deps 검증 결과**:
+- 교체: expo-secure-store(→localStorage), expo-auth-session/apple-authentication(→OAuth 리다이렉트), metadata fetch(→Edge Function)
+- **`lib/supabase.ts` `.web` 분기 필수(검증)**: `storage`를 secure-store→localStorage로, **`detectSessionInUrl: false`→`true`**(안 하면 OAuth 리다이렉트 복귀 시 세션을 못 잡아 웹 로그인 조용히 실패)
+- 웹 숨김/no-op: expo-share-intent, expo-notifications(푸시/리마인더), expo-clipboard(감지 저장)
+- 그대로 동작: expo-image, gesture-handler, reanimated, svg, safe-area, router, supabase-js, vector-icons
+
+**화면**: 홈/폴더/카테고리 상세/콘텐츠 상세/Report/Search 거의 그대로 + `max-width` 중앙 정렬. 탭바 → 데스크탑 nav로 `.web` 분기. Save Sheet = 데스크탑 중앙 모달, 저장 경로만 웹 메타로 교체.
+
+**배포 스펙**: `app.json` `web.output:"static"`+`web.bundler:"metro"`, `expo export -p web` → `dist/`, `vercel.json` SPA rewrite `/* → /index.html`, Supabase OAuth redirect에 배포 도메인 등록.
+
+**범위 제외(YAGNI)**: Chrome 확장(별도 페르소나, 웹 검증 후 하위 폴더로), 모바일 웹 최적화(iOS가 커버, 데스크탑 ≥1024 우선), 데스크탑 전용 시안(stretch 출시 후 국소 개선), 푸시/리마인더 웹.
+
+**리스크**:
+- 메타 Deno 포팅 = 최대 작업/리스크(위).
+- **Apple Client Secret은 최대 6개월 만료 → 갱신 캘린더 필요**(`ponytail:` 자동 갱신 스크립트는 만료 겪은 뒤).
+- RN Web "공짜 렌더"는 낙관 — 네이티브 의존 컴포넌트의 **깨지는 꼬리** 예상, 활성화 후 triage.
+
+**규모(수정)**: 메타(웹 전용) 1~2주 + 웹 활성/인증/레이아웃/깨진 것 정리 1.5~2주 = **러프 데스크탑 뷰어 3~4주**. 신규 파일: `metadata.web.ts`, `auth.web.ts`, `supabase/functions/extract-metadata/`, `vercel.json`, 소수 `*.web.tsx`. **기존 화면·타입·lib·토큰 재사용, iOS 코드 0 수정.**
+
+아래 기존 D 내용(역할 분리·단계 A/B/C·의존성 표)은 초기 탐색 기록. 위 D-1이 검증 반영된 단일 스펙이며, 특히 **AI 서버화 완료·메타만 선결·iOS 무수정·확장 보류**가 아래 초기 추정(6~8주, A에 iOS 통합 포함)을 대체한다.
+
+#### D-2. 착수 순서 (kickoff) — 조회부터, 저장은 그 뒤
+
+**핵심 시퀀싱**: "PC에서 조회"는 **메타 Edge Function 없이도 충족**(메타는 웹 *저장*용). → 제일 싸고 가치 높은 슬라이스(조회)부터. 로컬 `expo start --web`로 북극성("앱 저장→PC 조회")을 며칠 안에 검증한 뒤 저장/배포로 확장.
+
+**Lane B — 코드 (구현 순서)**
+1. **웹 활성**: `react-dom`·`react-native-web`·`@expo/metro-runtime` 설치(`npx expo install`) + `app.json`에 `web.output:"static"`+`web.bundler:"metro"`
+2. **`lib/supabase.ts` `.web` 분기**: storage→localStorage, `detectSessionInUrl:true` (없으면 웹 로그인 조용히 실패 — 검증됨)
+3. **웹 로그인(구글 먼저)**: `lib/auth.web.ts` = `signInWithOAuth({provider:'google'})`. → 로그인되면 **기존 홈/폴더/상세/Search/Report 렌더 확인 = 북극성 검증** (메타 불필요)
+4. **깨지는 꼬리 triage**: reanimated/gesture/share-intent/notifications/clipboard 등 `.web` 분기 or 숨김. `max-width` 중앙 정렬 + 탭바→데스크탑 nav
+5. **애플 웹 로그인**: `auth.web.ts`에 `signInWithOAuth({provider:'apple'})` (Lane A 셋업 선행 필요)
+6. **웹 저장 스크래핑**: `supabase/functions/extract-metadata/`(metadata.ts Deno 포팅) + `lib/metadata.web.ts`(Edge Function invoke). 실 URL 스모크 테스트
+7. **배포**: `vercel.json` SPA rewrite + Vercel 연결 + `expo export -p web`
+
+**Lane A — 외부 콘솔 셋업 (코드로 못 함, 사용자가 미리. 리드타임 있음)**
+- **Supabase 대시보드**: Google provider 웹 redirect 활성 / Apple provider에 `.p8` Client Secret 등록 / Auth redirect URL에 Vercel 도메인 + 로컬(`http://localhost:8081`) 추가
+- **Apple Developer**: Services ID 생성 → 도메인 검증(**Vercel 도메인 확정 후 가능**) → Return URL = Supabase 콜백 등록 → `.p8` 키 발급(Client Secret JWT 서명용, **6개월 만료**)
+- **Vercel**: 레포 연결(빌드=`expo export -p web`, output=`dist`), 배포 도메인 확보 → 이 도메인이 Apple 도메인검증·Supabase redirect의 선행값
+- 순서 의존: **Vercel 도메인 → Apple 도메인검증 → Apple Client Secret → Supabase Apple provider**. 애플 로그인(Lane B 5)은 이 체인이 끝나야 동작. 그래서 **구글부터(Lane B 3) 시작하면 Lane A와 병렬** 가능.
+
+**내일 첫 커밋 목표**: Lane B 1~3 = 로컬 웹에서 구글 로그인 → 내 콘텐츠 리스트가 PC 화면에 뜬다. (여기까지가 "앱 저장→PC 조회" 실증, 메타·배포·애플 전부 불필요)
+
 **역할 분리 (사용자 페르소나 기반)**
 
 | 플랫폼 | 역할 | 저장 방식 |
