@@ -36,6 +36,10 @@
         "foregroundImage": "./assets/icon.png"
       }
     },
+    "web": {
+      "output": "single",
+      "bundler": "metro"
+    },
     "plugins": [
       "expo-router",
       "expo-apple-authentication",
