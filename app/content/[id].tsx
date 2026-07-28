@@ -361,7 +361,7 @@ export default function ContentDetailScreen() {
           </View>
         </SafeAreaView>
 
-        <View style={styles.body}>
+        <View style={[styles.body, isDesktopWeb && styles.bodyDesktop]}>
           {/* Header card */}
           <View style={styles.headerCard}>
             {item.thumbnail_url ? (
@@ -574,6 +574,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
     gap: 10,
+  },
+  // 데스크탑: 상세 본문을 읽기 좋은 폭으로 제한하고 중앙 정렬(전체 폭 stretch 방지).
+  bodyDesktop: {
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerCard: {
     backgroundColor: Colors.surface,
