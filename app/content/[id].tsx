@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getContentById, markContentViewed, deleteContent, getRelatedContents, refreshContentMetadata, updateContent, getNotificationSettings, upsertNotificationSettings } from '@/lib/api';
 import { getPermissionStatus, requestNotificationPermission, syncDeviceToken } from '@/lib/notifications';
 import { useContentReminder } from '@/lib/useContentReminder';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
 import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
 import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/AuthProvider';
@@ -117,6 +118,7 @@ export default function ContentDetailScreen() {
   const { id, source: rawSource } = useLocalSearchParams<{ id: string; source?: string }>();
   const source = normalizeSource(rawSource);
   const { session, isLoading: isAuthLoading } = useAuth();
+  const isDesktopWeb = useIsDesktopWeb();
   const [showSheet, setShowSheet] = useState(false);
   const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [showTitleSheet, setShowTitleSheet] = useState(false);
@@ -341,13 +343,17 @@ export default function ContentDetailScreen() {
               <Ionicons name="chevron-back" size={18} color={Colors.primary} style={styles.backChevron} />
             </Pressable>
             <View style={styles.navRight}>
-              <Pressable onPress={handleBellPress} style={styles.navButton}>
-                <Ionicons
-                  name={reminderState.reminder ? 'notifications' : 'notifications-outline'}
-                  size={18}
-                  color={reminderState.reminder ? Colors.accent : Colors.primary}
-                />
-              </Pressable>
+              {/* 리마인더는 로컬 알림(expo-notifications) 기반이라 웹엔 없음 → 데스크탑 웹에선 벨 숨김.
+                  Web Push 정식 지원 시 노출. */}
+              {!isDesktopWeb && (
+                <Pressable onPress={handleBellPress} style={styles.navButton}>
+                  <Ionicons
+                    name={reminderState.reminder ? 'notifications' : 'notifications-outline'}
+                    size={18}
+                    color={reminderState.reminder ? Colors.accent : Colors.primary}
+                  />
+                </Pressable>
+              )}
               <Pressable onPress={() => setShowSheet(true)} style={styles.navButton}>
                 <Ionicons name="ellipsis-horizontal" size={18} color={Colors.primary} />
               </Pressable>
@@ -422,46 +428,28 @@ export default function ContentDetailScreen() {
             </View>
           ) : null}
 
-          {/* 관련 콘텐츠 — 본문과 분리해서 lazy 로딩. 로딩 중엔 skeleton. */}
-          {(relatedLoading || related.length > 0) && (
+          {/* 관련 콘텐츠 — 있을 때만 렌더. 로딩 중 skeleton은 "없음"으로 끝나면 떴다 사라져
+              깜빡여서 제거(관련 콘텐츠는 본문 하단이라 pop-in이 거슬리지 않음). */}
+          {related.length > 0 && (
             <View style={styles.relatedSection}>
               <View style={styles.relatedHeader}>
                 <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
                 <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
               </View>
               <View style={styles.relatedList}>
-                {relatedLoading && related.length === 0 ? (
-                  <>
-                    <View style={[styles.relatedCard, styles.relatedSkeletonCard]}>
-                      <View style={[styles.relatedThumb, styles.relatedSkeletonThumb]} />
-                      <View style={styles.relatedText}>
-                        <View style={styles.relatedSkeletonLine} />
-                        <View style={[styles.relatedSkeletonLine, styles.relatedSkeletonLineShort]} />
-                      </View>
-                    </View>
-                    <View style={[styles.relatedCard, styles.relatedSkeletonCard]}>
-                      <View style={[styles.relatedThumb, styles.relatedSkeletonThumb]} />
-                      <View style={styles.relatedText}>
-                        <View style={styles.relatedSkeletonLine} />
-                        <View style={[styles.relatedSkeletonLine, styles.relatedSkeletonLineShort]} />
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  related.map(r => (
-                    <RelatedCard
-                      key={r.id}
-                      title={r.title ?? r.url}
-                      source={formatSource(r.domain)}
-                      thumbnailUrl={r.thumbnail_url}
-                      thumb={THUMBNAIL_PLACEHOLDER}
-                      onPress={() => router.push({
-                        pathname: '/content/[id]',
-                        params: { id: r.id, source: 'related' },
-                      })}
-                    />
-                  ))
-                )}
+                {related.map(r => (
+                  <RelatedCard
+                    key={r.id}
+                    title={r.title ?? r.url}
+                    source={formatSource(r.domain)}
+                    thumbnailUrl={r.thumbnail_url}
+                    thumb={THUMBNAIL_PLACEHOLDER}
+                    onPress={() => router.push({
+                      pathname: '/content/[id]',
+                      params: { id: r.id, source: 'related' },
+                    })}
+                  />
+                ))}
               </View>
             </View>
           )}
