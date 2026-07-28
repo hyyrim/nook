@@ -9,6 +9,7 @@ import { ContentCard } from '@/components/ContentCard';
 import { RediscoverCard } from '@/components/RediscoverCard';
 import { HorizontalMoreCard } from '@/components/HorizontalMoreCard';
 import { SectionHeader } from '@/components/SectionHeader';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { InterestInsightCard } from '@/components/InterestInsightCard';
@@ -28,6 +29,7 @@ const RECENT_LAYOUT = LinearTransition.springify().damping(20).stiffness(200).ma
 
 export default function HomeScreen() {
   const router = useRouter();
+  const isDesktopWeb = useIsDesktopWeb();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
@@ -208,13 +210,17 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.tertiary} />
         }
       >
-        {/* Header */}
+        {/* Header — 데스크탑은 사이드바에 로고가 있어 여기선 숨김(검색은 우측 유지 위해 spacer) */}
         <View style={styles.header}>
-          <Image
-            source={require('@/assets/logo.png')}
-            style={styles.appLogo}
-            resizeMode="cover"
-          />
+          {isDesktopWeb ? (
+            <View />
+          ) : (
+            <Image
+              source={require('@/assets/logo.png')}
+              style={styles.appLogo}
+              resizeMode="cover"
+            />
+          )}
           <Pressable
             onPress={() => router.push('/search')}
             style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
