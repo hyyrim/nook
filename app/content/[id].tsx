@@ -337,7 +337,8 @@ export default function ContentDetailScreen() {
         <SafeAreaView edges={['top']}>
           <View style={styles.nav}>
             <Pressable onPress={() => router.back()} style={styles.navButton}>
-              <Ionicons name="chevron-back" size={18} color={Colors.primary} />
+              {/* chevron-back 글리프가 박스 중앙보다 우측에 앉아 원 안에서 안 맞음 → 좌로 미세 보정 */}
+              <Ionicons name="chevron-back" size={18} color={Colors.primary} style={styles.backChevron} />
             </Pressable>
             <View style={styles.navRight}>
               <Pressable onPress={handleBellPress} style={styles.navButton}>
@@ -577,6 +578,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+  },
+  backChevron: {
+    transform: [{ translateX: -1.5 }],
   },
   body: {
     paddingHorizontal: 16,
