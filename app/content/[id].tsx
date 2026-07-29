@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
   },
   detailRow: {
     flexDirection: 'row',
-    gap: 20,
+    gap: 28,
     alignItems: 'flex-start',
   },
   detailLeft: {
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   detailRight: {
     flex: 1,
     minWidth: 0,
-    gap: 10,
+    gap: 16,
   },
   titleDesktop: {
     fontSize: 24,
