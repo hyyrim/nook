@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants';
@@ -14,6 +14,8 @@ type GridContentCardProps = {
   selectionMode?: boolean;
   selected?: boolean;
   onPress?: () => void;
+  // 카드 폭 오버라이드용(데스크탑 다열 그리드에서 계산된 px 폭 주입). 없으면 기본 48%(2열).
+  style?: StyleProp<ViewStyle>;
 };
 
 export function GridContentCard({
@@ -26,13 +28,14 @@ export function GridContentCard({
   selectionMode = false,
   selected = false,
   onPress,
+  style,
 }: GridContentCardProps) {
   const isNotion = source === 'Notion';
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.container, style, pressed && styles.pressed]}
     >
       <View style={styles.thumbnailWrap}>
         {thumbnailUrl ? (

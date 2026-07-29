@@ -1,4 +1,4 @@
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
 // Instagram은 공개 deep-link scheme이 빈약하다. 게시물용 비공식 스킴 `instagram://media?id=<numeric>`은
@@ -67,6 +67,12 @@ const APP_SCHEMES: { match: (host: string) => boolean; toAppUrl: (url: URL) => s
 ];
 
 export async function openInAppOrBrowser(urlString: string) {
+  // 웹: 앱 스킴(Linking)·인앱 브라우저는 없음. 새 탭으로 원문 열기.
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.open(urlString, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
   let host = '';
   try {
     host = new URL(urlString).hostname.toLowerCase();

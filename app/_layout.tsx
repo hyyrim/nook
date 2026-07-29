@@ -12,6 +12,9 @@ import { getUserPreferredTime } from '@/lib/reminders';
 import { useClipboardSavePrompt } from '@/lib/useClipboardSavePrompt';
 import { ToastProvider, useToast } from '@/lib/toast';
 import { ClipboardSavePrompt } from '@/components/ClipboardSavePrompt';
+import { ConfirmHost } from '@/components/ConfirmHost';
+import { DesktopSidebar } from '@/components/DesktopSidebar';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
@@ -22,6 +25,7 @@ function RootNavigator() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const savingRef = useRef(false);
   const toast = useToast();
+  const isDesktopWeb = useIsDesktopWeb();
 
   const inAuthFlow =
     segments[0] === 'onboarding' ||
@@ -138,9 +142,16 @@ function RootNavigator() {
     );
   }
 
+  // 데스크탑 웹: 로그인 후(인증/온보딩 흐름 제외) 사이드바를 Stack 옆에 상시 렌더 →
+  // 상세·카테고리 등 root Stack 화면에서도 사이드바 유지(라우팅 재구성 없이 전역 크롬).
+  const showSidebar = isDesktopWeb && Boolean(session) && !inAuthFlow;
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.appRoot}>
       <StatusBar style="dark" />
+      <View style={styles.appRow}>
+        {showSidebar && <DesktopSidebar />}
+        <View style={styles.appContent}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -196,6 +207,8 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
       </Stack>
+        </View>
+      </View>
       <ClipboardSavePrompt
         visible={Boolean(clipboardPrompt.promptUrl)}
         url={clipboardPrompt.promptUrl ?? ''}
@@ -213,6 +226,7 @@ export default function RootLayout() {
       <AuthProvider>
         <ToastProvider>
           <RootNavigator />
+          <ConfirmHost />
         </ToastProvider>
       </AuthProvider>
     </SafeAreaProvider>
@@ -220,6 +234,17 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  appRoot: {
+    flex: 1,
+  },
+  appRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  appContent: {
+    flex: 1,
+    minWidth: 0,
+  },
   loading: {
     flex: 1,
     alignItems: 'center',

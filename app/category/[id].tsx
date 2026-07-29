@@ -28,6 +28,12 @@ import {
 } from '@/lib/api';
 import { isClassifying, on, emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+
+// 데스크탑 그리드: 리스트 폭 측정 → 카드 최소폭 기준 열 수 자동. 리스트 뷰는 max-width로 제한.
+const CAT_GRID_GAP = 14;
+const CAT_LIST_PADDING = 20; // styles.list padding
+const CAT_DESKTOP_MIN_CARD = 200;
 import { getContentViewType, setContentViewType, type ContentViewType } from '@/lib/preferences';
 import { formatRelativeTime, formatSource, THUMBNAIL_PLACEHOLDER } from '@/lib/utils';
 import type { Category, Content } from '@/types';
@@ -61,6 +67,18 @@ export default function CategoryDetailScreen() {
   const [articles, setArticles] = useState<Content[]>([]);
   const [allCategoryNames, setAllCategoryNames] = useState<string[]>([]);
   const [viewType, setViewType] = useState<ContentViewType>('list');
+  const isDesktopWeb = useIsDesktopWeb();
+  const [listW, setListW] = useState(0);
+
+  // 데스크탑 그리드 열 수/카드 폭 산출(모바일은 grid=2, list=1 그대로).
+  const gridContentW = listW > 0 ? listW - CAT_LIST_PADDING * 2 : 0;
+  const desktopGridCols =
+    isDesktopWeb && gridContentW > 0
+      ? Math.max(2, Math.floor((gridContentW + CAT_GRID_GAP) / (CAT_DESKTOP_MIN_CARD + CAT_GRID_GAP)))
+      : 2;
+  const desktopGridItemW =
+    desktopGridCols > 0 ? (gridContentW - (desktopGridCols - 1) * CAT_GRID_GAP) / desktopGridCols : 0;
+  const numColumns = viewType === 'grid' ? (isDesktopWeb ? desktopGridCols : 2) : 1;
 
   const isUncategorized = id === 'uncategorized';
 
@@ -326,12 +344,15 @@ export default function CategoryDetailScreen() {
       </SafeAreaView>
 
       <FlatList
-        // viewType 전환 시 numColumns가 바뀌면 FlatList가 remount 되어야 함.
-        key={viewType}
+        // viewType/열 수가 바뀌면 numColumns 변경으로 FlatList가 remount 되어야 함.
+        key={`${viewType}-${numColumns}`}
+        onLayout={(e) => setListW(e.nativeEvent.layout.width)}
         data={loading || loadError ? [] : filtered}
         keyExtractor={(a) => a.id}
-        numColumns={viewType === 'grid' ? 2 : 1}
-        columnWrapperStyle={viewType === 'grid' ? styles.gridRow : undefined}
+        numColumns={numColumns}
+        columnWrapperStyle={
+          numColumns > 1 ? (isDesktopWeb ? styles.gridRowDesktop : styles.gridRow) : undefined
+        }
         style={styles.scroll}
         contentContainerStyle={[
           styles.list,
@@ -362,9 +383,12 @@ export default function CategoryDetailScreen() {
                   }),
           };
           return viewType === 'grid' ? (
-            <GridContentCard {...commonProps} />
+            <GridContentCard
+              {...commonProps}
+              style={isDesktopWeb && desktopGridItemW > 0 ? { width: desktopGridItemW } : undefined}
+            />
           ) : (
-            <ContentCard {...commonProps} tags={a.tags} />
+            <ContentCard {...commonProps} tags={a.tags} compact={isDesktopWeb} />
           );
         }}
         ListEmptyComponent={
@@ -511,6 +535,11 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     justifyContent: 'space-between',
+  },
+  // 데스크탑 그리드: 좌측 정렬 + 고정 열 간격(계산된 카드 폭과 맞물림)
+  gridRowDesktop: {
+    justifyContent: 'flex-start',
+    columnGap: CAT_GRID_GAP,
   },
   listSelectionMode: {
     paddingBottom: 110,

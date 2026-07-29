@@ -1,4 +1,4 @@
-import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard, ScrollView, useWindowDimensions } from 'react-native';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard, ScrollView, useWindowDimensions, Platform } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -165,6 +165,9 @@ export function CategoryBottomSheet({
         <Animated.View
           style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
           onStartShouldSetResponder={() => true}
+          {...(Platform.OS === 'web'
+            ? ({ onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() } as object)
+            : {})}
         >
           <Reanimated.View style={[styles.sheet, { maxHeight: sheetMaxHeight }, sheetAnimatedStyle]}>
             <View style={styles.dragHandle} />

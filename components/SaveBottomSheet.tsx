@@ -1,4 +1,4 @@
-import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard } from 'react-native';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, Pressable, Modal, Keyboard, Platform } from 'react-native';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
@@ -139,6 +139,11 @@ export function SaveBottomSheet({ visible, onClose, onSaved }: SaveBottomSheetPr
         <Animated.View
           style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
           onStartShouldSetResponder={() => true}
+          // 웹: backdrop Pressable가 콘텐츠를 감싸 input 클릭이 닫기로 전파됨(onStartShouldSetResponder는
+          // native 전용). 시트 내부 클릭은 여기서 전파 차단. 네이티브는 빈 스프레드라 무영향.
+          {...(Platform.OS === 'web'
+            ? ({ onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() } as object)
+            : {})}
         >
           <Reanimated.View style={[styles.sheet, sheetAnimatedStyle]}>
             <View style={styles.dragHandle} />
