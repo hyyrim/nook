@@ -12,6 +12,7 @@ import { getUserPreferredTime } from '@/lib/reminders';
 import { useClipboardSavePrompt } from '@/lib/useClipboardSavePrompt';
 import { ToastProvider, useToast } from '@/lib/toast';
 import { ClipboardSavePrompt } from '@/components/ClipboardSavePrompt';
+import { ConfirmHost } from '@/components/ConfirmHost';
 import { DesktopSidebar } from '@/components/DesktopSidebar';
 import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
 import { Colors } from '@/constants';
@@ -225,6 +226,7 @@ export default function RootLayout() {
       <AuthProvider>
         <ToastProvider>
           <RootNavigator />
+          <ConfirmHost />
         </ToastProvider>
       </AuthProvider>
     </SafeAreaProvider>

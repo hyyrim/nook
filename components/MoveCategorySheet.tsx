@@ -1,4 +1,4 @@
-import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager } from 'react-native';
+import { Animated, Easing, View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, InteractionManager, Platform } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Colors, Radius } from '@/constants';
 import { getCategoryColor, getCategoryIcon } from '@/constants/categoryStyle';
@@ -176,6 +176,9 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
           <Animated.View
             style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
             onStartShouldSetResponder={() => true}
+            {...(Platform.OS === 'web'
+              ? ({ onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() } as object)
+              : {})}
           >
             <View style={styles.sheet}>
               <View style={styles.dragHandle} />

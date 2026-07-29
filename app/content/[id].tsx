@@ -15,6 +15,7 @@ import { getContentById, markContentViewed, deleteContent, getRelatedContents, r
 import { getPermissionStatus, requestNotificationPermission, syncDeviceToken } from '@/lib/notifications';
 import { useContentReminder } from '@/lib/useContentReminder';
 import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { confirmAsync } from '@/lib/confirm';
 import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
 import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/AuthProvider';
@@ -297,20 +298,19 @@ export default function ContentDetailScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert('콘텐츠 삭제', '이 콘텐츠를 삭제하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제', style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteContent(id);
-            router.back();
-          } catch (e: any) {
-            Alert.alert('Error', e.message);
-          }
-        },
-      },
-    ]);
+    void (async () => {
+      const ok = await confirmAsync('콘텐츠 삭제', '이 콘텐츠를 삭제하시겠습니까?', {
+        confirmLabel: '삭제',
+        destructive: true,
+      });
+      if (!ok) return;
+      try {
+        await deleteContent(id);
+        router.back();
+      } catch (e: any) {
+        Alert.alert('Error', e.message);
+      }
+    })();
   };
 
   if (loading) {
