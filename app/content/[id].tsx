@@ -337,7 +337,7 @@ export default function ContentDetailScreen() {
     <View style={styles.container}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <SafeAreaView edges={['top']}>
-          <View style={styles.nav}>
+          <View style={[styles.nav, isDesktopWeb && styles.navDesktop]}>
             <Pressable onPress={() => router.back()} style={styles.navButton}>
               {/* chevron-back 글리프가 박스 중앙보다 우측에 앉아 원 안에서 안 맞음 → 좌로 미세 보정 */}
               <Ionicons name="chevron-back" size={18} color={Colors.primary} style={styles.backChevron} />
@@ -362,6 +362,84 @@ export default function ContentDetailScreen() {
         </SafeAreaView>
 
         <View style={[styles.body, isDesktopWeb && styles.bodyDesktop]}>
+          {isDesktopWeb ? (
+            /* 데스크탑 2컬럼 — 좌: 미디어+메타+태그 / 우: 제목+내용+관련. 모바일 스택은 아래 분기. */
+            <View style={styles.detailRow}>
+              <View style={styles.detailLeft}>
+                <View style={styles.headerCard}>
+                  {item.thumbnail_url ? (
+                    <Image source={{ uri: item.thumbnail_url }} style={styles.heroImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+                  ) : isNotion ? (
+                    <View style={[styles.heroImage, styles.notionHeroImage]}>
+                      <Ionicons name="document-text-outline" size={46} color={Colors.primary} />
+                      <Text style={styles.notionHeroText}>Notion</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.heroImage, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
+                  )}
+                  <View style={styles.headerMeta}>
+                    <View style={styles.categoryRow}>
+                      <View style={styles.categoryMeta}>
+                        <Ionicons name="folder-outline" size={10} color={Colors.tertiary} />
+                        <Text style={styles.categoryText} numberOfLines={1}>
+                          {item.categories?.name ?? '미분류'} · {formatSource(item.domain)}
+                        </Text>
+                      </View>
+                      <Pressable onPress={() => openInAppOrBrowser(item.url)} style={styles.originalLinkButton}>
+                        <Text style={styles.originalLink}>원문 바로가기 →</Text>
+                      </Pressable>
+                    </View>
+                    {item.tags.length > 0 && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsScroll}>
+                        {item.tags.map(tag => (
+                          <View key={tag} style={styles.tagPill}>
+                            <Text style={styles.tagPillText}>#{tag}</Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
+                </View>
+              </View>
+              <View style={styles.detailRight}>
+                <Text style={[styles.title, styles.titleDesktop]}>{item.title ?? item.url}</Text>
+                {description ? (
+                  <View style={styles.sectionCard}>
+                    <Text style={styles.sectionLabel}>내용</Text>
+                    <Text style={styles.sectionBody} numberOfLines={descriptionExpanded ? undefined : DESCRIPTION_COLLAPSED_LINES}>
+                      {description}
+                    </Text>
+                    {isLongDescription && (
+                      <Pressable onPress={() => setDescriptionExpanded(prev => !prev)} style={styles.moreButton}>
+                        <Text style={styles.moreText}>{descriptionExpanded ? '접기' : '더보기'}</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : null}
+                {related.length > 0 && (
+                  <View style={styles.relatedSection}>
+                    <View style={styles.relatedHeader}>
+                      <Text style={styles.relatedSectionTitle}>관련 콘텐츠</Text>
+                      <Text style={styles.relatedSubtitle}>같은 관심사와 관련된 저장 콘텐츠</Text>
+                    </View>
+                    <View style={styles.relatedList}>
+                      {related.map(r => (
+                        <RelatedCard
+                          key={r.id}
+                          title={r.title ?? r.url}
+                          source={formatSource(r.domain)}
+                          thumbnailUrl={r.thumbnail_url}
+                          thumb={THUMBNAIL_PLACEHOLDER}
+                          onPress={() => router.push({ pathname: '/content/[id]', params: { id: r.id, source: 'related' } })}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : (
+          <>
           {/* Header card */}
           <View style={styles.headerCard}>
             {item.thumbnail_url ? (
@@ -452,6 +530,8 @@ export default function ContentDetailScreen() {
                 ))}
               </View>
             </View>
+          )}
+          </>
           )}
         </View>
       </ScrollView>
@@ -547,6 +627,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  // 데스크탑: nav를 본문 2컬럼과 같은 폭·중앙으로 → back=좌컬럼 좌측, ⋯=우컬럼 우측에 정렬.
+  navDesktop: {
+    maxWidth: 1040,
+    width: '100%',
+    alignSelf: 'center',
+  },
   navRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -575,11 +661,29 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 10,
   },
-  // 데스크탑: 상세 본문을 읽기 좋은 폭으로 제한하고 중앙 정렬(전체 폭 stretch 방지).
+  // 데스크탑: 2컬럼을 담는 중앙 컬럼. 전체 폭 stretch 방지.
   bodyDesktop: {
-    maxWidth: 720,
+    maxWidth: 1040,
     width: '100%',
     alignSelf: 'center',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    gap: 20,
+    alignItems: 'flex-start',
+  },
+  detailLeft: {
+    width: 320,
+  },
+  detailRight: {
+    flex: 1,
+    minWidth: 0,
+    gap: 10,
+  },
+  titleDesktop: {
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: -0.5,
   },
   headerCard: {
     backgroundColor: Colors.surface,
