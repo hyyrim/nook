@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-26 (58차 — 리마인더 동기 캐시로 뱃지·발송시간 즉시 갱신)
+최종 업데이트: 2026-07-29 (59차 — 웹(PC) 데스크탑 조회 버전, Lane B 1~5 + 저장 모달)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.2.4 기반 TestFlight 안정화 진행).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,10 +14,27 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.2.4 기반 TestFlight 안정화 |
-| 최근 앱 작업 | 58차 — 리마인더 동기 캐시: 발송 시간 수정 후 콘텐츠 상세 preset 즉시 반영 + 예정 리마인더 삭제 후 프로필 뱃지 즉시 갱신 (PR #95) |
-| 최근 문서 작업 | 58차 — 결정 111 (리마인더 상태를 동기 캐시로 즉시 반영) |
+| 최근 앱 작업 | 59차 — 웹(PC) 데스크탑 조회: RN Web 타깃 + 사이드바 셸 + 그리드 다열화 + 상세 2컬럼 + 웹 버그/저장 모달 (PR #99~#103). 메타 스크래핑(Lane B 6)만 미완 |
+| 최근 문서 작업 | 59차 — 59차 완료 기록 + D-2 Lane B 진행 상태 |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
+
+## 완료 (59차 — 웹(PC) 데스크탑 조회 버전)
+
+RN Web 타깃으로 데스크탑 웹 조회 경험 구현. **iOS·모바일 웹 무영향**(`useIsDesktopWeb`/`Platform.OS==='web'` 분기). 웹 저장 스크래핑(메타)만 미완 → Lane B 6. 상세는 D 섹션.
+
+| 항목 | 상태 |
+|------|------|
+| 웹 타깃 활성 + `app.json web.output:"single"`(SPA) + 웹 deps(react-dom/react-native-web/@expo/metro-runtime) (PR #99) | ✅ |
+| `supabase.ts` 웹 분기(localStorage + `detectSessionInUrl:true`) + `lib/auth.web.ts` 구글/애플 `signInWithOAuth` 리다이렉트 | ✅ |
+| 데스크탑 사이드바 셸 — `DesktopSidebar` root hoist로 전 화면 유지 + 홈 로고 데스크탑 숨김 (PR #100/#101) | ✅ |
+| 폴더/카테고리 그리드 폭 측정 기반 다열화(`useIsDesktopWeb`) + 리스트 `compact`(전체 폭 한 줄) | ✅ |
+| 콘텐츠 상세 2컬럼(좌 미디어+메타 / 우 제목+내용+관련) + nav 컬럼 정렬 + 간격 확대 (PR #102) | ✅ |
+| 웹 버그: 원문 `window.open` 새 탭 / 시트 input 클릭 닫힘(onClick stopPropagation) / 삭제 confirm 커스텀 다이얼로그(`ConfirmHost`) / 리마인더 벨 숨김 / 관련콘텐츠 깜빡임 (PR #101) | ✅ |
+| 저장 시트 데스크탑 중앙 모달(fade + subtle scale 모션, review-animations 반영) (PR #103) | ✅ |
+| 웹 저장 스크래핑 — 메타 Edge Function(`extract-metadata` Deno 포팅 + `metadata.web.ts`) | ⏸ Lane B 6 (다음 스프린트, "저장은 모바일" 페르소나상 비긴급) |
+| Vercel 배포(Lane B 7) + Apple 웹 로그인 콘솔 셋업(Lane A) | ⏸ |
+| 선택 craft: 상세 좌컬럼 sticky · 데스크탑 hover 피드백 | ⏸ 백로그 |
 
 ## 완료 (58차 — 리마인더 동기 캐시로 뱃지·발송시간 즉시 갱신)
 
@@ -450,14 +467,14 @@ Archived records:
 
 **핵심 시퀀싱**: "PC에서 조회"는 **메타 Edge Function 없이도 충족**(메타는 웹 *저장*용). → 제일 싸고 가치 높은 슬라이스(조회)부터. 로컬 `expo start --web`로 북극성("앱 저장→PC 조회")을 며칠 안에 검증한 뒤 저장/배포로 확장.
 
-**Lane B — 코드 (구현 순서)**
-1. **웹 활성**: `react-dom`·`react-native-web`·`@expo/metro-runtime` 설치(`npx expo install`) + `app.json`에 `web.output:"single"`+`web.bundler:"metro"`
-2. **`lib/supabase.ts` `.web` 분기**: storage→localStorage, `detectSessionInUrl:true` (없으면 웹 로그인 조용히 실패 — 검증됨)
-3. **웹 로그인(구글 먼저)**: `lib/auth.web.ts` = `signInWithOAuth({provider:'google'})`. → 로그인되면 **기존 홈/폴더/상세/Search/Report 렌더 확인 = 북극성 검증** (메타 불필요)
-4. **깨지는 꼬리 triage**: reanimated/gesture/share-intent/notifications/clipboard 등 `.web` 분기 or 숨김. `max-width` 중앙 정렬 + 탭바→데스크탑 nav
-5. **애플 웹 로그인**: `auth.web.ts`에 `signInWithOAuth({provider:'apple'})` (Lane A 셋업 선행 필요)
-6. **웹 저장 스크래핑**: `supabase/functions/extract-metadata/`(metadata.ts Deno 포팅) + `lib/metadata.web.ts`(Edge Function invoke). 실 URL 스모크 테스트
-7. **배포**: `vercel.json` SPA rewrite + Vercel 연결 + `expo export -p web`
+**Lane B — 코드 (구현 순서)** — 1~4 완료(59차), 실제 구현은 예상보다 확장됨(사이드바 root hoist·탭바→사이드바·그리드 다열화·상세 2컬럼·웹 버그·저장 모달)
+1. ✅ **웹 활성**: 웹 deps + `app.json web.output:"single"` (PR #99)
+2. ✅ **`lib/supabase.ts` `.web` 분기**: localStorage + `detectSessionInUrl:true` (PR #99)
+3. ✅ **웹 로그인(구글)**: `lib/auth.web.ts` `signInWithOAuth` → 북극성(앱 저장→PC 조회) 실증 (PR #99)
+4. ✅ **깨지는 꼬리 + 데스크탑 레이아웃**: 사이드바 셸(root hoist) / 그리드 다열화 / 리스트 compact / 상세 2컬럼 / 웹 버그(원문·시트·confirm·벨) / 저장 모달 (PR #100~#103)
+5. ⏸ **애플 웹 로그인**: `auth.web.ts`에 apple `signInWithOAuth` 이미 있음, **Lane A 콘솔 셋업 선행 필요**
+6. ⏸ **웹 저장 스크래핑**: `supabase/functions/extract-metadata/`(metadata.ts Deno 포팅) + `lib/metadata.web.ts`. 실 URL 스모크 테스트 — **다음 스프린트**
+7. ⏸ **배포**: `vercel.json` SPA rewrite + Vercel 연결 + `expo export -p web`
 
 **Lane A — 외부 콘솔 셋업 (코드로 못 함, 사용자가 미리. 리드타임 있음)**
 - **Supabase 대시보드**: Google provider 웹 redirect 활성 / Apple provider에 `.p8` Client Secret 등록 / Auth redirect URL에 Vercel 도메인 + 로컬(`http://localhost:8081`) 추가
