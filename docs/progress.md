@@ -484,6 +484,31 @@ RN Web 타깃으로 데스크탑 웹 조회 경험 구현. **iOS·모바일 웹 
 
 **내일 첫 커밋 목표**: Lane B 1~3 = 로컬 웹에서 구글 로그인 → 내 콘텐츠 리스트가 PC 화면에 뜬다. (여기까지가 "앱 저장→PC 조회" 실증, 메타·배포·애플 전부 불필요)
 
+#### D-3. 메타 Edge Function 상세 계획 (Lane B 6 — 코드 검증 2026-07-30, 미착수)
+
+**문제**: 웹 저장 시 브라우저가 스크래핑 불가(CORS + UA 스푸핑 금지) → **raw URL만 저장**(제목/썸네일/AI 태그 없음). 배포 사이트(https://nook-lovat-three.vercel.app)에서 확인됨.
+
+**검증으로 단순화된 2가지:**
+1. `lib/metadata.ts`(937줄)는 **regex 파싱**(DOM 미사용, `.match(/…/)`) → **Deno에 그대로 이식 가능**(런타임 차이 걱정 없음)
+2. `lib/api.ts` `saveContent` → `classifyAndUpdate`는 **플랫폼 무관하게 저장 후 자동 실행** → **메타만 들어오면 AI 태그·카테고리까지 전체 흐름 그대로 작동**. 새로 만들 건 메타 추출 하나뿐
+
+**신규 2개 (iOS `metadata.ts`·`saveContent` 무수정):**
+- `supabase/functions/extract-metadata/index.ts` (Deno) — `POST {url}` → `{title, description, thumbnail_url, domain}` (`fetchLinkMetadata` 반환형 동일)
+- `lib/metadata.web.ts` — 같은 `fetchLinkMetadata` 시그니처로 위 함수 invoke. Metro가 웹에서 `metadata.ts` 대신 해소
+
+**단계 분할 (937줄 통째 포팅 안 함):**
+
+| Phase | 범위 | 근거 |
+|-------|------|------|
+| **1 (대부분 커버)** | 일반 OG regex 파싱(`title`/`og:*`/`twitter:*`) + HTTP 기반 특수처리: **YouTube·X oembed**(`publish.twitter.com/oembed`), **Notion `loadPageChunk` API** | 전부 `fetch`+JSON+regex라 Deno 직결. 대다수 사이트 OG로 충분 |
+| **2 (나중, 품질 필요 시)** | Instagram 이중 UA HTML 스크랩 등 HTML 스크랩 헤비한 것 | 서버라 UA 스푸핑 자유. metadata.ts 해당 로직 이식 |
+
+**규모**: Phase 1 = 며칠(OG regex 추출기 Deno 이식 + 특수 3개 + 배선 + 실 URL 스모크: YouTube `https://youtu.be/…` 포함). Phase 2는 필요 시.
+
+**배포**: classify처럼 `supabase functions deploy extract-metadata`. 기본 fetch라 secret 불필요.
+
+**리스크**: Deno `fetch`의 헤더/리다이렉트 거동이 RN fetch와 미세하게 달라 실 URL 스모크 테스트 필수(코드만으론 검증 불가). iOS는 안 건드리므로 회귀 없음.
+
 **역할 분리 (사용자 페르소나 기반)**
 
 | 플랫폼 | 역할 | 저장 방식 |
