@@ -10,6 +10,7 @@ import { RediscoverCard } from '@/components/RediscoverCard';
 import { HorizontalMoreCard } from '@/components/HorizontalMoreCard';
 import { SectionHeader } from '@/components/SectionHeader';
 import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { useHorizontalWheelScroll } from '@/lib/useHorizontalWheelScroll';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { InterestInsightCard } from '@/components/InterestInsightCard';
@@ -30,6 +31,8 @@ const RECENT_LAYOUT = LinearTransition.springify().damping(20).stiffness(200).ma
 export default function HomeScreen() {
   const router = useRouter();
   const isDesktopWeb = useIsDesktopWeb();
+  const rediscoverWheelRef = useHorizontalWheelScroll();
+  const forgottenWheelRef = useHorizontalWheelScroll();
   const { session, isLoading: isAuthLoading } = useAuth();
   const [recentItems, setRecentItems] = useState<ContentWithCategory[]>([]);
   const [rediscoverItems, setRediscoverItems] = useState<ContentWithCategory[]>([]);
@@ -343,6 +346,7 @@ export default function HomeScreen() {
                     subtitle="한동안 안 들여다본 관심 콘텐츠예요"
                   />
                   <FlatList
+                    ref={rediscoverWheelRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.rediscoverScroll}
@@ -379,6 +383,7 @@ export default function HomeScreen() {
                     subtitle="다시 꺼내보기 좋은 콘텐츠예요"
                   />
                   <FlatList
+                    ref={forgottenWheelRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.rediscoverScroll}
