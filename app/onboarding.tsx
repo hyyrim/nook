@@ -5,10 +5,12 @@ import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useGoogleAuth, signInWithApple } from '@/lib/auth';
 import { notify } from '@/lib/confirm';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
 
 export default function OnboardingScreen() {
   const { signInWithGoogle, isReady } = useGoogleAuth();
   const [loading, setLoading] = useState<'google' | 'apple' | null>(null);
+  const isDesktop = useIsDesktopWeb();
 
   const handleGoogleSignIn = async () => {
     setLoading('google');
@@ -32,7 +34,7 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <View style={[styles.content, isDesktop && styles.contentDesktop]}>
         {/* Brand section — NOOK 워드마크 + 슬로건 */}
         <View style={styles.brandSection}>
           <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
@@ -40,12 +42,13 @@ export default function OnboardingScreen() {
         </View>
 
         {/* Bottom section */}
-        <View style={styles.bottomSection}>
+        <View style={[styles.bottomSection, isDesktop && styles.bottomSectionDesktop]}>
           <Pressable
             onPress={handleAppleSignIn}
             disabled={loading !== null}
             style={({ pressed }) => [
               styles.appleButton,
+              isDesktop && styles.appleButtonDesktop,
               pressed && styles.appleButtonPressed,
             ]}
           >
@@ -64,6 +67,7 @@ export default function OnboardingScreen() {
             disabled={loading !== null || !isReady}
             style={({ pressed }) => [
               styles.googleButton,
+              isDesktop && styles.googleButtonDesktop,
               !isReady && styles.googleButtonDisabled,
               pressed && styles.googleButtonPressed,
             ]}
@@ -78,7 +82,7 @@ export default function OnboardingScreen() {
             )}
           </Pressable>
 
-          <Text style={styles.caption}>
+          <Text style={[styles.caption, isDesktop && styles.captionDesktop]}>
             계속하면{' '}
             <Text style={styles.captionLink} onPress={() => Linking.openURL('https://nookarchive.notion.site/Nook-3800026abaeb80588420ca47be19d904')}>서비스 이용약관</Text>
             {' '}및{' '}
@@ -100,6 +104,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
   },
+  // 데스크탑: 좌우 2분할. 좌=브랜드 패널, 우=인증 컬럼.
+  contentDesktop: {
+    flexDirection: 'row',
+    paddingHorizontal: 0,
+  },
   brandSection: {
     flex: 1,
     alignItems: 'center',
@@ -119,6 +128,22 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: 20,
     gap: 16,
+  },
+  // 데스크탑 우측 패널: 버튼 컬럼을 세로 중앙에 모으고 폭 제한.
+  bottomSectionDesktop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 0,
+  },
+  appleButtonDesktop: {
+    width: 340,
+  },
+  googleButtonDesktop: {
+    width: 340,
+  },
+  captionDesktop: {
+    maxWidth: 340,
   },
   appleButton: {
     flexDirection: 'row',
