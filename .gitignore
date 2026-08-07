@@ -53,6 +53,9 @@ docs/portfolio-*.md
 /ios
 /android
 
+# 랜딩페이지는 별도 git 저장소 (앱 repo와 분리 — 결정 112)
+landing/
+
 # OMC / local skills artifacts (not part of app)
 .agents/
 .claude/skills/
