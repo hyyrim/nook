@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Image, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Colors, Radius } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { useGoogleAuth, signInWithApple } from '@/lib/auth';
+import { notify } from '@/lib/confirm';
 
 export default function OnboardingScreen() {
   const { signInWithGoogle, isReady } = useGoogleAuth();
@@ -15,7 +16,7 @@ export default function OnboardingScreen() {
     setLoading(null);
 
     if (result.error) {
-      Alert.alert('Sign In Failed', result.error);
+      notify('Sign In Failed', result.error);
     }
   };
 
@@ -25,7 +26,7 @@ export default function OnboardingScreen() {
     setLoading(null);
 
     if (result.error) {
-      Alert.alert('Sign In Failed', result.error);
+      notify('Sign In Failed', result.error);
     }
   };
 

@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
+import { notify } from '@/lib/confirm';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -45,7 +46,7 @@ export default function ReorderCategoriesScreen() {
       setItems(cats);
       setInitialIds(cats.map((c) => c.id));
     } catch (e: any) {
-      Alert.alert('오류', e.message ?? '카테고리를 불러오지 못했어요');
+      notify('오류', e.message ?? '카테고리를 불러오지 못했어요');
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ export default function ReorderCategoriesScreen() {
       emit('content-saved');
       router.back();
     } catch (e: any) {
-      Alert.alert('저장 실패', e.message ?? '순서 저장 중 문제가 발생했어요');
+      notify('저장 실패', e.message ?? '순서 저장 중 문제가 발생했어요');
     } finally {
       setSaving(false);
     }

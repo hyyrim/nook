@@ -15,6 +15,16 @@ export function registerConfirmHandler(handler: ConfirmHandler | null) {
   webHandler = handler;
 }
 
+// 단일 버튼 알림. Alert.alert가 웹에서 no-op이라 웹은 window.alert로 폴백.
+export function notify(title: string, message?: string): void {
+  if (Platform.OS === 'web') {
+    const text = message ? `${title}\n\n${message}` : title;
+    if (typeof window !== 'undefined') window.alert(text);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 // 확인/취소 다이얼로그. 네이티브는 Alert.alert, 웹은 커스텀 다이얼로그(ConfirmHost).
 // react-native-web에는 Alert.alert 버튼 UI가 없어 웹에선 confirm이 안 뜬다.
 export function confirmAsync(

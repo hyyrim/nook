@@ -15,7 +15,7 @@ import { getContentById, markContentViewed, deleteContent, getRelatedContents, r
 import { getPermissionStatus, requestNotificationPermission, syncDeviceToken } from '@/lib/notifications';
 import { useContentReminder } from '@/lib/useContentReminder';
 import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
-import { confirmAsync } from '@/lib/confirm';
+import { confirmAsync, notify } from '@/lib/confirm';
 import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
 import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/AuthProvider';
@@ -204,7 +204,7 @@ export default function ContentDetailScreen() {
       const updated = await getContentById(id);
       setItem(updated);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -214,7 +214,7 @@ export default function ContentDetailScreen() {
       const updated = await updateContent(id, { title });
       setItem(prev => prev ? { ...prev, title: updated.title } : prev);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -224,7 +224,7 @@ export default function ContentDetailScreen() {
       const updated = await updateContent(id, { tags });
       setItem(prev => prev ? { ...prev, tags: updated.tags } : prev);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -303,7 +303,7 @@ export default function ContentDetailScreen() {
         await deleteContent(id);
         router.back();
       } catch (e: any) {
-        Alert.alert('Error', e.message);
+        notify('Error', e.message);
       }
     })();
   };
