@@ -194,7 +194,7 @@ export function formatRelativeTime(dateStr: string): string {
 // 썸네일 없을 때 카드/히어로 자리에 들어가는 단일 placeholder 색.
 // 콘텐츠 ID별 무작위 색 대신 한 톤으로 통일해 화면 간 시각적 일관성을 유지한다.
 // Recent / Category / Search / Rediscover / Content Detail 모두 이 값을 사용.
-export const THUMBNAIL_PLACEHOLDER = '#DDD7CE';
+export const THUMBNAIL_PLACEHOLDER = '#E5E5E5';
 
 const DOMAIN_LABELS: Record<string, string> = {
   'instagram.com': 'Instagram',

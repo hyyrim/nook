@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/lib/toast';
 import { ClipboardSavePrompt } from '@/components/ClipboardSavePrompt';
 import { ConfirmHost } from '@/components/ConfirmHost';
 import { DesktopSidebar } from '@/components/DesktopSidebar';
-import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { useIsDesktopWeb, DESKTOP_CONTENT_MAX_WIDTH } from '@/lib/useIsDesktopWeb';
 import { Colors } from '@/constants';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
@@ -151,7 +151,8 @@ function RootNavigator() {
       <StatusBar style="dark" />
       <View style={styles.appRow}>
         {showSidebar && <DesktopSidebar />}
-        <View style={styles.appContent}>
+        <View style={[styles.appContent, isDesktopWeb && styles.appContentDesktop]}>
+          <View style={[styles.appContentInner, isDesktopWeb && styles.appContentInnerDesktop]}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -207,6 +208,7 @@ function RootNavigator() {
           options={{ animation: 'slide_from_right', gestureEnabled: false }}
         />
       </Stack>
+          </View>
         </View>
       </View>
       <ClipboardSavePrompt
@@ -244,6 +246,19 @@ const styles = StyleSheet.create({
   appContent: {
     flex: 1,
     minWidth: 0,
+  },
+  // 데스크탑: 콘텐츠 영역 한 곳에서 max-width를 걸어 모든 화면을 상세와 같은 폭으로 중앙 정렬
+  // (화면별 개별 적용 대신 wrapper 단일화). gutter는 앱 배경색과 맞춤.
+  appContentDesktop: {
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  appContentInner: {
+    flex: 1,
+    width: '100%',
+  },
+  appContentInnerDesktop: {
+    maxWidth: DESKTOP_CONTENT_MAX_WIDTH,
   },
   loading: {
     flex: 1,

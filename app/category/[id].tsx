@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, Pressable, Alert, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
@@ -29,6 +29,7 @@ import {
 import { isClassifying, on, emit } from '@/lib/events';
 import { useAuth } from '@/lib/AuthProvider';
 import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { confirmAsync, notify } from '@/lib/confirm';
 
 // 데스크탑 그리드: 리스트 폭 측정 → 카드 최소폭 기준 열 수 자동. 리스트 뷰는 max-width로 제한.
 const CAT_GRID_GAP = 14;
@@ -66,8 +67,9 @@ export default function CategoryDetailScreen() {
   const [count, setCount] = useState(0);
   const [articles, setArticles] = useState<Content[]>([]);
   const [allCategoryNames, setAllCategoryNames] = useState<string[]>([]);
-  const [viewType, setViewType] = useState<ContentViewType>('list');
   const isDesktopWeb = useIsDesktopWeb();
+  // PC는 그리드가 기본 뷰(모바일은 리스트). lazy init이라 첫 렌더 폭 기준 1회만 결정.
+  const [viewType, setViewType] = useState<ContentViewType>(isDesktopWeb ? 'grid' : 'list');
   const [listW, setListW] = useState(0);
 
   // 데스크탑 그리드 열 수/카드 폭 산출(모바일은 grid=2, list=1 그대로).
@@ -153,7 +155,7 @@ export default function CategoryDetailScreen() {
       await updateCategory(category.id, data);
       loadData();
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -219,63 +221,50 @@ export default function CategoryDetailScreen() {
       .catch((e: any) => {
         setArticles(snapshot);
         setCount(snapshotCount);
-        Alert.alert('Error', e.message);
+        notify('Error', e.message);
       });
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    Alert.alert(
-      `${ids.length}개 콘텐츠 삭제`,
-      '선택한 콘텐츠를 모두 삭제하시겠습니까?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제', style: 'destructive',
-          onPress: () => {
-            const idsSet = new Set(ids);
-            const snapshot = articles;
-            const snapshotCount = count;
+    const ok = await confirmAsync(`${ids.length}개 콘텐츠 삭제`, '선택한 콘텐츠를 모두 삭제하시겠습니까?', {
+      confirmLabel: '삭제',
+      destructive: true,
+    });
+    if (!ok) return;
+    const idsSet = new Set(ids);
+    const snapshot = articles;
+    const snapshotCount = count;
 
-            LayoutAnimation.configureNext(REMOVE_LAYOUT_ANIMATION);
-            setArticles((prev) => prev.filter((a) => !idsSet.has(a.id)));
-            setCount((prev) => Math.max(0, prev - ids.length));
-            exitSelectionMode();
+    LayoutAnimation.configureNext(REMOVE_LAYOUT_ANIMATION);
+    setArticles((prev) => prev.filter((a) => !idsSet.has(a.id)));
+    setCount((prev) => Math.max(0, prev - ids.length));
+    exitSelectionMode();
 
-            deleteContents(ids)
-              .then(() => emit('content-saved'))
-              .catch((e: any) => {
-                setArticles(snapshot);
-                setCount(snapshotCount);
-                Alert.alert('Error', e.message);
-              });
-          },
-        },
-      ]
-    );
+    deleteContents(ids)
+      .then(() => emit('content-saved'))
+      .catch((e: any) => {
+        setArticles(snapshot);
+        setCount(snapshotCount);
+        notify('Error', e.message);
+      });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!category) return;
-    Alert.alert(
+    const ok = await confirmAsync(
       '카테고리 삭제',
       `"${category.name}" 카테고리를 삭제하시겠습니까?\n포함된 콘텐츠는 미분류로 이동됩니다.`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제', style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCategory(category.id);
-              router.back();
-            } catch (e: any) {
-              Alert.alert('Error', e.message);
-            }
-          },
-        },
-      ]
+      { confirmLabel: '삭제', destructive: true },
     );
+    if (!ok) return;
+    try {
+      await deleteCategory(category.id);
+      router.back();
+    } catch (e: any) {
+      notify('Error', e.message);
+    }
   };
 
   return (

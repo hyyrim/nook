@@ -15,7 +15,7 @@ import { getContentById, markContentViewed, deleteContent, getRelatedContents, r
 import { getPermissionStatus, requestNotificationPermission, syncDeviceToken } from '@/lib/notifications';
 import { useContentReminder } from '@/lib/useContentReminder';
 import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
-import { confirmAsync } from '@/lib/confirm';
+import { confirmAsync, notify } from '@/lib/confirm';
 import { formatReminderStatus, type ReminderPreset } from '@/lib/reminders';
 import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/AuthProvider';
@@ -66,11 +66,6 @@ function shouldRefreshMetadata(content: ContentWithCategory) {
   );
 }
 
-function isNotionDomain(domain?: string | null) {
-  if (!domain) return false;
-  const host = domain.toLowerCase();
-  return host === 'notion.so' || host === 'notion.com' || host.endsWith('.notion.site');
-}
 
 function isPollutedMetadata(content: ContentWithCategory) {
   return (
@@ -209,7 +204,7 @@ export default function ContentDetailScreen() {
       const updated = await getContentById(id);
       setItem(updated);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -219,7 +214,7 @@ export default function ContentDetailScreen() {
       const updated = await updateContent(id, { title });
       setItem(prev => prev ? { ...prev, title: updated.title } : prev);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -229,7 +224,7 @@ export default function ContentDetailScreen() {
       const updated = await updateContent(id, { tags });
       setItem(prev => prev ? { ...prev, tags: updated.tags } : prev);
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     }
   };
 
@@ -308,7 +303,7 @@ export default function ContentDetailScreen() {
         await deleteContent(id);
         router.back();
       } catch (e: any) {
-        Alert.alert('Error', e.message);
+        notify('Error', e.message);
       }
     })();
   };
@@ -331,7 +326,7 @@ export default function ContentDetailScreen() {
 
   const description = item.description ? formatDescription(item.description) : '';
   const isLongDescription = description.length > 220 || description.split('\n').length > DESCRIPTION_COLLAPSED_LINES;
-  const isNotion = isNotionDomain(item.domain);
+  const isNotion = formatSource(item.domain) === 'Notion';
 
   return (
     <View style={styles.container}>
@@ -375,7 +370,7 @@ export default function ContentDetailScreen() {
                       <Text style={styles.notionHeroText}>Notion</Text>
                     </View>
                   ) : (
-                    <View style={[styles.heroImage, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
+                    <View style={[styles.heroImage, { backgroundColor: Colors.surface }]} />
                   )}
                   <View style={styles.headerMeta}>
                     <View style={styles.categoryRow}>
@@ -456,7 +451,7 @@ export default function ContentDetailScreen() {
                 <Text style={styles.notionHeroText}>Notion</Text>
               </View>
             ) : (
-              <View style={[styles.heroImage, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
+              <View style={[styles.heroImage, { backgroundColor: Colors.surface }]} />
             )}
             <View style={styles.headerMeta}>
               <View style={styles.categoryRow}>

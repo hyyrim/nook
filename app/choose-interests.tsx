@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { notify } from '@/lib/confirm';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -54,7 +55,7 @@ export default function ChooseInterestsScreen() {
       void analytics.onboardingCompleted();
       router.replace('/notification-permission');
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      notify('Error', e.message);
     } finally {
       setSaving(false);
     }

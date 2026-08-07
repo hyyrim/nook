@@ -7,6 +7,8 @@ import { getCategories, createCategory } from '@/lib/api';
 import { CategoryBottomSheet } from '@/components/CategoryBottomSheet';
 import { CategoryIcon } from '@/components/CategoryIcon';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { useSheetModalAnim, sheetModalStyles } from '@/lib/useSheetModalAnim';
 import type { Category } from '@/types';
 
 type MoveCategorySheetProps = {
@@ -30,6 +32,8 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   // 시트 max height(480)보다 크게 잡아 close 시 완전히 화면 밖으로 나간 뒤 unmount.
   // CategoryBottomSheet과 동일한 값으로 맞춤.
   const sheetTranslateY = useRef(new Animated.Value(600)).current;
+  const isDesktop = useIsDesktopWeb();
+  const modal = useSheetModalAnim(isDesktop);
 
   const loadCategories = useCallback(() => {
     setLoading(true);
@@ -45,6 +49,10 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
 
   useEffect(() => {
     if (!visible) return;
+    // fetch 시작을 애니메이션 뒤로 미루지만, loading은 즉시 켜야 한다.
+    // 안 그러면 categories=[] + loading=false인 첫 프레임에 '미분류'만 잠깐 떴다가
+    // 스피너로 바뀌는 깜빡임이 생긴다.
+    setLoading(true);
     // 시트 등장 애니메이션과 fetch가 겹치면 첫 프레임이 잘려 버벅여 보인다.
     // 상호작용(=애니메이션) 종료 후 fetch를 실행해 등장 프레임을 우선 확보.
     const task = InteractionManager.runAfterInteractions(() => {
@@ -60,26 +68,19 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
       // timing+cubic은 감쇠감이 약해 마지막 프레임이 툭 끊기는 인상.
       Animated.parallel([
         Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-        Animated.spring(sheetTranslateY, {
-          toValue: 0,
-          damping: 22,
-          stiffness: 230,
-          mass: 0.9,
-          useNativeDriver: true,
-        }),
+        ...(isDesktop
+          ? modal.enter()
+          : [Animated.spring(sheetTranslateY, { toValue: 0, damping: 22, stiffness: 230, mass: 0.9, useNativeDriver: true })]),
       ]).start();
       return;
     }
     Animated.parallel([
       Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 600,
-        duration: 190,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      ...(isDesktop
+        ? modal.exit()
+        : [Animated.timing(sheetTranslateY, { toValue: 600, duration: 190, easing: Easing.in(Easing.cubic), useNativeDriver: true })]),
     ]).start(({ finished }) => { if (finished) setIsMounted(false); });
-  }, [visible]);
+  }, [visible, isDesktop, modal]);
 
   const handleSelect = (categoryId: string | null) => {
     onSelect(categoryId);
@@ -92,13 +93,9 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
     setIsMounted(true);
     Animated.parallel([
       Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.spring(sheetTranslateY, {
-        toValue: 0,
-        damping: 22,
-        stiffness: 230,
-        mass: 0.9,
-        useNativeDriver: true,
-      }),
+      ...(isDesktop
+        ? modal.enter()
+        : [Animated.spring(sheetTranslateY, { toValue: 0, damping: 22, stiffness: 230, mass: 0.9, useNativeDriver: true })]),
     ]).start();
   };
 
@@ -108,7 +105,10 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
       const created = await createCategory(data.name, { color: data.color, icon: data.icon });
       setCategories((prev) => [...prev, created]);
       setShowAddSheet(false);
-      if (addSheetDismissed.current) {
+      if (isDesktop) {
+        // 웹은 onDismiss가 없어 pending 방식이 안 먹는다. 바로 선택(=이동 + 닫기).
+        handleSelect(created.id);
+      } else if (addSheetDismissed.current) {
         handleSelect(created.id);
       } else {
         pendingCreatedCategoryId.current = created.id;
@@ -121,18 +121,22 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   };
 
   const handleOpenAddSheet = () => {
+    if (isDesktop) {
+      // 웹: 모달 스택이 자유로우니 이동 시트를 닫지 않고 추가 시트만 위에 띄운다.
+      // (iOS의 이동 시트 dismiss → 추가 시트 present 순차 안무는 orphan container
+      // 먹통 회피용이라 웹엔 불필요하고, 오히려 딤이 껐다 켜지며 깜빡인다.)
+      setShowAddSheet(true);
+      return;
+    }
     reopenAfterAddDismiss.current = true;
     addSheetDismissed.current = false;
     pendingCreatedCategoryId.current = null;
     setOpenAddAfterDismiss(true);
     Animated.parallel([
       Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 600,
-        duration: 190,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      ...(isDesktop
+        ? modal.exit()
+        : [Animated.timing(sheetTranslateY, { toValue: 600, duration: 190, easing: Easing.in(Easing.cubic), useNativeDriver: true })]),
     ]).start(({ finished }) => {
       if (finished) setIsMounted(false);
     });
@@ -172,16 +176,22 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
         onRequestClose={onClose}
       >
         <Animated.View pointerEvents="none" style={[styles.dim, { opacity: backdropOpacity }]} />
-        <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={[styles.backdrop, isDesktop && sheetModalStyles.backdropCentered]} onPress={onClose}>
           <Animated.View
-            style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+            style={[
+              styles.sheetContainer,
+              isDesktop && sheetModalStyles.containerCentered,
+              isDesktop
+                ? { opacity: modal.opacity, transform: [{ scale: modal.scale }] }
+                : { transform: [{ translateY: sheetTranslateY }] },
+            ]}
             onStartShouldSetResponder={() => true}
             {...(Platform.OS === 'web'
               ? ({ onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() } as object)
               : {})}
           >
-            <View style={styles.sheet}>
-              <View style={styles.dragHandle} />
+            <View style={[styles.sheet, isDesktop && sheetModalStyles.sheetCentered]}>
+              {!isDesktop && <View style={styles.dragHandle} />}
               <View style={styles.header}>
                 <Text style={styles.title}>카테고리 변경</Text>
                 <Pressable onPress={onClose} style={styles.closeButton}>

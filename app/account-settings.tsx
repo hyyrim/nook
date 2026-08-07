@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors, Radius } from '@/constants';
@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthProvider';
 import { deleteAccount } from '@/lib/api';
 import { cancelAllReminders } from '@/lib/reminders';
+import { confirmAsync, notify } from '@/lib/confirm';
 
 function SectionLabel({ text }: { text: string }) {
   return <Text style={styles.sectionLabel}>{text}</Text>;
@@ -26,19 +27,17 @@ export default function AccountSettingsScreen() {
   const providerLabel = provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : '이메일';
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (isDeleting) return;
-    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃', style: 'destructive',
-        onPress: async () => {
-          // device 로컬 리마인더는 유저 격리를 파고들 수 있어 로그아웃 시점에 청소.
-          await cancelAllReminders();
-          await supabase.auth.signOut();
-        },
-      },
-    ]);
+    // Alert.alert는 react-native-web에서 no-op이라 웹 대응된 confirmAsync 경유.
+    const ok = await confirmAsync('로그아웃', '로그아웃 하시겠습니까?', {
+      confirmLabel: '로그아웃',
+      destructive: true,
+    });
+    if (!ok) return;
+    // device 로컬 리마인더는 유저 격리를 파고들 수 있어 로그아웃 시점에 청소.
+    await cancelAllReminders();
+    await supabase.auth.signOut();
   };
 
   const runDeleteAccount = async () => {
@@ -49,39 +48,26 @@ export default function AccountSettingsScreen() {
       await deleteAccount();
       await supabase.auth.signOut();
     } catch (e: any) {
-      Alert.alert('오류', e.message || '계정 삭제에 실패했습니다.');
+      notify('오류', e.message || '계정 삭제에 실패했습니다.');
       setIsDeleting(false);
     }
   };
 
-  const showFinalDeleteConfirm = () => {
-    Alert.alert(
-      '마지막 확인',
-      '계정과 저장한 콘텐츠가 영구적으로 삭제돼요. 정말 삭제할까요?',
-      [
-        { text: '아니요', style: 'cancel' },
-        {
-          text: '영구 삭제',
-          style: 'destructive',
-          onPress: runDeleteAccount,
-        },
-      ],
-    );
-  };
-
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (isDeleting) return;
-    Alert.alert(
+    const first = await confirmAsync(
       '계정을 삭제할까요?',
       '저장한 콘텐츠와 카테고리가 모두 삭제돼요. 이 작업은 되돌릴 수 없어요.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제하기', style: 'destructive',
-          onPress: () => requestAnimationFrame(showFinalDeleteConfirm),
-        },
-      ],
+      { confirmLabel: '삭제하기', destructive: true },
     );
+    if (!first) return;
+    const second = await confirmAsync(
+      '마지막 확인',
+      '계정과 저장한 콘텐츠가 영구적으로 삭제돼요. 정말 삭제할까요?',
+      { confirmLabel: '영구 삭제', cancelLabel: '아니요', destructive: true },
+    );
+    if (!second) return;
+    await runDeleteAccount();
   };
 
   return (
