@@ -370,7 +370,7 @@ export default function ContentDetailScreen() {
                       <Text style={styles.notionHeroText}>Notion</Text>
                     </View>
                   ) : (
-                    <View style={[styles.heroImage, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
+                    <View style={[styles.heroImage, { backgroundColor: Colors.surface }]} />
                   )}
                   <View style={styles.headerMeta}>
                     <View style={styles.categoryRow}>
@@ -451,7 +451,7 @@ export default function ContentDetailScreen() {
                 <Text style={styles.notionHeroText}>Notion</Text>
               </View>
             ) : (
-              <View style={[styles.heroImage, { backgroundColor: THUMBNAIL_PLACEHOLDER }]} />
+              <View style={[styles.heroImage, { backgroundColor: Colors.surface }]} />
             )}
             <View style={styles.headerMeta}>
               <View style={styles.categoryRow}>
