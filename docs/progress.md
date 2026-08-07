@@ -1,6 +1,6 @@
 # Nook 개발 진행 상태
 
-최종 업데이트: 2026-07-31 (60차 — Nook 공식 랜딩페이지)
+최종 업데이트: 2026-08-08 (61차 — PC 마무리: 데스크탑 UX 수정 + 웹 로그인/저장)
 
 > v1.0.0 MVP 정식 출시 완료. 이후 작업은 Phase 2 범위 (현재 v1.2.4 기반 TestFlight 안정화 진행).
 > 완료된 긴 진행 기록은 `docs/archive/`에 보관합니다.
@@ -14,10 +14,26 @@ Archived records:
 | 항목 | 상태 |
 |------|------|
 | 현재 Phase | Phase 2 / v1.2.4 기반 TestFlight 안정화 |
-| 최근 앱 작업 | 60차 — 기존 앱과 독립된 Nook 공식 랜딩페이지 제작 및 Sites 배포 |
-| 최근 문서 작업 | 60차 — 랜딩 범위·배포 분리 결정 기록 (→ 결정 112) |
+| 최근 앱 작업 | 61차 — PC 데스크탑 마무리: 시트/모달·뷰 수정, 로그아웃 등 Alert 웹 대응, 애플 웹 로그인, 로그인 화면 2분할, 웹 저장 메타(Lane B 6) |
+| 최근 문서 작업 | 61차 — 웹 저장 메타 Edge Function 결정 기록 (→ 결정 113) |
 | 현재 기록 파일 | `docs/decisions.md`, `docs/ai-usage-log.md`, `docs/progress.md` |
 | Archive 위치 | `docs/archive/` |
+
+## 완료 (61차 — PC 데스크탑 마무리)
+
+모든 변경은 `useIsDesktopWeb`/`Platform.OS==='web'` 분기 안에만 들어가 **iOS·모바일 웹 무영향**. 공통 뿌리: iOS `Modal.onDismiss`·`Alert.alert`가 웹에서 동작하지 않던 것을 데스크탑 분기로 우회.
+
+| 항목 | 상태 |
+|------|------|
+| 시트 4종(Category/ContentTitle/MoveCategory/Tags) 데스크탑 중앙 모달화 — 공용 `useSheetModalAnim` | ✅ |
+| PC 이슈 4종: ActionSheet 중앙 모달+웹 액션 실행 버그, 카테고리 변경 시트 깜빡임 2건, 카테고리 상세 PC 기본 그리드 | ✅ |
+| `Alert.alert` 웹 no-op 전반 대응 — 로그아웃/삭제 확인은 `confirmAsync`(ConfirmHost), 에러 알림은 신규 `notify`(웹=window.alert) | ✅ |
+| **애플 웹 로그인** — 코드는 기존(`auth.web.ts`)대로 정상, 콘솔 설정으로 해결(Apple Services ID + Supabase Client IDs 순서 + JWT secret) | ✅ |
+| 로그인 화면 데스크탑 좌우 2분할(좌 브랜드 / 우 인증 340px) | ✅ |
+| **Lane B 6 — 웹 저장 메타 스크래핑** (Phase 1 generic OG): `extract-metadata` Edge Function + `lib/metadata.web.ts` (→ 결정 113) | ✅ 코드 완료, 배포·스모크 대기 |
+| Vercel 배포 꼬임 해결 — `nook`(앱) 프로젝트에 landing(Next.js)이 잘못 배포돼 Production 실패하던 것 정상화 (→ 메모리 project-vercel-topology) | ✅ |
+
+**Lane B 6 남은 단계**: `supabase functions deploy extract-metadata` + 웹 앱 재배포 후 실 URL 스모크(YouTube `youtu.be/…`·블로그·뉴스). Notion/X/Instagram 특수처리는 Phase 2로 스킵(웹 저장 결과가 실제로 나쁠 때 해당 사이트만 이식).
 
 ## 완료 (60차 — Nook 공식 랜딩페이지)
 
@@ -48,7 +64,7 @@ RN Web 타깃으로 데스크탑 웹 조회 경험 구현. **iOS·모바일 웹 
 | 콘텐츠 상세 2컬럼(좌 미디어+메타 / 우 제목+내용+관련) + nav 컬럼 정렬 + 간격 확대 (PR #102) | ✅ |
 | 웹 버그: 원문 `window.open` 새 탭 / 시트 input 클릭 닫힘(onClick stopPropagation) / 삭제 confirm 커스텀 다이얼로그(`ConfirmHost`) / 리마인더 벨 숨김 / 관련콘텐츠 깜빡임 (PR #101) | ✅ |
 | 저장 시트 데스크탑 중앙 모달(fade + subtle scale 모션, review-animations 반영) (PR #103) | ✅ |
-| 웹 저장 스크래핑 — 메타 Edge Function(`extract-metadata` Deno 포팅 + `metadata.web.ts`) | ⏸ Lane B 6 (다음 스프린트, "저장은 모바일" 페르소나상 비긴급) |
+| 웹 저장 스크래핑 — 메타 Edge Function(`extract-metadata` + `metadata.web.ts`) | ✅ 61차 (Phase 1 generic OG. 배포·스모크 대기 → 결정 113) |
 | Vercel 배포(Lane B 7) + Apple 웹 로그인 콘솔 셋업(Lane A) | ⏸ |
 | 선택 craft: 상세 좌컬럼 sticky · 데스크탑 hover 피드백 | ⏸ 백로그 |
 
@@ -489,8 +505,8 @@ RN Web 타깃으로 데스크탑 웹 조회 경험 구현. **iOS·모바일 웹 
 3. ✅ **웹 로그인(구글)**: `lib/auth.web.ts` `signInWithOAuth` → 북극성(앱 저장→PC 조회) 실증 (PR #99)
 4. ✅ **깨지는 꼬리 + 데스크탑 레이아웃**: 사이드바 셸(root hoist) / 그리드 다열화 / 리스트 compact / 상세 2컬럼 / 웹 버그(원문·시트·confirm·벨) / 저장 모달 (PR #100~#103)
 5. ⏸ **애플 웹 로그인**: `auth.web.ts`에 apple `signInWithOAuth` 이미 있음, **Lane A 콘솔 셋업 선행 필요**
-6. ⏸ **웹 저장 스크래핑**: `supabase/functions/extract-metadata/`(metadata.ts Deno 포팅) + `lib/metadata.web.ts`. 실 URL 스모크 테스트 — **다음 스프린트**
-7. ⏸ **배포**: `vercel.json` SPA rewrite + Vercel 연결 + `expo export -p web`
+6. ✅ **웹 저장 스크래핑** (61차): `supabase/functions/extract-metadata/`(generic OG Phase 1) + `lib/metadata.web.ts`. 배포·실 URL 스모크만 대기 (→ 결정 113)
+7. ✅ **배포** (61차): `vercel.json` SPA rewrite + Vercel `nook` 프로젝트 연결(main Git 배포) + `expo export -p web`. `nook-lovat-three.vercel.app` 라이브
 
 **Lane A — 외부 콘솔 셋업 (코드로 못 함, 사용자가 미리. 리드타임 있음)**
 - **Supabase 대시보드**: Google provider 웹 redirect 활성 / Apple provider에 `.p8` Client Secret 등록 / Auth redirect URL에 Vercel 도메인 + 로컬(`http://localhost:8081`) 추가
