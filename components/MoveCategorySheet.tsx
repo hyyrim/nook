@@ -49,6 +49,10 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
 
   useEffect(() => {
     if (!visible) return;
+    // fetch 시작을 애니메이션 뒤로 미루지만, loading은 즉시 켜야 한다.
+    // 안 그러면 categories=[] + loading=false인 첫 프레임에 '미분류'만 잠깐 떴다가
+    // 스피너로 바뀌는 깜빡임이 생긴다.
+    setLoading(true);
     // 시트 등장 애니메이션과 fetch가 겹치면 첫 프레임이 잘려 버벅여 보인다.
     // 상호작용(=애니메이션) 종료 후 fetch를 실행해 등장 프레임을 우선 확보.
     const task = InteractionManager.runAfterInteractions(() => {
@@ -101,7 +105,10 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
       const created = await createCategory(data.name, { color: data.color, icon: data.icon });
       setCategories((prev) => [...prev, created]);
       setShowAddSheet(false);
-      if (addSheetDismissed.current) {
+      if (isDesktop) {
+        // 웹은 onDismiss가 없어 pending 방식이 안 먹는다. 바로 선택(=이동 + 닫기).
+        handleSelect(created.id);
+      } else if (addSheetDismissed.current) {
         handleSelect(created.id);
       } else {
         pendingCreatedCategoryId.current = created.id;
@@ -114,6 +121,13 @@ export function MoveCategorySheet({ visible, currentCategoryId, onClose, onSelec
   };
 
   const handleOpenAddSheet = () => {
+    if (isDesktop) {
+      // 웹: 모달 스택이 자유로우니 이동 시트를 닫지 않고 추가 시트만 위에 띄운다.
+      // (iOS의 이동 시트 dismiss → 추가 시트 present 순차 안무는 orphan container
+      // 먹통 회피용이라 웹엔 불필요하고, 오히려 딤이 껐다 켜지며 깜빡인다.)
+      setShowAddSheet(true);
+      return;
+    }
     reopenAfterAddDismiss.current = true;
     addSheetDismissed.current = false;
     pendingCreatedCategoryId.current = null;

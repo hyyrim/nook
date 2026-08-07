@@ -66,8 +66,9 @@ export default function CategoryDetailScreen() {
   const [count, setCount] = useState(0);
   const [articles, setArticles] = useState<Content[]>([]);
   const [allCategoryNames, setAllCategoryNames] = useState<string[]>([]);
-  const [viewType, setViewType] = useState<ContentViewType>('list');
   const isDesktopWeb = useIsDesktopWeb();
+  // PC는 그리드가 기본 뷰(모바일은 리스트). lazy init이라 첫 렌더 폭 기준 1회만 결정.
+  const [viewType, setViewType] = useState<ContentViewType>(isDesktopWeb ? 'grid' : 'list');
   const [listW, setListW] = useState(0);
 
   // 데스크탑 그리드 열 수/카드 폭 산출(모바일은 grid=2, list=1 그대로).
