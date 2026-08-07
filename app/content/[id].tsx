@@ -66,11 +66,6 @@ function shouldRefreshMetadata(content: ContentWithCategory) {
   );
 }
 
-function isNotionDomain(domain?: string | null) {
-  if (!domain) return false;
-  const host = domain.toLowerCase();
-  return host === 'notion.so' || host === 'notion.com' || host.endsWith('.notion.site');
-}
 
 function isPollutedMetadata(content: ContentWithCategory) {
   return (
@@ -331,7 +326,7 @@ export default function ContentDetailScreen() {
 
   const description = item.description ? formatDescription(item.description) : '';
   const isLongDescription = description.length > 220 || description.split('\n').length > DESCRIPTION_COLLAPSED_LINES;
-  const isNotion = isNotionDomain(item.domain);
+  const isNotion = formatSource(item.domain) === 'Notion';
 
   return (
     <View style={styles.container}>

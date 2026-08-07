@@ -12,6 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './PrimaryButton';
 import { CategoryIcon } from './CategoryIcon';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { useSheetModalAnim, sheetModalStyles } from '@/lib/useSheetModalAnim';
 
 type CategorySubmitData = {
   name: string;
@@ -54,6 +56,8 @@ export function CategoryBottomSheet({
   const inputRef = useRef<TextInput>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(600)).current;
+  const isDesktop = useIsDesktopWeb();
+  const modal = useSheetModalAnim(isDesktop);
 
   // 시트 상단이 절대 넘지 않아야 하는 최소 top 여백(노치/상태바 회피).
   const topGap = insets.top + 12;
@@ -84,38 +88,23 @@ export function CategoryBottomSheet({
     if (visible) {
       setIsMounted(true);
       Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sheetTranslateY, {
-          toValue: 0,
-          damping: 22,
-          stiffness: 230,
-          mass: 0.9,
-          useNativeDriver: true,
-        }),
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        ...(isDesktop
+          ? modal.enter()
+          : [Animated.spring(sheetTranslateY, { toValue: 0, damping: 22, stiffness: 230, mass: 0.9, useNativeDriver: true })]),
       ]).start();
       return;
     }
 
     Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 600,
-        duration: 190,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      ...(isDesktop
+        ? modal.exit()
+        : [Animated.timing(sheetTranslateY, { toValue: 600, duration: 190, easing: Easing.in(Easing.cubic), useNativeDriver: true })]),
     ]).start(({ finished }) => {
       if (finished) setIsMounted(false);
     });
-  }, [visible, backdropOpacity, sheetTranslateY]);
+  }, [visible, backdropOpacity, sheetTranslateY, isDesktop, modal]);
 
   const isEdit = mode === 'edit';
   const title = isEdit ? '카테고리 수정' : '카테고리 추가';
@@ -161,16 +150,22 @@ export function CategoryBottomSheet({
         pointerEvents="none"
         style={[styles.dim, { opacity: backdropOpacity }]}
       />
-      <Pressable style={styles.backdrop} onPress={handleClose}>
+      <Pressable style={[styles.backdrop, isDesktop && sheetModalStyles.backdropCentered]} onPress={handleClose}>
         <Animated.View
-          style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+          style={[
+            styles.sheetContainer,
+            isDesktop && sheetModalStyles.containerCentered,
+            isDesktop
+              ? { opacity: modal.opacity, transform: [{ scale: modal.scale }] }
+              : { transform: [{ translateY: sheetTranslateY }] },
+          ]}
           onStartShouldSetResponder={() => true}
           {...(Platform.OS === 'web'
             ? ({ onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() } as object)
             : {})}
         >
-          <Reanimated.View style={[styles.sheet, { maxHeight: sheetMaxHeight }, sheetAnimatedStyle]}>
-            <View style={styles.dragHandle} />
+          <Reanimated.View style={[styles.sheet, { maxHeight: sheetMaxHeight }, sheetAnimatedStyle, isDesktop && sheetModalStyles.sheetCentered]}>
+            {!isDesktop && <View style={styles.dragHandle} />}
 
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>

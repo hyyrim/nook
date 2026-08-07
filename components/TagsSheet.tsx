@@ -4,6 +4,8 @@ import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-
 import { BOTTOM_SHEET_PADDING_BOTTOM, Colors, Radius, Typography } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './PrimaryButton';
+import { useIsDesktopWeb } from '@/lib/useIsDesktopWeb';
+import { useSheetModalAnim, sheetModalStyles } from '@/lib/useSheetModalAnim';
 
 type TagsSheetProps = {
   visible: boolean;
@@ -23,6 +25,8 @@ export function TagsSheet({ visible, initialTags = [], onClose, onSubmit }: Tags
   const inputRef = useRef<TextInput>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(360)).current;
+  const isDesktop = useIsDesktopWeb();
+  const modal = useSheetModalAnim(isDesktop);
 
   const keyboard = useAnimatedKeyboard();
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
@@ -46,38 +50,23 @@ export function TagsSheet({ visible, initialTags = [], onClose, onSubmit }: Tags
     if (visible) {
       setIsMounted(true);
       Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.spring(sheetTranslateY, {
-          toValue: 0,
-          damping: 22,
-          stiffness: 230,
-          mass: 0.9,
-          useNativeDriver: true,
-        }),
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        ...(isDesktop
+          ? modal.enter()
+          : [Animated.spring(sheetTranslateY, { toValue: 0, damping: 22, stiffness: 230, mass: 0.9, useNativeDriver: true })]),
       ]).start();
       return;
     }
 
     Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 360,
-        duration: 190,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
+      Animated.timing(backdropOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      ...(isDesktop
+        ? modal.exit()
+        : [Animated.timing(sheetTranslateY, { toValue: 360, duration: 190, easing: Easing.in(Easing.cubic), useNativeDriver: true })]),
     ]).start(({ finished }) => {
       if (finished) setIsMounted(false);
     });
-  }, [visible, backdropOpacity, sheetTranslateY]);
+  }, [visible, backdropOpacity, sheetTranslateY, isDesktop, modal]);
 
   const handleAddTag = () => {
     const trimmed = value.trim();
@@ -116,16 +105,22 @@ export function TagsSheet({ visible, initialTags = [], onClose, onSubmit }: Tags
         pointerEvents="none"
         style={[styles.dim, { opacity: backdropOpacity }]}
       />
-      <Pressable style={styles.backdrop} onPress={handleClose}>
+      <Pressable style={[styles.backdrop, isDesktop && sheetModalStyles.backdropCentered]} onPress={handleClose}>
         <Animated.View
-          style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+          style={[
+            styles.sheetContainer,
+            isDesktop && sheetModalStyles.containerCentered,
+            isDesktop
+              ? { opacity: modal.opacity, transform: [{ scale: modal.scale }] }
+              : { transform: [{ translateY: sheetTranslateY }] },
+          ]}
           onStartShouldSetResponder={() => true}
           {...(Platform.OS === 'web'
             ? ({ onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() } as object)
             : {})}
         >
-          <Reanimated.View style={[styles.sheet, sheetAnimatedStyle]}>
-            <View style={styles.dragHandle} />
+          <Reanimated.View style={[styles.sheet, sheetAnimatedStyle, isDesktop && sheetModalStyles.sheetCentered]}>
+            {!isDesktop && <View style={styles.dragHandle} />}
 
             <View style={styles.header}>
               <Text style={styles.title}>태그 수정</Text>
