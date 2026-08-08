@@ -969,5 +969,8 @@ select cron.schedule(
 **결과**:
 - `supabase/functions/extract-metadata/`: `parse.ts`(순수 OG 파서, `metadata.ts` regex 이식 + `parse_test.ts`) / `index.ts`(fetch + CORS allowlist + serve). Secret 불필요.
 - `lib/metadata.ts`: `fetchLinkMetadata` 진입부에 `Platform.OS==='web'` 분기 + `fetchLinkMetadataViaEdge` 헬퍼(invoke). 호출 실패 시 domain + 플랫폼 fallback 제목. iOS 경로 무변경.
-- CORS는 origin allowlist(localhost:8081 + Vercel 도메인)로 제한 — 유출 JWT로 임의 사이트에서 프록시 남용 방지.
-- **남은 단계**: `supabase functions deploy extract-metadata` + 웹 재배포 후 실 URL 스모크. Deno `fetch`가 서버 IP로 일부 사이트에서 403이면 UA 교체(`index.ts` ponytail 주석).
+- CORS: 처음엔 origin allowlist였으나 **Vercel 별칭·프리뷰 URL을 놓쳐 앱이 응답을 못 읽는 사고** → `verify_jwt=true`(로그인 유저)로 이미 게이트되고 공개 OG만 반환하므로 **wildcard(`*`)로 전환**.
+
+**스모크에서 발견·수정 (2026-08-08)**:
+- **CORS allowlist가 접속 별칭을 놓쳐 웹 저장이 metadata 없이 저장됨** → wildcard로 해결.
+- **YouTube가 서버 IP엔 봇/consent 페이지(og:title="- YouTube")를 줌** → generic OG로는 무의미. **YouTube oembed**(`/oembed?url=…&format=json`, IP 무관 실제 제목·썸네일)를 `index.ts`에 특수처리로 추가. (내 노트북 주거 IP에선 OG가 됐지만 Supabase 서버 IP에선 안 됐던 것 — "OG면 충분"이라던 스코프 판단을 실측이 뒤집음.) Notion/X/Instagram은 여전히 Phase 2.
