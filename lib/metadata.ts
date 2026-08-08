@@ -1,3 +1,6 @@
+import { Platform } from 'react-native';
+import { supabase } from './supabase';
+
 export type LinkMetadata = {
   title?: string;
   thumbnail_url?: string;
@@ -161,12 +164,32 @@ async function fetchHtmlWithUA(url: string, userAgent: string): Promise<string |
   }
 }
 
+// 웹 전용: extract-metadata Edge Function에 스크래핑을 위임. 호출 실패 시 domain + 플랫폼 fallback 제목.
+async function fetchLinkMetadataViaEdge(normalizedUrl: string, domain?: string): Promise<LinkMetadata> {
+  try {
+    const { data, error } = await supabase.functions.invoke<LinkMetadata>('extract-metadata', {
+      body: { url: normalizedUrl },
+    });
+    if (error || !data) throw error ?? new Error('no data');
+    return data;
+  } catch {
+    const title = platformFallbackTitle(normalizedUrl);
+    return title ? { domain, title } : { domain };
+  }
+}
+
 export async function fetchLinkMetadata(
   url: string,
   options?: { shareIntentMeta?: Record<string, string | undefined> | null },
 ): Promise<LinkMetadata> {
   const normalizedUrl = normalizeUrl(url);
   const domain = getDomain(normalizedUrl);
+
+  // 웹은 브라우저 fetch가 CORS로 막혀 스크래핑 불가 → 서버(extract-metadata Edge Function)에 위임.
+  // iOS는 아래 기존 로직 그대로. (별도 metadata.web.ts는 `./metadata` self-import 함정이 있어 폐기)
+  if (Platform.OS === 'web') {
+    return fetchLinkMetadataViaEdge(normalizedUrl, domain);
+  }
 
   // Safari 공유 시 share extension이 클라이언트 렌더 후 head meta를 함께 전달한다.
   // 풍부한 OG가 있으면 fetch 생략하고 그 정보로 LinkMetadata 구성 — 서버 SSR이 누락하는

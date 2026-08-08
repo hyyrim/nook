@@ -30,7 +30,7 @@ Archived records:
 | `Alert.alert` 웹 no-op 전반 대응 — 로그아웃/삭제 확인은 `confirmAsync`(ConfirmHost), 에러 알림은 신규 `notify`(웹=window.alert) | ✅ |
 | **애플 웹 로그인** — 코드는 기존(`auth.web.ts`)대로 정상, 콘솔 설정으로 해결(Apple Services ID + Supabase Client IDs 순서 + JWT secret) | ✅ |
 | 로그인 화면 데스크탑 좌우 2분할(좌 브랜드 / 우 인증 340px) | ✅ |
-| **Lane B 6 — 웹 저장 메타 스크래핑** (Phase 1 generic OG): `extract-metadata` Edge Function + `lib/metadata.web.ts` (→ 결정 113) | ✅ 코드 완료, 배포·스모크 대기 |
+| **Lane B 6 — 웹 저장 메타 스크래핑** (Phase 1 generic OG): `extract-metadata` Edge Function + `metadata.ts` 웹 분기 (→ 결정 113) | ✅ 배포됨. `.web.ts` self-import 버그로 저장 전부 실패 → `Platform.OS` 분기로 수정 |
 | Vercel 배포 꼬임 해결 — `nook`(앱) 프로젝트에 landing(Next.js)이 잘못 배포돼 Production 실패하던 것 정상화 (→ 메모리 project-vercel-topology) | ✅ |
 
 **Lane B 6 남은 단계**: `supabase functions deploy extract-metadata` + 웹 앱 재배포 후 실 URL 스모크(YouTube `youtu.be/…`·블로그·뉴스). Notion/X/Instagram 특수처리는 Phase 2로 스킵(웹 저장 결과가 실제로 나쁠 때 해당 사이트만 이식).
@@ -64,7 +64,7 @@ RN Web 타깃으로 데스크탑 웹 조회 경험 구현. **iOS·모바일 웹 
 | 콘텐츠 상세 2컬럼(좌 미디어+메타 / 우 제목+내용+관련) + nav 컬럼 정렬 + 간격 확대 (PR #102) | ✅ |
 | 웹 버그: 원문 `window.open` 새 탭 / 시트 input 클릭 닫힘(onClick stopPropagation) / 삭제 confirm 커스텀 다이얼로그(`ConfirmHost`) / 리마인더 벨 숨김 / 관련콘텐츠 깜빡임 (PR #101) | ✅ |
 | 저장 시트 데스크탑 중앙 모달(fade + subtle scale 모션, review-animations 반영) (PR #103) | ✅ |
-| 웹 저장 스크래핑 — 메타 Edge Function(`extract-metadata` + `metadata.web.ts`) | ✅ 61차 (Phase 1 generic OG. 배포·스모크 대기 → 결정 113) |
+| 웹 저장 스크래핑 — 메타 Edge Function(`extract-metadata` + `metadata.ts` 웹 분기) | ✅ 61차 (Phase 1 generic OG. 배포됨 → 결정 113) |
 | Vercel 배포(Lane B 7) + Apple 웹 로그인 콘솔 셋업(Lane A) | ⏸ |
 | 선택 craft: 상세 좌컬럼 sticky · 데스크탑 hover 피드백 | ⏸ 백로그 |
 

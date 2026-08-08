@@ -958,7 +958,9 @@ select cron.schedule(
 
 ## 113. 웹 저장 메타는 generic OG Edge Function으로 최소 이식 (2026-08-08)
 
-**결정**: 웹 저장 시 메타 추출을 `extract-metadata` Supabase Edge Function으로 서버에서 수행하고, 앱은 `lib/metadata.web.ts`(Metro가 웹에서 `metadata.ts` 대신 해소)에서 이를 호출한다. iOS `metadata.ts`·`saveContent`는 무수정.
+**결정**: 웹 저장 시 메타 추출을 `extract-metadata` Supabase Edge Function으로 서버에서 수행하고, 앱은 `lib/metadata.ts`의 `fetchLinkMetadata` 안에서 `Platform.OS==='web'`일 때 이를 invoke한다(iOS는 기존 로직 그대로).
+
+**⚠️ 초기 `metadata.web.ts` 방식 폐기(같은 커밋 내 수정)**: 처음엔 `lib/metadata.web.ts`를 신설해 Metro 플랫폼 해소로 교체하려 했으나, 그 파일 안의 `import { normalizeUrl } from './metadata'`가 **웹에선 `./metadata`를 자기 자신(metadata.web.ts)으로 해소** → `normalizeUrl`이 undefined → `fetchLinkMetadata` 첫 줄에서 throw → 웹 저장 전부 실패. `auth.web.ts`는 자기완결(base를 import 안 함)이라 이 함정을 피했던 것. 교훈: **`.web.ts` 오버라이드는 base 파일을 import/재수출하면 안 된다.** → 파일 삭제하고 `metadata.ts` 내부 `Platform.OS` 분기로 전환(supabase.ts가 쓰는 패턴).
 
 **배경**: 브라우저 `fetch`는 CORS로 외부 페이지 스크래핑이 막혀 웹 저장 시 raw URL만 남았다(제목·썸네일·AI 태그 없음). `saveContent → classifyAndUpdate`는 플랫폼 무관하게 메타만 들어오면 AI 태그·카테고리까지 자동 실행되므로, 새로 필요한 건 서버측 메타 추출 하나뿐.
 
@@ -966,6 +968,6 @@ select cron.schedule(
 
 **결과**:
 - `supabase/functions/extract-metadata/`: `parse.ts`(순수 OG 파서, `metadata.ts` regex 이식 + `parse_test.ts`) / `index.ts`(fetch + CORS allowlist + serve). Secret 불필요.
-- `lib/metadata.web.ts`: `export * from './metadata'`로 순수 헬퍼 재사용, 네트워크에 묶인 `fetchLinkMetadata`만 교체(재수출 심볼을 로컬 export가 가림). 호출 실패 시 domain + 플랫폼 fallback 제목.
+- `lib/metadata.ts`: `fetchLinkMetadata` 진입부에 `Platform.OS==='web'` 분기 + `fetchLinkMetadataViaEdge` 헬퍼(invoke). 호출 실패 시 domain + 플랫폼 fallback 제목. iOS 경로 무변경.
 - CORS는 origin allowlist(localhost:8081 + Vercel 도메인)로 제한 — 유출 JWT로 임의 사이트에서 프록시 남용 방지.
 - **남은 단계**: `supabase functions deploy extract-metadata` + 웹 재배포 후 실 URL 스모크. Deno `fetch`가 서버 IP로 일부 사이트에서 403이면 UA 교체(`index.ts` ponytail 주석).
