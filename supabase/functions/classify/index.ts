@@ -9,9 +9,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// CORS 헤더 미설정. Nook은 모바일 전용이라 브라우저 프리플라이트가 발생하지 않고,
-// wildcard 원본을 허용하면 유출된 JWT로 임의 사이트에서 Anthropic 크레딧을 소모할 수 있다.
-// 향후 웹 클라이언트 추가 시 특정 origin allowlist로 재도입.
+// CORS는 아래 CORS_HEADERS로 wildcard 허용(데스크탑 웹 클라이언트용). verify_jwt + 유저 검증이 게이트.
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -129,16 +127,25 @@ function parseClassifyResponse(
   }
 }
 
+// 웹 클라이언트(데스크탑) invoke를 위해 CORS 허용. verify_jwt=true + 함수 내 유저 검증으로
+// 이미 게이트되고, CORS는 브라우저만 제약할 뿐 유출 JWT의 서버측 남용은 어차피 못 막으므로
+// wildcard로 연다(태그/카테고리가 웹 저장에서 안 채워지던 문제 해결).
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: { 'Content-Type': 'text/plain' } });
+    return new Response('ok', { headers: CORS_HEADERS });
   }
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'method_not_allowed' }, 405);
