@@ -975,3 +975,7 @@ select cron.schedule(
 - **CORS allowlist가 접속 별칭을 놓쳐 웹 저장이 metadata 없이 저장됨** → wildcard로 해결.
 - **YouTube가 서버 IP엔 봇/consent 페이지(og:title="- YouTube")를 줌** → generic OG로는 무의미. **YouTube oembed**(`/oembed?url=…&format=json`, IP 무관 실제 제목·썸네일)를 `index.ts`에 특수처리로 추가. (내 노트북 주거 IP에선 OG가 됐지만 Supabase 서버 IP에선 안 됐던 것 — "OG면 충분"이라던 스코프 판단을 실측이 뒤집음.) Notion/X/Instagram은 여전히 Phase 2.
 - **classify·backup-thumbnail 함수에 CORS 헤더가 없어 웹에서 태그·카테고리·썸네일 백업이 안 됨** — 두 함수 모두 모바일 전용으로 작성돼 CORS 미설정. 웹 저장은 제목·썸네일만 들어오고 tags=[]·category=null. → 두 함수에 wildcard CORS + OPTIONS 핸들러 추가(verify_jwt + 유저 검증이 실 게이트, CORS는 브라우저만 제약). 교훈: **웹 클라이언트가 invoke하는 Edge Function은 전부 CORS 필요** — extract-metadata만 챙기고 classify/backup을 놓쳤음.
+
+**1차 완료 시점의 알려진 한계 (Phase 2 이월, 2026-08-08)**:
+- **YouTube 등 봇 차단 사이트의 본문(description)은 웹에서 못 가져온다.** 이유는 코드가 아니라 IP: iOS는 가정용 IP라 YouTube가 정상 페이지(임베디드 JSON 포함)를 주지만, Edge Function은 데이터센터 IP라 봇/consent 페이지를 받아 본문 자체가 응답에 없음. iOS의 본문 추출 로직을 포팅해도 무의미. 필요 시 **YouTube Data API v3**(`videos.list?part=snippet`, 키·일 10k 쿼터·secret 필요)로 해결 — 보조 동선 대비 과해서 1차엔 보류. 태그·카테고리는 제목 기반 classify로 채워져 재분류엔 지장 적음.
+- 일반 사이트(블로그·뉴스)는 데이터센터 IP도 정상 페이지를 줘서 제목·본문·썸네일 모두 정상.

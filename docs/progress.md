@@ -30,10 +30,15 @@ Archived records:
 | `Alert.alert` 웹 no-op 전반 대응 — 로그아웃/삭제 확인은 `confirmAsync`(ConfirmHost), 에러 알림은 신규 `notify`(웹=window.alert) | ✅ |
 | **애플 웹 로그인** — 코드는 기존(`auth.web.ts`)대로 정상, 콘솔 설정으로 해결(Apple Services ID + Supabase Client IDs 순서 + JWT secret) | ✅ |
 | 로그인 화면 데스크탑 좌우 2분할(좌 브랜드 / 우 인증 340px) | ✅ |
-| **Lane B 6 — 웹 저장 메타 스크래핑** (Phase 1 generic OG): `extract-metadata` Edge Function + `metadata.ts` 웹 분기 (→ 결정 113) | ✅ 배포됨. `.web.ts` self-import 버그로 저장 전부 실패 → `Platform.OS` 분기로 수정 |
+| **Lane B 6 — 웹 저장 메타 스크래핑** (Phase 1): `extract-metadata` Edge Function + `metadata.ts` 웹 분기 + YouTube oembed + classify/backup CORS (→ 결정 113) | ✅ 배포·스모크 완료 (제목·썸네일·태그·카테고리 정상) |
 | Vercel 배포 꼬임 해결 — `nook`(앱) 프로젝트에 landing(Next.js)이 잘못 배포돼 Production 실패하던 것 정상화 (→ 메모리 project-vercel-topology) | ✅ |
 
-**Lane B 6 남은 단계**: `supabase functions deploy extract-metadata` + 웹 앱 재배포 후 실 URL 스모크(YouTube `youtu.be/…`·블로그·뉴스). Notion/X/Instagram 특수처리는 Phase 2로 스킵(웹 저장 결과가 실제로 나쁠 때 해당 사이트만 이식).
+**Lane B 6 1차 완료 (2026-08-08)**. 스모크에서 4개 버그 연쇄 수정: ①`metadata.web.ts` self-import → `Platform.OS` 분기, ②extract-metadata CORS allowlist→wildcard, ③YouTube 서버 IP 봇페이지→oembed, ④classify·backup-thumbnail CORS 누락. (PR #108~#111)
+
+**Phase 2 이월**:
+- **YouTube 등 본문(description)** — 데이터센터 IP엔 봇/consent 페이지가 와서 본문 스크래핑 불가(oembed는 제목·썸네일만). iOS(가정용 IP)는 정상. 필요 시 **YouTube Data API v3**(키·쿼터 필요)로. 태그·카테고리는 제목 기반 classify로 채워져 재분류엔 지장 적음.
+- **Notion/X/Instagram 특수처리** — 웹 저장 결과가 실제로 나쁠 때 해당 사이트만 이식.
+- 일반 사이트(블로그·뉴스)는 데이터센터 IP도 정상 페이지를 줘서 description까지 들어옴.
 
 ## 완료 (60차 — Nook 공식 랜딩페이지)
 
